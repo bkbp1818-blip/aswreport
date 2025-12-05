@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'ASW Report - ระบบบัญชีรายรับ-รายจ่าย',
+  title: 'ARUN SA WAD Monthly Report',
   description: 'ระบบบันทึกรายรับ-รายจ่ายสำหรับ ARUN SA WAD Properties',
 }
 

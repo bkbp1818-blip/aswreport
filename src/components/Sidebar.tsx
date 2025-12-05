@@ -34,7 +34,7 @@ export function Sidebar() {
       <div className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between bg-[#84A59D] px-4 text-white md:hidden">
         <div className="flex items-center gap-2">
           <Building2 className="h-6 w-6 text-[#F6BD60]" />
-          <span className="font-bold">ASW Report</span>
+          <span className="text-sm font-bold">ARUN SA WAD</span>
         </div>
         <button
           onClick={toggleMenu}
@@ -64,8 +64,8 @@ export function Sidebar() {
         <div className="flex h-16 items-center gap-2 border-b border-[#6b8a84] px-6">
           <Building2 className="h-8 w-8 text-[#F6BD60]" />
           <div>
-            <h1 className="text-lg font-bold">ASW Report</h1>
-            <p className="text-xs text-white/70">ระบบบัญชีรายรับ-รายจ่าย</p>
+            <h1 className="text-base font-bold leading-tight">ARUN SA WAD</h1>
+            <p className="text-xs text-white/70">Monthly Report</p>
           </div>
           {/* Close button for mobile */}
           <button
