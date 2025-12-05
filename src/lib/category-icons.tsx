@@ -28,16 +28,16 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-// สี icons
+// สี icons - ตามสีแบรนด์จริง
 const iconColors: Record<string, string> = {
-  // รายได้
-  'Direct Booking': 'text-blue-600',
-  'AirBNB': 'text-pink-500',
-  'Booking': 'text-blue-500',
-  'Agoda': 'text-red-500',
-  'Trip': 'text-blue-400',
-  'Expedia': 'text-yellow-600',
-  'RB': 'text-purple-500',
+  // รายได้ - สีตามแบรนด์
+  'Direct Booking': 'text-[#1d3557]',    // Deep Space Blue
+  'AirBNB': 'text-[#FF5A5F]',            // Airbnb Rausch
+  'Booking': 'text-[#003580]',           // Booking.com Blue
+  'Agoda': 'text-[#5392F9]',             // Agoda Blue
+  'Trip': 'text-[#287DFA]',              // Trip.com Blue
+  'Expedia': 'text-[#FFCC00]',           // Expedia Yellow
+  'RB': 'text-[#6B4C9A]',                // Roombix Purple
   'ช่องทางอื่น': 'text-gray-500',
   'ค่าอาหาร': 'text-orange-500',
   'รับส่งสนามบิน': 'text-cyan-500',
@@ -48,8 +48,8 @@ const iconColors: Record<string, string> = {
   'ค่าไฟฟ้า': 'text-yellow-500',
   'ค่าน้ำประปา': 'text-blue-400',
   'Internet': 'text-blue-600',
-  'Netflix': 'text-red-600',
-  'Youtube': 'text-red-500',
+  'Netflix': 'text-[#E50914]',           // Netflix Red
+  'Youtube': 'text-[#FF0000]',            // YouTube Red
   'เงินเดือนพนักงาน': 'text-green-600',
   'การตลาด': 'text-purple-500',
   'Amenity': 'text-pink-400',

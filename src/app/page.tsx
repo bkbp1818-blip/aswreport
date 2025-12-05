@@ -61,16 +61,28 @@ interface SummaryData {
   total: Summary
 }
 
-// สีสำหรับกราฟวงกลม - จะปรับตามที่ผู้ใช้กำหนด
-const COLORS = [
-  '#1d3557', // Direct Booking - Deep Space Blue
-  '#FF5A5F', // AirBNB - Red
-  '#003580', // Booking - Blue
-  '#E74C3C', // Agoda - Red
-  '#00A1E0', // Trip - Blue
-  '#FFB900', // Expedia - Yellow
-  '#8B5CF6', // RB - Purple
-  '#6B7280', // อื่นๆ - Gray
+// สีแบรนด์สำหรับกราฟวงกลม - ตามสีแบรนด์จริง
+const BRAND_COLORS: Record<string, string> = {
+  'Direct Booking': '#1d3557',  // Deep Space Blue
+  'AirBNB': '#FF5A5F',          // Airbnb Rausch (ชมพูแดง)
+  'Booking': '#003580',         // Booking.com Dark Blue
+  'Agoda': '#5392F9',           // Agoda Blue
+  'Trip': '#287DFA',            // Trip.com Blue
+  'Expedia': '#FFCC00',         // Expedia Yellow
+  'RB': '#6B4C9A',              // Roombix Purple
+  'ช่องทางอื่น': '#6B7280',      // Gray
+}
+
+// ฟังก์ชันดึงสีตามชื่อช่องทาง
+const getChannelColor = (channelName: string): string => {
+  const name = channelName.replace('ค่าเช่าจาก ', '')
+  return BRAND_COLORS[name] || '#6B7280'
+}
+
+// สีสำรองสำหรับกราฟ (ถ้าไม่ match กับชื่อ)
+const FALLBACK_COLORS = [
+  '#1d3557', '#FF5A5F', '#003580', '#5392F9',
+  '#287DFA', '#FFCC00', '#6B4C9A', '#6B7280'
 ]
 
 export default function DashboardPage() {
@@ -381,10 +393,10 @@ export default function DashboardPage() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {pieChartData.map((_, index) => (
+                        {pieChartData.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
+                            fill={getChannelColor(entry.name) || FALLBACK_COLORS[index % FALLBACK_COLORS.length]}
                           />
                         ))}
                       </Pie>
