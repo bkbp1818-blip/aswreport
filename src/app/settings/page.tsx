@@ -43,7 +43,6 @@ export default function SettingsPage() {
     managementFeePercent: 13.5,
     vatPercent: 7,
     monthlyRent: 0,
-    littleHotelierExpense: 0,
   })
 
   // โหลดรายการอาคาร
@@ -74,7 +73,6 @@ export default function SettingsPage() {
             managementFeePercent: Number(data.managementFeePercent) || 13.5,
             vatPercent: Number(data.vatPercent) || 7,
             monthlyRent: Number(data.monthlyRent) || 0,
-            littleHotelierExpense: Number(data.littleHotelierExpense) || 0,
           })
         }
       })
@@ -228,28 +226,6 @@ export default function SettingsPage() {
                       ค่าเช่าอาคารรายเดือน
                     </p>
                   </div>
-
-                  {/* Little Hotelier */}
-                  <div className="space-y-2">
-                    <Label htmlFor="littleHotelier">
-                      Little Hotelier Expense (บาท)
-                    </Label>
-                    <Input
-                      id="littleHotelier"
-                      type="number"
-                      value={formData.littleHotelierExpense}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          littleHotelierExpense: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      className="bg-white"
-                    />
-                    <p className="text-xs text-[#666]">
-                      ค่าใช้จ่าย Little Hotelier รายเดือน
-                    </p>
-                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4">
@@ -328,7 +304,7 @@ export default function SettingsPage() {
                 <div className="rounded-lg bg-[#84A59D]/30 p-3">
                   <p className="font-medium text-[#333]">Net Profit for Owner</p>
                   <p className="text-[#666]">
-                    = Gross Profit - Management Fee - Little Hotelier - ค่าเช่าอาคาร
+                    = Gross Profit - Management Fee - ค่าเช่าอาคาร
                   </p>
                 </div>
                 <div className="rounded-lg bg-[#84A59D]/30 p-3">
