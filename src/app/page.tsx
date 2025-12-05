@@ -363,9 +363,9 @@ export default function DashboardPage() {
                         formatter={(value: number) => formatNumber(value)}
                       />
                       <Legend />
-                      <Bar dataKey="รายรับ" fill="#10B981" />
-                      <Bar dataKey="รายจ่าย" fill="#EF4444" />
-                      <Bar dataKey="กำไรสุทธิ" fill="#8B5CF6" />
+                      <Bar dataKey="รายรับ" fill="#5B8A7D" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="รายจ่าย" fill="#E8837B" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="กำไรสุทธิ" fill="#D4A24C" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
