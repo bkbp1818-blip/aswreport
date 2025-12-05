@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
-import { FileDown, FileSpreadsheet, Loader2 } from 'lucide-react'
+import { FileDown, FileSpreadsheet, Loader2, Printer, Building2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 interface Building {
@@ -39,6 +39,11 @@ interface Summary {
   expenseByCategory: Record<string, number>
 }
 
+interface AllSummaryData {
+  buildings: Summary[]
+  total: Summary
+}
+
 export default function ReportsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('all')
@@ -49,8 +54,10 @@ export default function ReportsPage() {
     String(new Date().getFullYear())
   )
   const [summaryData, setSummaryData] = useState<Summary | null>(null)
+  const [allSummaryData, setAllSummaryData] = useState<AllSummaryData | null>(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const printRef = useRef<HTMLDivElement>(null)
 
   const years = generateYears()
 
@@ -78,8 +85,10 @@ export default function ReportsPage() {
       .then((data) => {
         if (selectedBuilding !== 'all') {
           setSummaryData(data)
+          setAllSummaryData(null)
         } else {
           setSummaryData(data.total)
+          setAllSummaryData(data)
         }
       })
       .catch((err) => console.error('Error loading summary:', err))
@@ -91,14 +100,11 @@ export default function ReportsPage() {
       ? 'ทุกอาคาร'
       : buildings.find((b) => String(b.id) === selectedBuilding)?.name || ''
 
-  // Export to Excel
-  const handleExportExcel = async () => {
-    if (!summaryData) return
-
+  // Export to Excel - Single Building
+  const handleExportExcel = async (data: Summary, buildingName: string) => {
     setExporting(true)
     try {
-      // สร้างข้อมูลสำหรับ Excel
-      const incomeData = Object.entries(summaryData.incomeByChannel || {}).map(
+      const incomeData = Object.entries(data.incomeByChannel || {}).map(
         ([name, amount], index) => ({
           ลำดับ: index + 1,
           รายการ: name,
@@ -106,7 +112,7 @@ export default function ReportsPage() {
         })
       )
 
-      const expenseData = Object.entries(summaryData.expenseByCategory || {}).map(
+      const expenseData = Object.entries(data.expenseByCategory || {}).map(
         ([name, amount], index) => ({
           ลำดับ: index + 1,
           รายการ: name,
@@ -116,41 +122,34 @@ export default function ReportsPage() {
 
       const summarySheet = [
         ['สรุปรายรับ-รายจ่าย'],
-        [`อาคาร: ${selectedBuildingName}`],
+        [`อาคาร: ${buildingName}`],
         [`เดือน: ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`],
         [],
         ['รายการ', 'จำนวนเงิน (บาท)'],
-        ['รวมรายได้ค่าเช่า', summaryData.totalIncome],
-        ['รวมค่าใช้จ่าย', summaryData.totalExpense],
-        ['Gross Profit', summaryData.grossProfit],
-        [`Management Fee (${summaryData.managementFeePercent}%)`, summaryData.managementFee],
-        ['Little Hotelier Expense', summaryData.littleHotelierExpense],
-        ['ค่าเช่าอาคาร/เดือน', summaryData.monthlyRent],
-        ['Net Profit for Owner', summaryData.netProfit],
-        [`Amount to be Paid (รวม VAT ${summaryData.vatPercent}%)`, summaryData.amountToBePaid],
+        ['รวมรายได้ค่าเช่า', data.totalIncome],
+        ['รวมค่าใช้จ่าย', data.totalExpense],
+        ['Gross Profit', data.grossProfit],
+        [`Management Fee (${data.managementFeePercent}%)`, data.managementFee],
+        ['ค่าเช่าอาคาร/เดือน', data.monthlyRent],
+        ['Net Profit for Owner', data.netProfit],
+        [`Amount to be Paid (รวม VAT ${data.vatPercent}%)`, data.amountToBePaid],
       ]
 
-      // สร้าง workbook
       const wb = XLSX.utils.book_new()
-
-      // เพิ่ม sheet สรุป
       const wsSummary = XLSX.utils.aoa_to_sheet(summarySheet)
       XLSX.utils.book_append_sheet(wb, wsSummary, 'สรุป')
 
-      // เพิ่ม sheet รายรับ
       if (incomeData.length > 0) {
         const wsIncome = XLSX.utils.json_to_sheet(incomeData)
         XLSX.utils.book_append_sheet(wb, wsIncome, 'รายรับ')
       }
 
-      // เพิ่ม sheet รายจ่าย
       if (expenseData.length > 0) {
         const wsExpense = XLSX.utils.json_to_sheet(expenseData)
         XLSX.utils.book_append_sheet(wb, wsExpense, 'รายจ่าย')
       }
 
-      // ดาวน์โหลดไฟล์
-      const fileName = `ASW_Report_${selectedBuildingName}_${selectedMonth}_${selectedYear}.xlsx`
+      const fileName = `ASW_Report_${buildingName.replace(/\s+/g, '_')}_${selectedMonth}_${selectedYear}.xlsx`
       XLSX.writeFile(wb, fileName)
     } catch (err) {
       console.error('Error exporting Excel:', err)
@@ -160,18 +159,140 @@ export default function ReportsPage() {
     }
   }
 
+  // Export All Buildings to Excel
+  const handleExportAllExcel = async () => {
+    if (!allSummaryData) return
+
+    setExporting(true)
+    try {
+      const wb = XLSX.utils.book_new()
+
+      // สร้าง sheet สำหรับแต่ละอาคาร
+      for (const building of allSummaryData.buildings) {
+        const sheetData = [
+          [`${building.buildingName}`],
+          [`เดือน: ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`],
+          [],
+          ['รายการ', 'จำนวนเงิน (บาท)'],
+          ['รวมรายได้ค่าเช่า', building.totalIncome],
+          ['รวมค่าใช้จ่าย', building.totalExpense],
+          ['Gross Profit', building.grossProfit],
+          [`Management Fee (${building.managementFeePercent}%)`, building.managementFee],
+          ['ค่าเช่าอาคาร/เดือน', building.monthlyRent],
+          ['Net Profit for Owner', building.netProfit],
+          [`Amount to be Paid (รวม VAT ${building.vatPercent}%)`, building.amountToBePaid],
+        ]
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetData)
+        const sheetName = building.buildingCode || building.buildingName.substring(0, 20)
+        XLSX.utils.book_append_sheet(wb, ws, sheetName)
+      }
+
+      // สร้าง sheet สรุปรวม
+      const totalSheet = [
+        ['สรุปรวมทุกอาคาร'],
+        [`เดือน: ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`],
+        [],
+        ['รายการ', 'จำนวนเงิน (บาท)'],
+        ['รวมรายได้ค่าเช่า', allSummaryData.total.totalIncome],
+        ['รวมค่าใช้จ่าย', allSummaryData.total.totalExpense],
+        ['Gross Profit', allSummaryData.total.grossProfit],
+        ['Management Fee', allSummaryData.total.managementFee],
+        ['ค่าเช่าอาคาร/เดือน', allSummaryData.total.monthlyRent],
+        ['Net Profit for Owner', allSummaryData.total.netProfit],
+        ['Amount to be Paid (รวม VAT)', allSummaryData.total.amountToBePaid],
+      ]
+      const wsTotal = XLSX.utils.aoa_to_sheet(totalSheet)
+      XLSX.utils.book_append_sheet(wb, wsTotal, 'สรุปรวม')
+
+      const fileName = `ASW_Report_AllBuildings_${selectedMonth}_${selectedYear}.xlsx`
+      XLSX.writeFile(wb, fileName)
+    } catch (err) {
+      console.error('Error exporting Excel:', err)
+      alert('เกิดข้อผิดพลาดในการส่งออก Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Print / PDF
+  const handlePrint = () => {
+    window.print()
+  }
+
+  // Render Summary Table
+  const renderSummaryTable = (data: Summary, showTitle: boolean = true) => (
+    <div className="overflow-hidden rounded-lg border border-[#E8DED5] print:border-gray-300">
+      {showTitle && (
+        <div className="bg-[#84A59D] px-4 py-2 text-white print:bg-gray-700">
+          <h3 className="font-bold">{data.buildingName}</h3>
+        </div>
+      )}
+      <table className="w-full">
+        <tbody>
+          <tr className="bg-[#84A59D]/10 print:bg-gray-100">
+            <td className="px-4 py-2 font-medium">รวมรายได้ค่าเช่า</td>
+            <td className="px-4 py-2 text-right font-bold text-[#84A59D] print:text-gray-800">
+              {formatNumber(data.totalIncome)} บาท
+            </td>
+          </tr>
+          <tr>
+            <td className="px-4 py-2 font-medium">รวมค่าใช้จ่าย</td>
+            <td className="px-4 py-2 text-right font-bold text-[#F28482] print:text-gray-800">
+              {formatNumber(data.totalExpense)} บาท
+            </td>
+          </tr>
+          <tr className="bg-[#F6BD60]/10 print:bg-gray-50">
+            <td className="px-4 py-2 font-medium">Gross Profit</td>
+            <td className="px-4 py-2 text-right font-bold">
+              {formatNumber(data.grossProfit)} บาท
+            </td>
+          </tr>
+          <tr>
+            <td className="px-4 py-2 font-medium">
+              Management Fee ({data.managementFeePercent}%)
+            </td>
+            <td className="px-4 py-2 text-right">
+              {formatNumber(data.managementFee)} บาท
+            </td>
+          </tr>
+          <tr>
+            <td className="px-4 py-2 font-medium">ค่าเช่าอาคาร/เดือน</td>
+            <td className="px-4 py-2 text-right">
+              {formatNumber(data.monthlyRent)} บาท
+            </td>
+          </tr>
+          <tr className="bg-[#84A59D]/20 print:bg-gray-200">
+            <td className="px-4 py-2 font-bold">Net Profit for Owner</td>
+            <td className="px-4 py-2 text-right font-bold text-[#84A59D] print:text-gray-800">
+              {formatNumber(data.netProfit)} บาท
+            </td>
+          </tr>
+          <tr className="bg-[#F5CAC3]/30 print:bg-gray-100">
+            <td className="px-4 py-2 font-bold">
+              Amount to be Paid (รวม VAT {data.vatPercent}%)
+            </td>
+            <td className="px-4 py-2 text-right font-bold">
+              {formatNumber(data.amountToBePaid)} บาท
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
+      {/* Header - ซ่อนตอนพิมพ์ */}
+      <div className="print:hidden">
         <h1 className="text-2xl font-bold text-[#333]">ดาวน์โหลดรายงาน</h1>
         <p className="text-[#666]">
-          ส่งออกรายงานรายรับ-รายจ่ายเป็นไฟล์ Excel
+          ส่งออกรายงานรายรับ-รายจ่าย
         </p>
       </div>
 
-      {/* Filters */}
-      <Card className="border-0 shadow-md">
+      {/* Filters - ซ่อนตอนพิมพ์ */}
+      <Card className="border-0 shadow-md print:hidden">
         <CardHeader className="bg-[#84A59D] text-white rounded-t-xl">
           <CardTitle>เลือกช่วงเวลา</CardTitle>
           <CardDescription className="text-white/80">
@@ -183,11 +304,16 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#333]">อาคาร</label>
               <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-                <SelectTrigger className="w-[250px] bg-white">
+                <SelectTrigger className="w-[280px] bg-white">
                   <SelectValue placeholder="เลือกอาคาร" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทุกอาคาร</SelectItem>
+                  <SelectItem value="all">
+                    <span className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      ทุกอาคาร (แยกแต่ละอาคาร)
+                    </span>
+                  </SelectItem>
                   {buildings.map((b) => (
                     <SelectItem key={b.id} value={String(b.id)}>
                       {b.name}
@@ -232,109 +358,148 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Preview */}
+      {/* Print Header - แสดงเฉพาะตอนพิมพ์ */}
+      <div className="hidden print:block mb-6">
+        <h1 className="text-2xl font-bold text-center">รายงานสรุปรายรับ-รายจ่าย</h1>
+        <p className="text-center text-gray-600">
+          {selectedBuildingName} - {getMonthName(parseInt(selectedMonth))} {selectedYear}
+        </p>
+        <p className="text-center text-sm text-gray-500 mt-1">
+          พิมพ์เมื่อ: {new Date().toLocaleDateString('th-TH')}
+        </p>
+      </div>
+
+      {/* Content */}
       {loading ? (
-        <div className="flex h-32 items-center justify-center">
-          <p className="text-[#666]">กำลังโหลดข้อมูล...</p>
+        <div className="flex h-32 items-center justify-center print:hidden">
+          <Loader2 className="h-8 w-8 animate-spin text-[#84A59D]" />
+        </div>
+      ) : selectedBuilding === 'all' && allSummaryData ? (
+        // แสดงทุกอาคาร
+        <div className="space-y-6" ref={printRef}>
+          {/* แต่ละอาคาร */}
+          {allSummaryData.buildings.map((building) => (
+            <Card key={building.buildingId} className="border-0 shadow-md print:shadow-none print:border print:border-gray-300">
+              <CardContent className="p-0">
+                {renderSummaryTable(building, true)}
+
+                {/* ปุ่มดาวน์โหลดแยกอาคาร - ซ่อนตอนพิมพ์ */}
+                <div className="flex justify-end gap-2 p-4 print:hidden">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExportExcel(building, building.buildingName)}
+                    disabled={exporting}
+                  >
+                    <FileSpreadsheet className="mr-1 h-4 w-4" />
+                    Excel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* สรุปรวม */}
+          <Card className="border-0 shadow-md bg-[#84A59D]/10 print:shadow-none print:border print:border-gray-300">
+            <CardHeader>
+              <CardTitle>สรุปรวมทุกอาคาร</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {renderSummaryTable(allSummaryData.total, false)}
+            </CardContent>
+          </Card>
+
+          {/* ปุ่มดาวน์โหลดทั้งหมด - ซ่อนตอนพิมพ์ */}
+          <div className="flex justify-end gap-3 print:hidden">
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              className="border-[#84A59D] text-[#84A59D] hover:bg-[#84A59D]/10"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              พิมพ์ / PDF
+            </Button>
+            <Button
+              onClick={handleExportAllExcel}
+              disabled={exporting}
+              className="bg-[#84A59D] hover:bg-[#6b8a84]"
+            >
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+              )}
+              ดาวน์โหลด Excel ทั้งหมด
+            </Button>
+          </div>
         </div>
       ) : summaryData ? (
-        <Card className="border-0 shadow-md">
-          <CardHeader>
+        // แสดงอาคารเดียว
+        <Card className="border-0 shadow-md print:shadow-none print:border print:border-gray-300">
+          <CardHeader className="print:hidden">
             <CardTitle>
-              ตัวอย่างรายงาน: {selectedBuildingName}
+              รายงาน: {selectedBuildingName}
             </CardTitle>
             <CardDescription>
               {getMonthName(parseInt(selectedMonth))} {selectedYear}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Summary Table */}
-              <div className="overflow-hidden rounded-lg border border-[#E8DED5]">
-                <table className="w-full">
-                  <tbody>
-                    <tr className="bg-[#84A59D]/10">
-                      <td className="px-4 py-2 font-medium">รวมรายได้ค่าเช่า</td>
-                      <td className="px-4 py-2 text-right font-bold text-[#84A59D]">
-                        {formatNumber(summaryData.totalIncome)} บาท
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 font-medium">รวมค่าใช้จ่าย</td>
-                      <td className="px-4 py-2 text-right font-bold text-[#F28482]">
-                        {formatNumber(summaryData.totalExpense)} บาท
-                      </td>
-                    </tr>
-                    <tr className="bg-[#F6BD60]/10">
-                      <td className="px-4 py-2 font-medium">Gross Profit</td>
-                      <td className="px-4 py-2 text-right font-bold">
-                        {formatNumber(summaryData.grossProfit)} บาท
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 font-medium">
-                        Management Fee ({summaryData.managementFeePercent}%)
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {formatNumber(summaryData.managementFee)} บาท
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 font-medium">Little Hotelier</td>
-                      <td className="px-4 py-2 text-right">
-                        {formatNumber(summaryData.littleHotelierExpense)} บาท
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 font-medium">ค่าเช่าอาคาร/เดือน</td>
-                      <td className="px-4 py-2 text-right">
-                        {formatNumber(summaryData.monthlyRent)} บาท
-                      </td>
-                    </tr>
-                    <tr className="bg-[#84A59D]/20">
-                      <td className="px-4 py-2 font-bold">Net Profit for Owner</td>
-                      <td className="px-4 py-2 text-right font-bold text-[#84A59D]">
-                        {formatNumber(summaryData.netProfit)} บาท
-                      </td>
-                    </tr>
-                    <tr className="bg-[#F5CAC3]/30">
-                      <td className="px-4 py-2 font-bold">
-                        Amount to be Paid (รวม VAT)
-                      </td>
-                      <td className="px-4 py-2 text-right font-bold">
-                        {formatNumber(summaryData.amountToBePaid)} บาท
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            {renderSummaryTable(summaryData, false)}
 
-              {/* Export Buttons */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  onClick={handleExportExcel}
-                  disabled={exporting}
-                  className="bg-[#84A59D] hover:bg-[#6b8a84]"
-                >
-                  {exporting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  )}
-                  ดาวน์โหลด Excel
-                </Button>
-              </div>
+            {/* ปุ่มดาวน์โหลด - ซ่อนตอนพิมพ์ */}
+            <div className="flex justify-end gap-3 pt-4 print:hidden">
+              <Button
+                onClick={handlePrint}
+                variant="outline"
+                className="border-[#84A59D] text-[#84A59D] hover:bg-[#84A59D]/10"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                พิมพ์ / PDF
+              </Button>
+              <Button
+                onClick={() => handleExportExcel(summaryData, selectedBuildingName)}
+                disabled={exporting}
+                className="bg-[#84A59D] hover:bg-[#6b8a84]"
+              >
+                {exporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                )}
+                ดาวน์โหลด Excel
+              </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-md print:hidden">
           <CardContent className="py-12 text-center">
             <FileDown className="mx-auto h-12 w-12 text-[#84A59D]/50" />
             <p className="mt-4 text-[#666]">ไม่พบข้อมูลสำหรับช่วงเวลาที่เลือก</p>
           </CardContent>
         </Card>
       )}
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          .print\\:block {
+            display: block !important;
+          }
+          @page {
+            margin: 1cm;
+            size: A4;
+          }
+        }
+      `}</style>
     </div>
   )
 }
