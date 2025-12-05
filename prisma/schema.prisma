@@ -1,0 +1,68 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// อาคาร
+model Building {
+  id           Int           @id @default(autoincrement())
+  name         String
+  code         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  settings     Settings?
+}
+
+// หมวดหมู่รายรับ-รายจ่าย
+model Category {
+  id           Int           @id @default(autoincrement())
+  name         String
+  type         CategoryType
+  order        Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+// รายการรายรับ-รายจ่าย
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  buildingId Int
+  categoryId Int
+  amount     Decimal  @default(0) @db.Decimal(15, 2)
+  month      Int
+  year       Int
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([buildingId, categoryId, month, year])
+  @@index([buildingId, month, year])
+}
+
+// ตั้งค่าแต่ละอาคาร
+model Settings {
+  id                    Int      @id @default(autoincrement())
+  buildingId            Int      @unique
+  managementFeePercent  Decimal  @default(13.5) @db.Decimal(5, 2)
+  vatPercent            Decimal  @default(7) @db.Decimal(5, 2)
+  monthlyRent           Decimal  @default(0) @db.Decimal(15, 2)
+  littleHotelierExpense Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+}
