@@ -32,6 +32,7 @@ import {
   Calculator,
   Receipt,
 } from 'lucide-react'
+import { CategoryIcon } from '@/lib/category-icons'
 
 interface Building {
   id: number
@@ -60,15 +61,16 @@ interface SummaryData {
   total: Summary
 }
 
+// สีสำหรับกราฟวงกลม - จะปรับตามที่ผู้ใช้กำหนด
 const COLORS = [
-  '#3B82F6',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#8B5CF6',
-  '#EC4899',
-  '#06B6D4',
-  '#84CC16',
+  '#1d3557', // Direct Booking - Deep Space Blue
+  '#FF5A5F', // AirBNB - Red
+  '#003580', // Booking - Blue
+  '#E74C3C', // Agoda - Red
+  '#00A1E0', // Trip - Blue
+  '#FFB900', // Expedia - Yellow
+  '#8B5CF6', // RB - Purple
+  '#6B7280', // อื่นๆ - Gray
 ]
 
 export default function DashboardPage() {
@@ -147,19 +149,19 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500">
+          <h1 className="text-xl font-bold text-slate-900 md:text-2xl">Dashboard</h1>
+          <p className="text-sm text-slate-500 md:text-base">
             สรุปรายรับ-รายจ่ายประจำเดือน {getMonthName(parseInt(selectedMonth))}{' '}
             {selectedYear}
           </p>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-            <SelectTrigger className="w-[200px] bg-white">
+            <SelectTrigger className="w-full bg-white sm:w-[200px]">
               <SelectValue placeholder="เลือกอาคาร" />
             </SelectTrigger>
             <SelectContent>
@@ -172,31 +174,33 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[140px] bg-white">
-              <SelectValue placeholder="เดือน" />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((m) => (
-                <SelectItem key={m.value} value={String(m.value)}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-1 gap-2 sm:flex-none">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-full bg-white sm:w-[120px]">
+                <SelectValue placeholder="เดือน" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((m) => (
+                  <SelectItem key={m.value} value={String(m.value)}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[100px] bg-white">
-              <SelectValue placeholder="ปี" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[90px] bg-white">
+                <SelectValue placeholder="ปี" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -207,7 +211,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">
@@ -282,7 +286,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Additional Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">
@@ -316,16 +320,13 @@ export default function DashboardPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">
-                  ค่าเช่าอาคาร + Little Hotelier
+                  ค่าเช่าอาคาร
                 </CardTitle>
                 <Building2 className="h-4 w-4 text-slate-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-slate-600">
-                  {formatNumber(
-                    (currentSummary?.monthlyRent || 0) +
-                      (currentSummary?.littleHotelierExpense || 0)
-                  )}
+                  {formatNumber(currentSummary?.monthlyRent || 0)}
                 </div>
                 <p className="text-xs text-slate-500">บาท</p>
               </CardContent>
@@ -333,7 +334,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
             {/* Bar Chart - เปรียบเทียบอาคาร */}
             {selectedBuilding === 'all' && barChartData.length > 0 && (
               <Card>
@@ -414,7 +415,10 @@ export default function DashboardPage() {
                           key={name}
                           className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2"
                         >
-                          <span className="text-sm text-slate-700">{name}</span>
+                          <div className="flex items-center gap-2">
+                            <CategoryIcon name={name} className="h-4 w-4" />
+                            <span className="text-sm text-slate-700">{name}</span>
+                          </div>
                           <span className="font-medium text-slate-900">
                             {formatNumber(value)}
                           </span>

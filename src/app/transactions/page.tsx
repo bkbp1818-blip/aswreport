@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table'
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
+import { CategoryIcon } from '@/lib/category-icons'
 import { Save, Loader2 } from 'lucide-react'
 
 interface Building {
@@ -161,8 +162,7 @@ export default function TransactionsPage() {
       if (!res.ok) {
         throw new Error('Failed to save')
       }
-
-      alert('บันทึกข้อมูลสำเร็จ!')
+      // บันทึกสำเร็จ - ไม่แสดง popup
     } catch (err) {
       console.error('Error saving:', err)
       alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
@@ -177,18 +177,18 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">กรอกข้อมูล</h1>
-          <p className="text-slate-500">
+          <h1 className="text-xl font-bold text-slate-900 md:text-2xl">กรอกข้อมูล</h1>
+          <p className="text-sm text-slate-500 md:text-base">
             บันทึกรายรับ-รายจ่ายประจำเดือน
           </p>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-            <SelectTrigger className="w-[200px] bg-white">
+            <SelectTrigger className="w-full bg-white sm:w-[200px]">
               <SelectValue placeholder="เลือกอาคาร" />
             </SelectTrigger>
             <SelectContent>
@@ -200,33 +200,39 @@ export default function TransactionsPage() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[140px] bg-white">
-              <SelectValue placeholder="เดือน" />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((m) => (
-                <SelectItem key={m.value} value={String(m.value)}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-1 gap-2 sm:flex-none">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-full bg-white sm:w-[120px]">
+                <SelectValue placeholder="เดือน" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((m) => (
+                  <SelectItem key={m.value} value={String(m.value)}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[100px] bg-white">
-              <SelectValue placeholder="ปี" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[90px] bg-white">
+                <SelectValue placeholder="ปี" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Button onClick={handleSave} disabled={saving || !selectedBuilding}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !selectedBuilding}
+            className="w-full sm:w-auto"
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -252,7 +258,7 @@ export default function TransactionsPage() {
           <p className="text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {/* รายรับ */}
           <Card>
             <CardHeader className="bg-green-50">
@@ -271,7 +277,12 @@ export default function TransactionsPage() {
                   {incomeCategories.map((category, index) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>{category.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm">{category.name}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Input
                           type="number"
@@ -318,7 +329,12 @@ export default function TransactionsPage() {
                   {expenseCategories.map((category, index) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>{category.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm">{category.name}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Input
                           type="number"
@@ -356,7 +372,7 @@ export default function TransactionsPage() {
             <CardTitle>สรุป</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               <div className="rounded-lg bg-green-50 p-4">
                 <p className="text-sm text-green-600">รวมรายได้</p>
                 <p className="text-2xl font-bold text-green-700">

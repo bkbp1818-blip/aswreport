@@ -97,8 +97,7 @@ export default function SettingsPage() {
       if (!res.ok) {
         throw new Error('Failed to save')
       }
-
-      alert('บันทึกการตั้งค่าสำเร็จ!')
+      // บันทึกสำเร็จ - ไม่แสดง popup
     } catch (err) {
       console.error('Error saving:', err)
       alert('เกิดข้อผิดพลาดในการบันทึก')
@@ -115,8 +114,8 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#333]">ตั้งค่า</h1>
-        <p className="text-[#666]">
+        <h1 className="text-xl font-bold text-[#333] md:text-2xl">ตั้งค่า</h1>
+        <p className="text-sm text-[#666] md:text-base">
           กำหนดค่าต่างๆ สำหรับแต่ละอาคาร
         </p>
       </div>
@@ -138,7 +137,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="p-6">
               <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-                <SelectTrigger className="w-full md:w-[300px]">
+                <SelectTrigger className="w-full sm:w-[300px]">
                   <SelectValue placeholder="เลือกอาคาร" />
                 </SelectTrigger>
                 <SelectContent>
@@ -166,7 +165,7 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
                   {/* Management Fee */}
                   <div className="space-y-2">
                     <Label htmlFor="managementFee">Management Fee (%)</Label>

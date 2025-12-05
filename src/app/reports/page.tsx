@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,8 +12,17 @@ import {
 } from '@/components/ui/select'
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
-import { FileDown, FileSpreadsheet, Loader2, Printer, Building2 } from 'lucide-react'
+import { FileDown, FileSpreadsheet, Loader2, Printer, Building2, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+
+// เพิ่ม type สำหรับ jspdf-autotable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: object) => jsPDF
+  }
+}
 
 interface Building {
   id: number
@@ -57,7 +66,7 @@ export default function ReportsPage() {
   const [allSummaryData, setAllSummaryData] = useState<AllSummaryData | null>(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const printRef = useRef<HTMLDivElement>(null)
+  const [exportingPDF, setExportingPDF] = useState(false)
 
   const years = generateYears()
 
@@ -215,7 +224,147 @@ export default function ReportsPage() {
     }
   }
 
-  // Print / PDF
+  // Export to PDF - Single Building
+  const handleExportPDF = async (data: Summary, buildingName: string) => {
+    setExportingPDF(true)
+    try {
+      const doc = new jsPDF()
+
+      // เพิ่มฟอนต์ไทย (ใช้ฟอนต์ที่รองรับ)
+      doc.setFont('helvetica')
+
+      // หัวเรื่อง
+      doc.setFontSize(18)
+      doc.text('Report Summary', 105, 20, { align: 'center' })
+
+      doc.setFontSize(12)
+      doc.text(`Building: ${buildingName}`, 105, 30, { align: 'center' })
+      doc.text(`Month: ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`, 105, 38, { align: 'center' })
+
+      // ตารางสรุป
+      const tableData = [
+        ['Total Rental Income', formatNumber(data.totalIncome) + ' Baht'],
+        ['Total Expenses', formatNumber(data.totalExpense) + ' Baht'],
+        ['Gross Profit', formatNumber(data.grossProfit) + ' Baht'],
+        [`Management Fee (${data.managementFeePercent}%)`, formatNumber(data.managementFee) + ' Baht'],
+        ['Monthly Rent', formatNumber(data.monthlyRent) + ' Baht'],
+        ['Net Profit for Owner', formatNumber(data.netProfit) + ' Baht'],
+        [`Amount to be Paid (VAT ${data.vatPercent}%)`, formatNumber(data.amountToBePaid) + ' Baht'],
+      ]
+
+      doc.autoTable({
+        startY: 50,
+        head: [['Item', 'Amount']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [132, 165, 157] },
+        styles: { fontSize: 10 },
+      })
+
+      const fileName = `ASW_Report_${buildingName.replace(/\s+/g, '_')}_${selectedMonth}_${selectedYear}.pdf`
+      doc.save(fileName)
+    } catch (err) {
+      console.error('Error exporting PDF:', err)
+      alert('เกิดข้อผิดพลาดในการส่งออก PDF')
+    } finally {
+      setExportingPDF(false)
+    }
+  }
+
+  // Export All Buildings to PDF
+  const handleExportAllPDF = async () => {
+    if (!allSummaryData) return
+
+    setExportingPDF(true)
+    try {
+      const doc = new jsPDF()
+
+      doc.setFont('helvetica')
+
+      // หน้าแรก - หัวเรื่อง
+      doc.setFontSize(20)
+      doc.text('Monthly Report - All Buildings', 105, 30, { align: 'center' })
+      doc.setFontSize(14)
+      doc.text(`${getMonthName(parseInt(selectedMonth))} ${selectedYear}`, 105, 42, { align: 'center' })
+
+      let yPosition = 60
+
+      // แต่ละอาคาร
+      for (let i = 0; i < allSummaryData.buildings.length; i++) {
+        const building = allSummaryData.buildings[i]
+
+        // ตรวจสอบว่าต้องขึ้นหน้าใหม่หรือไม่
+        if (yPosition > 200) {
+          doc.addPage()
+          yPosition = 20
+        }
+
+        doc.setFontSize(14)
+        doc.setTextColor(132, 165, 157)
+        doc.text(building.buildingName, 14, yPosition)
+        doc.setTextColor(0, 0, 0)
+
+        const tableData = [
+          ['Total Rental Income', formatNumber(building.totalIncome) + ' Baht'],
+          ['Total Expenses', formatNumber(building.totalExpense) + ' Baht'],
+          ['Gross Profit', formatNumber(building.grossProfit) + ' Baht'],
+          [`Management Fee (${building.managementFeePercent}%)`, formatNumber(building.managementFee) + ' Baht'],
+          ['Monthly Rent', formatNumber(building.monthlyRent) + ' Baht'],
+          ['Net Profit for Owner', formatNumber(building.netProfit) + ' Baht'],
+          [`Amount to be Paid (VAT ${building.vatPercent}%)`, formatNumber(building.amountToBePaid) + ' Baht'],
+        ]
+
+        doc.autoTable({
+          startY: yPosition + 5,
+          head: [['Item', 'Amount']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [132, 165, 157], fontSize: 9 },
+          styles: { fontSize: 9 },
+          margin: { left: 14, right: 14 },
+        })
+
+        // @ts-ignore - autoTable เพิ่ม property นี้
+        yPosition = doc.lastAutoTable.finalY + 15
+      }
+
+      // หน้าสรุปรวม
+      doc.addPage()
+      doc.setFontSize(16)
+      doc.setTextColor(132, 165, 157)
+      doc.text('Total Summary - All Buildings', 105, 20, { align: 'center' })
+      doc.setTextColor(0, 0, 0)
+
+      const totalTableData = [
+        ['Total Rental Income', formatNumber(allSummaryData.total.totalIncome) + ' Baht'],
+        ['Total Expenses', formatNumber(allSummaryData.total.totalExpense) + ' Baht'],
+        ['Gross Profit', formatNumber(allSummaryData.total.grossProfit) + ' Baht'],
+        ['Management Fee', formatNumber(allSummaryData.total.managementFee) + ' Baht'],
+        ['Monthly Rent', formatNumber(allSummaryData.total.monthlyRent) + ' Baht'],
+        ['Net Profit for Owner', formatNumber(allSummaryData.total.netProfit) + ' Baht'],
+        ['Amount to be Paid (VAT)', formatNumber(allSummaryData.total.amountToBePaid) + ' Baht'],
+      ]
+
+      doc.autoTable({
+        startY: 30,
+        head: [['Item', 'Amount']],
+        body: totalTableData,
+        theme: 'striped',
+        headStyles: { fillColor: [132, 165, 157] },
+        styles: { fontSize: 11 },
+      })
+
+      const fileName = `ASW_Report_AllBuildings_${selectedMonth}_${selectedYear}.pdf`
+      doc.save(fileName)
+    } catch (err) {
+      console.error('Error exporting PDF:', err)
+      alert('เกิดข้อผิดพลาดในการส่งออก PDF')
+    } finally {
+      setExportingPDF(false)
+    }
+  }
+
+  // Print
   const handlePrint = () => {
     window.print()
   }
@@ -376,7 +525,7 @@ export default function ReportsPage() {
         </div>
       ) : selectedBuilding === 'all' && allSummaryData ? (
         // แสดงทุกอาคาร
-        <div className="space-y-6" ref={printRef}>
+        <div className="space-y-6">
           {/* แต่ละอาคาร */}
           {allSummaryData.buildings.map((building) => (
             <Card key={building.buildingId} className="border-0 shadow-md print:shadow-none print:border print:border-gray-300">
@@ -388,8 +537,19 @@ export default function ReportsPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => handleExportPDF(building, building.buildingName)}
+                    disabled={exportingPDF}
+                    className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10"
+                  >
+                    <FileText className="mr-1 h-4 w-4" />
+                    PDF
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => handleExportExcel(building, building.buildingName)}
                     disabled={exporting}
+                    className="border-[#84A59D] text-[#84A59D] hover:bg-[#84A59D]/10"
                   >
                     <FileSpreadsheet className="mr-1 h-4 w-4" />
                     Excel
@@ -410,14 +570,27 @@ export default function ReportsPage() {
           </Card>
 
           {/* ปุ่มดาวน์โหลดทั้งหมด - ซ่อนตอนพิมพ์ */}
-          <div className="flex justify-end gap-3 print:hidden">
+          <div className="flex flex-wrap justify-end gap-3 print:hidden">
             <Button
               onClick={handlePrint}
               variant="outline"
-              className="border-[#84A59D] text-[#84A59D] hover:bg-[#84A59D]/10"
+              className="border-gray-400 text-gray-600 hover:bg-gray-100"
             >
               <Printer className="mr-2 h-4 w-4" />
-              พิมพ์ / PDF
+              พิมพ์
+            </Button>
+            <Button
+              onClick={handleExportAllPDF}
+              disabled={exportingPDF}
+              variant="outline"
+              className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10"
+            >
+              {exportingPDF ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4" />
+              )}
+              ดาวน์โหลด PDF ทั้งหมด
             </Button>
             <Button
               onClick={handleExportAllExcel}
@@ -448,14 +621,27 @@ export default function ReportsPage() {
             {renderSummaryTable(summaryData, false)}
 
             {/* ปุ่มดาวน์โหลด - ซ่อนตอนพิมพ์ */}
-            <div className="flex justify-end gap-3 pt-4 print:hidden">
+            <div className="flex flex-wrap justify-end gap-3 pt-4 print:hidden">
               <Button
                 onClick={handlePrint}
                 variant="outline"
-                className="border-[#84A59D] text-[#84A59D] hover:bg-[#84A59D]/10"
+                className="border-gray-400 text-gray-600 hover:bg-gray-100"
               >
                 <Printer className="mr-2 h-4 w-4" />
-                พิมพ์ / PDF
+                พิมพ์
+              </Button>
+              <Button
+                onClick={() => handleExportPDF(summaryData, selectedBuildingName)}
+                disabled={exportingPDF}
+                variant="outline"
+                className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10"
+              >
+                {exportingPDF ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
+                ดาวน์โหลด PDF
               </Button>
               <Button
                 onClick={() => handleExportExcel(summaryData, selectedBuildingName)}
