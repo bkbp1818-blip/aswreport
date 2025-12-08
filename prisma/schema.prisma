@@ -67,6 +67,24 @@ model Settings {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 }
 
+// ตั้งค่าส่วนกลาง (ใช้ร่วมกันทุกอาคาร)
+model GlobalSettings {
+  id                       Int      @id @default(autoincrement())
+  maxCareExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่าดูแลMAX
+  trafficCareExpense       Decimal  @default(0) @db.Decimal(15, 2) // ค่าดูแลจราจร
+  shippingExpense          Decimal  @default(0) @db.Decimal(15, 2) // ค่าขนส่งสินค้า (หาร 3 อาคาร)
+  amenityExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)
+  waterBottleExpense       Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำเปล่า
+  cookieExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่าขนมคุ้กกี้
+  coffeeExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท
+  fuelExpense              Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำมันรถมอเตอร์ไซค์
+  parkingExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าที่จอดรถมอเตอร์ไซค์
+  motorcycleMaintenanceExpense Decimal @default(0) @db.Decimal(15, 2) // ค่าซ่อมบำรุงรถมอเตอร์ไซค์
+  maidTravelExpense        Decimal  @default(0) @db.Decimal(15, 2) // ค่าเดินทางแม่บ้าน
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
 // ตำแหน่งพนักงาน
 enum Position {
   MAID       // แม่บ้าน

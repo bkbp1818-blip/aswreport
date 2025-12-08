@@ -25,6 +25,9 @@ import {
   Globe,
   Home,
   Bed,
+  Truck,
+  ShieldCheck,
+  TrafficCone,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -62,6 +65,9 @@ const iconColors: Record<string, string> = {
   'ซ่อมบำรุงอาคาร': 'text-amber-600',
   'เดินทางแม่บ้าน': 'text-violet-500',
   'Little Hotelier': 'text-teal-500',
+  'ค่าขนส่งสินค้า': 'text-orange-500',
+  'ค่าดูแล MAX': 'text-[#9B59B6]',
+  'ค่าดูแลจราจร': 'text-[#E74C3C]',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -162,6 +168,15 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('little hotelier') || lowerName.includes('hotelier')) {
     return { Icon: Hotel, color: iconColors['Little Hotelier'] }
+  }
+  if (lowerName.includes('ขนส่ง')) {
+    return { Icon: Truck, color: iconColors['ค่าขนส่งสินค้า'] }
+  }
+  if (lowerName.includes('ดูแล max') || lowerName.includes('max')) {
+    return { Icon: ShieldCheck, color: iconColors['ค่าดูแล MAX'] }
+  }
+  if (lowerName.includes('จราจร')) {
+    return { Icon: TrafficCone, color: iconColors['ค่าดูแลจราจร'] }
   }
 
   // Default

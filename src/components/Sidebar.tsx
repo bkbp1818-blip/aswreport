@@ -47,7 +47,7 @@ const allNavigation = [
   { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false },
   { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true },
   { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true },
-  { name: 'ตั้งค่า', href: '/settings', icon: Settings, partnerOnly: true },
+  { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false },
   { name: 'ดาวน์โหลดรายงาน', href: '/reports', icon: FileDown, partnerOnly: true },
 ]
 

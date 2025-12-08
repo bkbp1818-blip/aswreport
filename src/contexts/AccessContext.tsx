@@ -95,7 +95,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     // ถ้าเป็น staff และพยายามเข้าหน้าอื่น → redirect ไป transactions
     if (role === 'staff') {
-      const allowedPaths = ['/transactions']
+      const allowedPaths = ['/transactions', '/settings']
       const isAllowed = allowedPaths.some(path => pathname === path || pathname?.startsWith(path + '/'))
 
       if (!isAllowed) {

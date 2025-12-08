@@ -52,6 +52,18 @@ export async function GET(request: NextRequest) {
         0
       ),
       monthlyRent: summaries.reduce((sum, s) => sum + s.monthlyRent, 0),
+      // ค่าใช้จ่ายส่วนกลางทั้งหมด
+      maxCareExpense: summaries.reduce((sum, s) => sum + s.maxCareExpense, 0),
+      trafficCareExpense: summaries.reduce((sum, s) => sum + s.trafficCareExpense, 0),
+      shippingExpense: summaries.reduce((sum, s) => sum + s.shippingExpense, 0),
+      amenityExpense: summaries.reduce((sum, s) => sum + s.amenityExpense, 0),
+      waterBottleExpense: summaries.reduce((sum, s) => sum + s.waterBottleExpense, 0),
+      cookieExpense: summaries.reduce((sum, s) => sum + s.cookieExpense, 0),
+      coffeeExpense: summaries.reduce((sum, s) => sum + s.coffeeExpense, 0),
+      fuelExpense: summaries.reduce((sum, s) => sum + s.fuelExpense, 0),
+      parkingExpense: summaries.reduce((sum, s) => sum + s.parkingExpense, 0),
+      motorcycleMaintenanceExpense: summaries.reduce((sum, s) => sum + s.motorcycleMaintenanceExpense, 0),
+      maidTravelExpense: summaries.reduce((sum, s) => sum + s.maidTravelExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
       incomeByChannel: {},
@@ -111,6 +123,54 @@ async function calculateBuildingSummary(
   const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
   const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
 
+  // ดึง GlobalSettings สำหรับค่าใช้จ่ายส่วนกลางทั้งหมด
+  const globalSettings = await prisma.globalSettings.findFirst()
+
+  // ค่าดูแล MAX และค่าดูแลจราจร หารเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
+  const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
+  const isEligibleForCareExpense = eligibleBuildingsForCare.includes(building.code)
+  const careExpenseDivisor = 3 // จำนวนอาคารที่ร่วมจ่ายค่าดูแล
+
+  const maxCareExpensePerBuilding = globalSettings && isEligibleForCareExpense
+    ? Number(globalSettings.maxCareExpense) / careExpenseDivisor
+    : 0
+  const trafficCareExpensePerBuilding = globalSettings && isEligibleForCareExpense
+    ? Number(globalSettings.trafficCareExpense) / careExpenseDivisor
+    : 0
+  const shippingExpensePerBuilding = globalSettings && isEligibleForCareExpense
+    ? Number(globalSettings.shippingExpense) / careExpenseDivisor
+    : 0
+  const amenityExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.amenityExpense) / buildingCount
+    : 0
+  const waterBottleExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.waterBottleExpense) / buildingCount
+    : 0
+  const cookieExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.cookieExpense) / buildingCount
+    : 0
+  const coffeeExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.coffeeExpense) / buildingCount
+    : 0
+  const fuelExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.fuelExpense) / buildingCount
+    : 0
+  const parkingExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.parkingExpense) / buildingCount
+    : 0
+  const motorcycleMaintenanceExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.motorcycleMaintenanceExpense) / buildingCount
+    : 0
+  const maidTravelExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.maidTravelExpense) / buildingCount
+    : 0
+
+  // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
+  const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
+    shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
+    cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
+    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding
+
   // คำนวณรายรับ
   const incomeTransactions = transactions.filter(
     (t) => t.category.type === 'INCOME'
@@ -136,8 +196,8 @@ async function calculateBuildingSummary(
 
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
-  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + เงินเดือนพนักงาน
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + salaryPerBuilding
+  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + salaryPerBuilding + totalGlobalExpensePerBuilding
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -159,6 +219,41 @@ async function calculateBuildingSummary(
   // เพิ่มเงินเดือนพนักงานเข้าไปในรายจ่าย (ถ้ามี)
   if (salaryPerBuilding > 0) {
     expenseByCategory['เงินเดือนพนักงาน'] = salaryPerBuilding
+  }
+
+  // เพิ่มค่าใช้จ่ายส่วนกลางทั้งหมดเข้าไปในรายจ่าย (ถ้ามี)
+  if (maxCareExpensePerBuilding > 0) {
+    expenseByCategory['ค่าดูแล MAX'] = maxCareExpensePerBuilding
+  }
+  if (trafficCareExpensePerBuilding > 0) {
+    expenseByCategory['ค่าดูแลจราจร'] = trafficCareExpensePerBuilding
+  }
+  if (shippingExpensePerBuilding > 0) {
+    expenseByCategory['ค่าขนส่งสินค้า'] = shippingExpensePerBuilding
+  }
+  if (amenityExpensePerBuilding > 0) {
+    expenseByCategory['ค่า Amenity'] = amenityExpensePerBuilding
+  }
+  if (waterBottleExpensePerBuilding > 0) {
+    expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
+  }
+  if (cookieExpensePerBuilding > 0) {
+    expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
+  }
+  if (coffeeExpensePerBuilding > 0) {
+    expenseByCategory['ค่ากาแฟ'] = coffeeExpensePerBuilding
+  }
+  if (fuelExpensePerBuilding > 0) {
+    expenseByCategory['ค่าน้ำมัน'] = fuelExpensePerBuilding
+  }
+  if (parkingExpensePerBuilding > 0) {
+    expenseByCategory['ค่าเช่าที่จอดรถ'] = parkingExpensePerBuilding
+  }
+  if (motorcycleMaintenanceExpensePerBuilding > 0) {
+    expenseByCategory['ค่าซ่อมบำรุงรถ'] = motorcycleMaintenanceExpensePerBuilding
+  }
+  if (maidTravelExpensePerBuilding > 0) {
+    expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
   }
 
   // คำนวณตามสูตร
@@ -198,6 +293,18 @@ async function calculateBuildingSummary(
     vat,
     littleHotelierExpense,
     monthlyRent,
+    // ค่าใช้จ่ายส่วนกลางทั้งหมด (หารต่ออาคาร)
+    maxCareExpense: maxCareExpensePerBuilding,
+    trafficCareExpense: trafficCareExpensePerBuilding,
+    shippingExpense: shippingExpensePerBuilding,
+    amenityExpense: amenityExpensePerBuilding,
+    waterBottleExpense: waterBottleExpensePerBuilding,
+    cookieExpense: cookieExpensePerBuilding,
+    coffeeExpense: coffeeExpensePerBuilding,
+    fuelExpense: fuelExpensePerBuilding,
+    parkingExpense: parkingExpensePerBuilding,
+    motorcycleMaintenanceExpense: motorcycleMaintenanceExpensePerBuilding,
+    maidTravelExpense: maidTravelExpensePerBuilding,
     netProfit,
     amountToBePaid,
     incomeByChannel,

@@ -13,7 +13,24 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Save, Loader2, Building2 } from 'lucide-react'
+import {
+  Save,
+  Loader2,
+  Building2,
+  Globe,
+  ShieldCheck,
+  TrafficCone,
+  Truck,
+  Sparkles,
+  Droplets,
+  Cookie,
+  Coffee,
+  Fuel,
+  ParkingCircle,
+  Wrench,
+  Bus
+} from 'lucide-react'
+import { formatNumber } from '@/lib/utils'
 import { getBuildingColor } from '@/lib/building-colors'
 
 interface Building {
@@ -32,12 +49,31 @@ interface Settings {
   building?: Building
 }
 
+interface GlobalSettings {
+  id: number
+  buildingCount: number
+  maxCareExpense: number
+  trafficCareExpense: number
+  shippingExpense: number
+  amenityExpense: number
+  waterBottleExpense: number
+  cookieExpense: number
+  coffeeExpense: number
+  fuelExpense: number
+  parkingExpense: number
+  motorcycleMaintenanceExpense: number
+  maidTravelExpense: number
+  [key: string]: number // for dynamic fields
+}
+
 export default function SettingsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingGlobal, setSavingGlobal] = useState(false)
   const [activeTab, setActiveTab] = useState('building-settings')
 
   // Form state
@@ -47,17 +83,48 @@ export default function SettingsPage() {
     monthlyRent: 0,
   })
 
-  // โหลดรายการอาคาร
+  // Global settings form state
+  const [globalFormData, setGlobalFormData] = useState({
+    maxCareExpense: 0,
+    trafficCareExpense: 0,
+    shippingExpense: 0,
+    amenityExpense: 0,
+    waterBottleExpense: 0,
+    cookieExpense: 0,
+    coffeeExpense: 0,
+    fuelExpense: 0,
+    parkingExpense: 0,
+    motorcycleMaintenanceExpense: 0,
+    maidTravelExpense: 0,
+  })
+
+  // โหลดรายการอาคารและ Global Settings
   useEffect(() => {
-    fetch('/api/buildings')
-      .then((res) => res.json())
-      .then((data) => {
-        setBuildings(data)
-        if (data.length > 0) {
-          setSelectedBuilding(String(data[0].id))
+    Promise.all([
+      fetch('/api/buildings').then((res) => res.json()),
+      fetch('/api/global-settings').then((res) => res.json()),
+    ])
+      .then(([buildingsData, globalData]) => {
+        setBuildings(buildingsData)
+        if (buildingsData.length > 0) {
+          setSelectedBuilding(String(buildingsData[0].id))
         }
+        setGlobalSettings(globalData)
+        setGlobalFormData({
+          maxCareExpense: globalData.maxCareExpense || 0,
+          trafficCareExpense: globalData.trafficCareExpense || 0,
+          shippingExpense: globalData.shippingExpense || 0,
+          amenityExpense: globalData.amenityExpense || 0,
+          waterBottleExpense: globalData.waterBottleExpense || 0,
+          cookieExpense: globalData.cookieExpense || 0,
+          coffeeExpense: globalData.coffeeExpense || 0,
+          fuelExpense: globalData.fuelExpense || 0,
+          parkingExpense: globalData.parkingExpense || 0,
+          motorcycleMaintenanceExpense: globalData.motorcycleMaintenanceExpense || 0,
+          maidTravelExpense: globalData.maidTravelExpense || 0,
+        })
       })
-      .catch((err) => console.error('Error loading buildings:', err))
+      .catch((err) => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
   }, [])
 
@@ -118,6 +185,42 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveGlobal = async () => {
+    setSavingGlobal(true)
+    try {
+      const res = await fetch('/api/global-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(globalFormData),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          window.location.href = '/access/partner'
+          return
+        }
+        if (res.status === 403) {
+          alert('เฉพาะ Partner เท่านั้นที่สามารถแก้ไขการตั้งค่าได้')
+          return
+        }
+        throw new Error(errorData.error || 'Failed to save')
+      }
+
+      // โหลด global settings ใหม่เพื่ออัปเดตค่าที่หารแล้ว
+      const updatedGlobal = await fetch('/api/global-settings').then((r) => r.json())
+      setGlobalSettings(updatedGlobal)
+
+      alert('บันทึกการตั้งค่าส่วนกลางสำเร็จ')
+    } catch (err) {
+      console.error('Error saving global settings:', err)
+      alert('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setSavingGlobal(false)
+    }
+  }
+
   const selectedBuildingData = buildings.find(
     (b) => String(b.id) === selectedBuilding
   )
@@ -129,9 +232,9 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-[#333] md:text-2xl">ตั้งค่า</h1>
+        <h1 className="text-xl font-bold text-[#333] md:text-2xl">จัดการค่าใช้จ่ายส่วนกลาง</h1>
         <p className="text-sm text-[#666] md:text-base">
-          กำหนดค่าต่างๆ สำหรับแต่ละอาคาร
+          กำหนดค่าใช้จ่ายส่วนกลางและค่าคงที่สำหรับแต่ละอาคาร
         </p>
       </div>
 
@@ -146,6 +249,16 @@ export default function SettingsPage() {
             }}
           >
             ตั้งค่าอาคาร
+          </TabsTrigger>
+          <TabsTrigger
+            value="global-settings"
+            className="transition-colors duration-300"
+            style={{
+              backgroundColor: activeTab === 'global-settings' ? '#9B59B6' : 'transparent',
+              color: activeTab === 'global-settings' ? 'white' : undefined,
+            }}
+          >
+            ค่าใช้จ่ายส่วนกลาง
           </TabsTrigger>
           <TabsTrigger
             value="info"
@@ -302,6 +415,351 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Tab ค่าใช้จ่ายส่วนกลาง */}
+        <TabsContent value="global-settings" className="space-y-4">
+          <Card className="border-0 shadow-md overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-[#9B59B6] to-[#8E44AD] text-white">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Globe className="h-5 w-5" />
+                ค่าใช้จ่ายส่วนกลาง
+              </CardTitle>
+              <CardDescription className="text-white/80">
+                ค่าใช้จ่ายที่ใช้ร่วมกันทุกอาคาร (หาร {globalSettings?.buildingCount || 0} อาคาร)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 p-6 bg-gradient-to-b from-[#9B59B6]/5 to-white">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-4">
+                {/* ค่าดูแล MAX - หาร 3 อาคาร */}
+                <div className="space-y-3 rounded-xl border border-[#9B59B6]/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#9B59B6]/10">
+                      <ShieldCheck className="h-4 w-4 text-[#9B59B6]" />
+                    </div>
+                    <Label className="text-[#9B59B6] font-semibold text-sm">ค่าดูแล MAX</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.maxCareExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, maxCareExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-[#9B59B6]/5 border-[#9B59B6]/30"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร 3 อาคาร</span>
+                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalFormData.maxCareExpense / 3)} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าดูแลจราจร - หาร 3 อาคาร */}
+                <div className="space-y-3 rounded-xl border border-[#E74C3C]/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E74C3C]/10">
+                      <TrafficCone className="h-4 w-4 text-[#E74C3C]" />
+                    </div>
+                    <Label className="text-[#E74C3C] font-semibold text-sm">ค่าดูแลจราจร</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.trafficCareExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, trafficCareExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-[#E74C3C]/5 border-[#E74C3C]/30"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร 3 อาคาร</span>
+                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalFormData.trafficCareExpense / 3)} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าขนส่งสินค้า - หาร 3 อาคาร */}
+                <div className="space-y-3 rounded-xl border border-orange-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                      <Truck className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <Label className="text-orange-600 font-semibold text-sm">ค่าขนส่งสินค้า</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.shippingExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, shippingExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-orange-50 border-orange-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร 3 อาคาร</span>
+                    <span className="font-semibold text-orange-600">{formatNumber(globalFormData.shippingExpense / 3)} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่า Amenity */}
+                <div className="space-y-3 rounded-xl border border-pink-400/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/10">
+                      <Sparkles className="h-4 w-4 text-pink-500" />
+                    </div>
+                    <Label className="text-pink-500 font-semibold text-sm">ค่า Amenity</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.amenityExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, amenityExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-pink-50 border-pink-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-pink-500">{formatNumber(globalFormData.amenityExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าน้ำเปล่า */}
+                <div className="space-y-3 rounded-xl border border-cyan-400/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10">
+                      <Droplets className="h-4 w-4 text-cyan-500" />
+                    </div>
+                    <Label className="text-cyan-500 font-semibold text-sm">ค่าน้ำเปล่า</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.waterBottleExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, waterBottleExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-cyan-50 border-cyan-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-cyan-500">{formatNumber(globalFormData.waterBottleExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าขนมคุ้กกี้ */}
+                <div className="space-y-3 rounded-xl border border-amber-400/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                      <Cookie className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <Label className="text-amber-600 font-semibold text-sm">ค่าขนมคุ้กกี้</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.cookieExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, cookieExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-amber-50 border-amber-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-600">{formatNumber(globalFormData.cookieExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท */}
+                <div className="space-y-3 rounded-xl border border-amber-700/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-700/10">
+                      <Coffee className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <Label className="text-amber-700 font-semibold text-sm">ค่ากาแฟซอง</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.coffeeExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, coffeeExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-amber-50 border-amber-300"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-700">{formatNumber(globalFormData.coffeeExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าน้ำมันรถมอเตอร์ไซค์ */}
+                <div className="space-y-3 rounded-xl border border-gray-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-500/10">
+                      <Fuel className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <Label className="text-gray-600 font-semibold text-sm">ค่าน้ำมันรถ</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.fuelExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, fuelExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-gray-50 border-gray-300"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-gray-600">{formatNumber(globalFormData.fuelExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าเช่าที่จอดรถมอเตอร์ไซค์ */}
+                <div className="space-y-3 rounded-xl border border-slate-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/10">
+                      <ParkingCircle className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <Label className="text-slate-600 font-semibold text-sm">ค่าที่จอดรถ</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.parkingExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, parkingExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-slate-50 border-slate-300"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-slate-600">{formatNumber(globalFormData.parkingExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าซ่อมบำรุงรถมอเตอร์ไซค์ */}
+                <div className="space-y-3 rounded-xl border border-rose-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10">
+                      <Wrench className="h-4 w-4 text-rose-600" />
+                    </div>
+                    <Label className="text-rose-600 font-semibold text-sm">ค่าซ่อมบำรุงรถ</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.motorcycleMaintenanceExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, motorcycleMaintenanceExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-rose-50 border-rose-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-rose-600">{formatNumber(globalFormData.motorcycleMaintenanceExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าเดินทางแม่บ้าน */}
+                <div className="space-y-3 rounded-xl border border-violet-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                      <Bus className="h-4 w-4 text-violet-600" />
+                    </div>
+                    <Label className="text-violet-600 font-semibold text-sm">ค่าเดินทางแม่บ้าน</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.maidTravelExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, maidTravelExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-violet-50 border-violet-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* สรุปค่าใช้จ่ายต่ออาคาร */}
+              {globalSettings && globalSettings.buildingCount > 0 && (
+                <div className="rounded-xl border border-[#9B59B6]/20 bg-gradient-to-br from-[#9B59B6]/5 to-white p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#9B59B6]/10">
+                      <Globe className="h-4 w-4 text-[#9B59B6]" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-slate-700">สรุปค่าใช้จ่ายต่ออาคาร</h4>
+                      <p className="text-[10px] text-slate-400">* หาร 3 อาคาร (CT, YW, NANA) | หาร {globalSettings.buildingCount} อาคาร (ทุกอาคาร)</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#9B59B6]/10 text-sm">
+                      <ShieldCheck className="h-4 w-4 text-[#9B59B6] flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าดูแล MAX</span>
+                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalFormData.maxCareExpense / 3)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E74C3C]/10 text-sm">
+                      <TrafficCone className="h-4 w-4 text-[#E74C3C] flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าดูแลจราจร</span>
+                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalFormData.trafficCareExpense / 3)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-500/10 text-sm">
+                      <Truck className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าขนส่งสินค้า</span>
+                      <span className="font-semibold text-orange-600">{formatNumber(globalFormData.shippingExpense / 3)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-pink-400/10 text-sm">
+                      <Sparkles className="h-4 w-4 text-pink-500 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่า Amenity</span>
+                      <span className="font-semibold text-pink-500">{formatNumber(globalFormData.amenityExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-cyan-400/10 text-sm">
+                      <Droplets className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าน้ำเปล่า</span>
+                      <span className="font-semibold text-cyan-500">{formatNumber(globalFormData.waterBottleExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-400/10 text-sm">
+                      <Cookie className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าขนมคุ้กกี้</span>
+                      <span className="font-semibold text-amber-600">{formatNumber(globalFormData.cookieExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-700/10 text-sm">
+                      <Coffee className="h-4 w-4 text-amber-700 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่ากาแฟซอง</span>
+                      <span className="font-semibold text-amber-700">{formatNumber(globalFormData.coffeeExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-500/10 text-sm">
+                      <Fuel className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าน้ำมันรถ</span>
+                      <span className="font-semibold text-gray-600">{formatNumber(globalFormData.fuelExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-500/10 text-sm">
+                      <ParkingCircle className="h-4 w-4 text-slate-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าที่จอดรถ</span>
+                      <span className="font-semibold text-slate-600">{formatNumber(globalFormData.parkingExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-rose-500/10 text-sm">
+                      <Wrench className="h-4 w-4 text-rose-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าซ่อมบำรุงรถ</span>
+                      <span className="font-semibold text-rose-600">{formatNumber(globalFormData.motorcycleMaintenanceExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-violet-500/10 text-sm">
+                      <Bus className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าเดินทางแม่บ้าน</span>
+                      <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
+                      <span className="font-semibold text-slate-700">รวมค่าใช้จ่ายส่วนกลาง/อาคาร (ทุกอาคาร)</span>
+                      <span className="font-bold text-[#9B59B6]">
+                        {formatNumber(
+                          (globalFormData.maxCareExpense / 3) +
+                          (globalFormData.trafficCareExpense / 3) +
+                          (globalFormData.shippingExpense / 3) +
+                          (globalFormData.amenityExpense / globalSettings.buildingCount) +
+                          (globalFormData.waterBottleExpense / globalSettings.buildingCount) +
+                          (globalFormData.cookieExpense / globalSettings.buildingCount) +
+                          (globalFormData.coffeeExpense / globalSettings.buildingCount) +
+                          (globalFormData.fuelExpense / globalSettings.buildingCount) +
+                          (globalFormData.parkingExpense / globalSettings.buildingCount) +
+                          (globalFormData.motorcycleMaintenanceExpense / globalSettings.buildingCount) +
+                          (globalFormData.maidTravelExpense / globalSettings.buildingCount)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={handleSaveGlobal}
+                  disabled={savingGlobal}
+                  className="shadow-lg bg-[#9B59B6] hover:bg-[#8E44AD]"
+                >
+                  {savingGlobal ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  บันทึกค่าใช้จ่ายส่วนกลาง
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="info" className="space-y-4">

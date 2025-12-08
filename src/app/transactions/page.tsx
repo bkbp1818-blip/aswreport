@@ -60,6 +60,33 @@ interface BuildingSettings {
   monthlyRent: number
 }
 
+interface GlobalSettings {
+  maxCareExpense: number
+  trafficCareExpense: number
+  shippingExpense: number
+  amenityExpense: number
+  waterBottleExpense: number
+  cookieExpense: number
+  coffeeExpense: number
+  fuelExpense: number
+  parkingExpense: number
+  motorcycleMaintenanceExpense: number
+  maidTravelExpense: number
+  buildingCount: number
+  careExpenseDivisor: number // จำนวนอาคารที่ร่วมจ่ายค่าดูแล MAX, จราจร, ขนส่งสินค้า (3 อาคาร)
+  maxCareExpensePerBuilding: number
+  trafficCareExpensePerBuilding: number
+  shippingExpensePerBuilding: number
+  amenityExpensePerBuilding: number
+  waterBottleExpensePerBuilding: number
+  cookieExpensePerBuilding: number
+  coffeeExpensePerBuilding: number
+  fuelExpensePerBuilding: number
+  parkingExpensePerBuilding: number
+  motorcycleMaintenanceExpensePerBuilding: number
+  maidTravelExpensePerBuilding: number
+}
+
 export default function TransactionsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -75,20 +102,23 @@ export default function TransactionsPage() {
   const [saving, setSaving] = useState(false)
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
 
   const years = generateYears()
 
-  // โหลดรายการอาคารและหมวดหมู่ และเงินเดือนพนักงาน
+  // โหลดรายการอาคารและหมวดหมู่ และเงินเดือนพนักงาน และ GlobalSettings
   useEffect(() => {
     Promise.all([
       fetch('/api/buildings').then((res) => res.json()),
       fetch('/api/categories').then((res) => res.json()),
       fetch('/api/employees/salary-summary').then((res) => res.json()),
+      fetch('/api/global-settings').then((res) => res.json()),
     ])
-      .then(([buildingsData, categoriesData, salaryData]) => {
+      .then(([buildingsData, categoriesData, salaryData, globalData]) => {
         setBuildings(buildingsData)
         setCategories(categoriesData)
         setSalarySummary(salaryData)
+        setGlobalSettings(globalData)
         if (buildingsData.length > 0 && !selectedBuilding) {
           setSelectedBuilding(String(buildingsData[0].id))
         }
@@ -156,8 +186,31 @@ export default function TransactionsPage() {
   const salaryCategory = categories.find((c) => c.name === 'เงินเดือนพนักงาน')
   const salaryCategoryId = salaryCategory?.id
 
-  // แยกรายจ่ายเป็น 2 กลุ่ม: เงินเดือนพนักงาน และ รายจ่ายอื่นๆ
-  const otherExpenseCategories = expenseCategories.filter((c) => c.id !== salaryCategoryId)
+  // รายการค่าใช้จ่ายที่จัดการใน GlobalSettings แล้ว (ไม่ต้องแสดงซ้ำ)
+  const globalSettingsCategoryNames = [
+    'ค่าดูแล MAX',
+    'ค่าดูแลจราจร',
+    'ค่าขนส่งสินค้า',
+    'ค่า Amenity',
+    'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+    'Amenity',
+    'ค่าน้ำเปล่า',
+    'ค่าขนมคุ้กกี้',
+    'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+    'ค่ากาแฟ',
+    'ค่าน้ำมันรถมอเตอร์ไซค์',
+    'ค่าน้ำมัน',
+    'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+    'ค่าเช่าที่จอดรถ',
+    'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+    'ค่าซ่อมบำรุงรถ',
+    'ค่าเดินทางแม่บ้าน',
+  ]
+
+  // แยกรายจ่ายเป็น 2 กลุ่ม: เงินเดือนพนักงาน และ รายจ่ายอื่นๆ (ไม่รวมรายการที่จัดการใน GlobalSettings แล้ว)
+  const otherExpenseCategories = expenseCategories.filter(
+    (c) => c.id !== salaryCategoryId && !globalSettingsCategoryNames.includes(c.name)
+  )
 
   // ฟังก์ชันดึงค่าแสดงผลสำหรับแต่ละ category
   const getDisplayAmount = (categoryId: number): number => {
@@ -186,10 +239,39 @@ export default function TransactionsPage() {
 
   // รวมค่าเช่าอาคารจาก settings ด้วย
   const monthlyRent = buildingSettings?.monthlyRent || 0
-  const totalExpense = expenseCategories.reduce(
-    (sum, c) => sum + getDisplayAmount(c.id),
+
+  // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
+  const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+  const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
+  const isEligibleForCareExpense = eligibleBuildingsForCare.includes(selectedBuildingCode)
+
+  // ค่าใช้จ่ายส่วนกลาง (หารตามจำนวนอาคาร)
+  // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะอาคารที่ต้องจ่าย (3 อาคาร)
+  const maxCareExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.maxCareExpensePerBuilding || 0) : 0
+  const trafficCareExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.trafficCareExpensePerBuilding || 0) : 0
+  const shippingExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.shippingExpensePerBuilding || 0) : 0
+  const amenityExpensePerBuilding = globalSettings?.amenityExpensePerBuilding || 0
+  const waterBottleExpensePerBuilding = globalSettings?.waterBottleExpensePerBuilding || 0
+  const cookieExpensePerBuilding = globalSettings?.cookieExpensePerBuilding || 0
+  const coffeeExpensePerBuilding = globalSettings?.coffeeExpensePerBuilding || 0
+  const fuelExpensePerBuilding = globalSettings?.fuelExpensePerBuilding || 0
+  const parkingExpensePerBuilding = globalSettings?.parkingExpensePerBuilding || 0
+  const motorcycleMaintenanceExpensePerBuilding = globalSettings?.motorcycleMaintenanceExpensePerBuilding || 0
+  const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpensePerBuilding || 0
+
+  // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
+  const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
+    shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
+    cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
+    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding
+
+  // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่าใช้จ่ายส่วนกลาง
+  const salaryExpense = salarySummary?.salaryPerBuilding || 0
+  const otherExpense = otherExpenseCategories.reduce(
+    (sum, c) => sum + (transactionData[c.id] || 0),
     0
-  ) + monthlyRent
+  )
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + totalGlobalExpense
 
   // อัปเดตค่าในตาราง
   const handleAmountChange = (categoryId: number, value: string) => {
@@ -209,8 +291,13 @@ export default function TransactionsPage() {
 
     setSaving(true)
     try {
+      // กรองเฉพาะ categories ที่ต้องบันทึก (ไม่รวมค่าที่จัดการใน GlobalSettings แล้ว)
+      const categoriesToSave = categories.filter(
+        (c) => !globalSettingsCategoryNames.includes(c.name)
+      )
+
       // ใช้ getDisplayAmount เพื่อบันทึกค่าเงินเดือนพนักงานด้วย
-      const transactions = categories.map((c) => ({
+      const transactions = categoriesToSave.map((c) => ({
         buildingId: parseInt(selectedBuilding),
         categoryId: c.id,
         amount: getDisplayAmount(c.id),
@@ -497,9 +584,275 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* อันดับ 3 เป็นต้นไป: รายจ่ายอื่นๆ */}
+                  {/* ค่าใช้จ่ายส่วนกลาง - แสดงเฉพาะรายการที่มีค่ามากกว่า 0 */}
+                  {globalSettings && (
+                    <>
+                      {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
+                      {maxCareExpensePerBuilding > 0 && (
+                        <TableRow className="bg-[#9B59B6]/10">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ค่าดูแล MAX" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-[#9B59B6]">ค่าดูแล MAX</span>
+                                <p className="text-xs text-[#9B59B6]">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.maxCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-[#9B59B6]">{formatNumber(maxCareExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าดูแลจราจร - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
+                      {trafficCareExpensePerBuilding > 0 && (
+                        <TableRow className="bg-[#E74C3C]/10">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ค่าดูแลจราจร" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-[#E74C3C]">ค่าดูแลจราจร</span>
+                                <p className="text-xs text-[#E74C3C]">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.trafficCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-[#E74C3C]">{formatNumber(trafficCareExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
+                      {shippingExpensePerBuilding > 0 && (
+                        <TableRow className="bg-orange-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ค่าขนส่งสินค้า" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-orange-600">ค่าขนส่งสินค้า</span>
+                                <p className="text-xs text-orange-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.shippingExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-orange-600">{formatNumber(shippingExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่า Amenity - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-pink-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="Amenity" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-pink-500">ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)</span>
+                                <p className="text-xs text-pink-400">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.amenityExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-pink-500">{formatNumber(amenityExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าน้ำเปล่า - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-cyan-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="น้ำเปล่า" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-cyan-500">ค่าน้ำเปล่า</span>
+                                <p className="text-xs text-cyan-400">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.waterBottleExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-cyan-500">{formatNumber(waterBottleExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าขนมคุ้กกี้ - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-amber-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="คุ้กกี้" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-amber-500">ค่าขนมคุ้กกี้</span>
+                                <p className="text-xs text-amber-400">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.cookieExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-amber-500">{formatNumber(cookieExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-amber-200/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="กาแฟ" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-amber-700">ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท</span>
+                                <p className="text-xs text-amber-600">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.coffeeExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-amber-700">{formatNumber(coffeeExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าน้ำมันรถมอเตอร์ไซค์ - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-gray-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="น้ำมัน" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-gray-600">ค่าน้ำมันรถมอเตอร์ไซค์</span>
+                                <p className="text-xs text-gray-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.fuelExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-gray-600">{formatNumber(fuelExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าเช่าที่จอดรถมอเตอร์ไซค์ - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-slate-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ที่จอดรถ" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-slate-600">ค่าเช่าที่จอดรถมอเตอร์ไซค์</span>
+                                <p className="text-xs text-slate-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.parkingExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-slate-600">{formatNumber(parkingExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าซ่อมบำรุงรถมอเตอร์ไซค์ - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-orange-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ซ่อมบำรุงรถ" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-orange-600">ค่าซ่อมบำรุงรถมอเตอร์ไซค์</span>
+                                <p className="text-xs text-orange-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.motorcycleMaintenanceExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-orange-600">{formatNumber(motorcycleMaintenanceExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าเดินทางแม่บ้าน - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-violet-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="เดินทางแม่บ้าน" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-violet-600">ค่าเดินทางแม่บ้าน</span>
+                                <p className="text-xs text-violet-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.maidTravelExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-violet-600">{formatNumber(maidTravelExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )}
+                  {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
-                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0)
+                    // baseIndex = ค่าเช่าอาคาร + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 8 รายการค่าใช้จ่ายส่วนกลาง
+                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                      (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 8 : 0)
                     return (
                       <TableRow
                         key={category.id}
