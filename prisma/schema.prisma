@@ -66,3 +66,41 @@ model Settings {
 
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 }
+
+// ตำแหน่งพนักงาน
+enum Position {
+  MAID       // แม่บ้าน
+  MANAGER    // ผู้จัดการ
+  PARTNER    // หุ้นส่วน
+}
+
+// ประเภทผู้ใช้งานระบบ
+enum UserRole {
+  PARTNER    // หุ้นส่วน - เห็นทุกหน้า
+  STAFF      // พนักงาน - เห็นแค่หน้ากรอกข้อมูล
+}
+
+// ผู้ใช้งานระบบ
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String   // เก็บเป็น plain text (ระบบภายใน)
+  name      String   // ชื่อแสดง
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// พนักงาน
+model Employee {
+  id        Int      @id @default(autoincrement())
+  firstName String   // ชื่อ
+  lastName  String   // นามสกุล
+  nickname  String?  // ชื่อเล่น
+  position  Position // ตำแหน่ง
+  salary    Decimal  @default(0) @db.Decimal(15, 2) // เงินเดือน
+  isActive  Boolean  @default(true) // ยังทำงานอยู่หรือไม่
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -24,6 +24,7 @@ import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 import { CategoryIcon } from '@/lib/category-icons'
 import { Save, Loader2 } from 'lucide-react'
+import { getBuildingColor } from '@/lib/building-colors'
 
 interface Building {
   id: number
@@ -49,6 +50,16 @@ interface Transaction {
   category?: Category
 }
 
+interface SalarySummary {
+  totalSalary: number
+  buildingCount: number
+  salaryPerBuilding: number
+}
+
+interface BuildingSettings {
+  monthlyRent: number
+}
+
 export default function TransactionsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -62,18 +73,22 @@ export default function TransactionsPage() {
   const [transactionData, setTransactionData] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
+  const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
 
   const years = generateYears()
 
-  // โหลดรายการอาคารและหมวดหมู่
+  // โหลดรายการอาคารและหมวดหมู่ และเงินเดือนพนักงาน
   useEffect(() => {
     Promise.all([
       fetch('/api/buildings').then((res) => res.json()),
       fetch('/api/categories').then((res) => res.json()),
+      fetch('/api/employees/salary-summary').then((res) => res.json()),
     ])
-      .then(([buildingsData, categoriesData]) => {
+      .then(([buildingsData, categoriesData, salaryData]) => {
         setBuildings(buildingsData)
         setCategories(categoriesData)
+        setSalarySummary(salaryData)
         if (buildingsData.length > 0 && !selectedBuilding) {
           setSelectedBuilding(String(buildingsData[0].id))
         }
@@ -82,7 +97,7 @@ export default function TransactionsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // โหลดข้อมูล transactions เมื่อเลือกอาคาร/เดือน/ปี
+  // โหลดข้อมูล transactions และ settings เมื่อเลือกอาคาร/เดือน/ปี
   const loadTransactions = useCallback(async () => {
     if (!selectedBuilding || !selectedMonth || !selectedYear) return
 
@@ -93,8 +108,15 @@ export default function TransactionsPage() {
         month: selectedMonth,
         year: selectedYear,
       })
-      const res = await fetch(`/api/transactions?${params}`)
-      const data: Transaction[] = await res.json()
+
+      // โหลด transactions และ settings พร้อมกัน
+      const [transactionsRes, settingsRes] = await Promise.all([
+        fetch(`/api/transactions?${params}`),
+        fetch(`/api/settings?buildingId=${selectedBuilding}`)
+      ])
+
+      const data: Transaction[] = await transactionsRes.json()
+      const settings = await settingsRes.json()
 
       // แปลงข้อมูลเป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
@@ -102,6 +124,15 @@ export default function TransactionsPage() {
         dataMap[t.categoryId] = Number(t.amount)
       })
       setTransactionData(dataMap)
+
+      // เก็บ settings ของอาคาร
+      if (settings) {
+        setBuildingSettings({
+          monthlyRent: Number(settings.monthlyRent) || 0
+        })
+      } else {
+        setBuildingSettings(null)
+      }
     } catch (err) {
       console.error('Error loading transactions:', err)
     } finally {
@@ -117,15 +148,48 @@ export default function TransactionsPage() {
   const incomeCategories = categories.filter((c) => c.type === 'INCOME')
   const expenseCategories = categories.filter((c) => c.type === 'EXPENSE')
 
-  // คำนวณยอดรวม
-  const totalIncome = incomeCategories.reduce(
-    (sum, c) => sum + (transactionData[c.id] || 0),
+  // แยกรายได้เป็น 2 กลุ่ม: ค่าเช่า และ รายได้อื่นๆ
+  const rentalIncomeCategories = incomeCategories.filter((c) => c.name.includes('ค่าเช่า'))
+  const otherIncomeCategories = incomeCategories.filter((c) => !c.name.includes('ค่าเช่า'))
+
+  // หา categoryId ของเงินเดือนพนักงาน
+  const salaryCategory = categories.find((c) => c.name === 'เงินเดือนพนักงาน')
+  const salaryCategoryId = salaryCategory?.id
+
+  // แยกรายจ่ายเป็น 2 กลุ่ม: เงินเดือนพนักงาน และ รายจ่ายอื่นๆ
+  const otherExpenseCategories = expenseCategories.filter((c) => c.id !== salaryCategoryId)
+
+  // ฟังก์ชันดึงค่าแสดงผลสำหรับแต่ละ category
+  const getDisplayAmount = (categoryId: number): number => {
+    // ถ้าเป็นเงินเดือนพนักงาน ให้ใช้ค่าจาก salary summary
+    if (categoryId === salaryCategoryId && salarySummary) {
+      return salarySummary.salaryPerBuilding
+    }
+    return transactionData[categoryId] || 0
+  }
+
+  // เช็คว่า category นี้เป็น readonly หรือไม่ (เงินเดือนพนักงาน)
+  const isSalaryCategory = (categoryId: number): boolean => {
+    return categoryId === salaryCategoryId
+  }
+
+  // คำนวณยอดรวม (ใช้ getDisplayAmount เพื่อรวมเงินเดือนพนักงานด้วย)
+  const totalRentalIncome = rentalIncomeCategories.reduce(
+    (sum, c) => sum + getDisplayAmount(c.id),
     0
   )
+  const totalOtherIncome = otherIncomeCategories.reduce(
+    (sum, c) => sum + getDisplayAmount(c.id),
+    0
+  )
+  const totalIncome = totalRentalIncome + totalOtherIncome
+
+  // รวมค่าเช่าอาคารจาก settings ด้วย
+  const monthlyRent = buildingSettings?.monthlyRent || 0
   const totalExpense = expenseCategories.reduce(
-    (sum, c) => sum + (transactionData[c.id] || 0),
+    (sum, c) => sum + getDisplayAmount(c.id),
     0
-  )
+  ) + monthlyRent
 
   // อัปเดตค่าในตาราง
   const handleAmountChange = (categoryId: number, value: string) => {
@@ -145,10 +209,11 @@ export default function TransactionsPage() {
 
     setSaving(true)
     try {
+      // ใช้ getDisplayAmount เพื่อบันทึกค่าเงินเดือนพนักงานด้วย
       const transactions = categories.map((c) => ({
         buildingId: parseInt(selectedBuilding),
         categoryId: c.id,
-        amount: transactionData[c.id] || 0,
+        amount: getDisplayAmount(c.id),
         month: parseInt(selectedMonth),
         year: parseInt(selectedYear),
       }))
@@ -160,9 +225,19 @@ export default function TransactionsPage() {
       })
 
       if (!res.ok) {
-        throw new Error('Failed to save')
+        const errorData = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          window.location.href = '/access/staff'
+          return
+        }
+        if (res.status === 403) {
+          alert('คุณไม่มีสิทธิ์ในการบันทึกข้อมูลนี้')
+          return
+        }
+        throw new Error(errorData.error || 'Failed to save')
       }
-      // บันทึกสำเร็จ - ไม่แสดง popup
+      alert('บันทึกข้อมูลสำเร็จ')
     } catch (err) {
       console.error('Error saving:', err)
       alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
@@ -179,8 +254,8 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 md:text-2xl">กรอกข้อมูล</h1>
-          <p className="text-sm text-slate-500 md:text-base">
+          <h1 className="text-xl font-bold text-[#333] md:text-2xl">กรอกข้อมูล</h1>
+          <p className="text-sm text-[#666] md:text-base">
             บันทึกรายรับ-รายจ่ายประจำเดือน
           </p>
         </div>
@@ -194,7 +269,13 @@ export default function TransactionsPage() {
             <SelectContent>
               {buildings.map((b) => (
                 <SelectItem key={b.id} value={String(b.id)}>
-                  {b.name}
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getBuildingColor(b.id) }}
+                    />
+                    {b.name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -231,7 +312,7 @@ export default function TransactionsPage() {
           <Button
             onClick={handleSave}
             disabled={saving || !selectedBuilding}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6b8a84]"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -244,8 +325,11 @@ export default function TransactionsPage() {
       </div>
 
       {/* Info Banner */}
-      {selectedBuildingName && (
-        <div className="rounded-lg bg-blue-50 p-4 text-blue-800">
+      {selectedBuildingName && selectedBuilding && (
+        <div
+          className="rounded-lg p-4 text-white"
+          style={{ backgroundColor: getBuildingColor(selectedBuilding) }}
+        >
           <p className="font-medium">
             {selectedBuildingName} - {getMonthName(parseInt(selectedMonth))}{' '}
             {selectedYear}
@@ -255,16 +339,27 @@ export default function TransactionsPage() {
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <p className="text-slate-500">กำลังโหลดข้อมูล...</p>
+          <p className="text-[#666]">กำลังโหลดข้อมูล...</p>
         </div>
       ) : (
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {/* รายรับ */}
-          <Card>
-            <CardHeader className="bg-green-50">
-              <CardTitle className="text-green-700">รายรับ</CardTitle>
+          <Card className="border-0 shadow-md overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-[#84A59D] to-[#6b8a84] text-white flex flex-row items-center justify-between">
+              <CardTitle className="text-white">รายรับ</CardTitle>
+              <div className="text-right">
+                <p className="text-sm text-white/80">รวมรายได้</p>
+                <p className="text-xl font-bold text-white">{formatNumber(totalIncome)}</p>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
+              {/* กลุ่ม 1: รายได้ค่าเช่า */}
+              <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</p>
+                  <p className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalRentalIncome)}</p>
+                </div>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -274,8 +369,8 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {incomeCategories.map((category, index) => (
-                    <TableRow key={category.id}>
+                  {rentalIncomeCategories.map((category, index) => (
+                    <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -297,24 +392,56 @@ export default function TransactionsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-                <TableFooter>
-                  <TableRow className="bg-green-100">
-                    <TableCell colSpan={2} className="font-bold text-green-700">
-                      รวมรายได้ค่าเช่า
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-green-700">
-                      {formatNumber(totalIncome)}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
               </Table>
+
+              {/* กลุ่ม 2: รายได้อื่นๆ */}
+              {otherIncomeCategories.length > 0 && (
+                <>
+                  <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-[#D4A24C]">รายได้อื่นๆ</p>
+                      <p className="text-sm font-bold text-[#D4A24C]">{formatNumber(totalOtherIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      {otherIncomeCategories.map((category, index) => (
+                        <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
+                          <TableCell className="font-medium w-[50px]">{index + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                              <span className="text-sm">{category.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right w-[150px]">
+                            <Input
+                              type="number"
+                              value={transactionData[category.id] || ''}
+                              onChange={(e) =>
+                                handleAmountChange(category.id, e.target.value)
+                              }
+                              className="text-right"
+                              placeholder="0.00"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
             </CardContent>
           </Card>
 
           {/* รายจ่าย */}
-          <Card>
-            <CardHeader className="bg-red-50">
-              <CardTitle className="text-red-700">รายจ่าย</CardTitle>
+          <Card className="border-0 shadow-md overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-[#F28482] to-[#d96f6d] text-white flex flex-row items-center justify-between">
+              <CardTitle className="text-white">รายจ่าย</CardTitle>
+              <div className="text-right">
+                <p className="text-sm text-white/80">รวมค่าใช้จ่าย</p>
+                <p className="text-xl font-bold text-white">{formatNumber(totalExpense)}</p>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -326,93 +453,86 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenseCategories.map((category, index) => (
-                    <TableRow key={category.id}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
+                  {/* อันดับ 1: ค่าเช่าอาคาร - ดึงจาก Settings */}
+                  {monthlyRent > 0 && (
+                    <TableRow className="bg-[#F6BD60]/10">
+                      <TableCell className="font-medium">1</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm">{category.name}</span>
+                          <CategoryIcon name="ค่าเช่าอาคาร" className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-sm font-medium text-[#D4A24C]">ค่าเช่าอาคาร</span>
+                            <p className="text-xs text-slate-400">
+                              (ดึงจากหน้าตั้งค่าอาคาร)
+                            </p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          value={transactionData[category.id] || ''}
-                          onChange={(e) =>
-                            handleAmountChange(category.id, e.target.value)
-                          }
-                          className="text-right"
-                          placeholder="0.00"
-                        />
+                        <p className="font-medium text-[#D4A24C]">
+                          {formatNumber(monthlyRent)}
+                        </p>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
+                  {/* อันดับ 2: เงินเดือนพนักงาน */}
+                  {salaryCategory && salarySummary && (
+                    <TableRow className="bg-[#84A59D]/10">
+                      <TableCell className="font-medium">{monthlyRent > 0 ? 2 : 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <CategoryIcon name={salaryCategory.name} className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-sm font-medium text-[#84A59D]">{salaryCategory.name}</span>
+                            <p className="text-xs text-[#84A59D]">
+                              (คำนวณจากหน้าเงินเดือนพนักงาน: {formatNumber(salarySummary.totalSalary)} / {salarySummary.buildingCount} อาคาร)
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <p className="font-medium text-[#84A59D]">
+                          {formatNumber(salarySummary.salaryPerBuilding)}
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {/* อันดับ 3 เป็นต้นไป: รายจ่ายอื่นๆ */}
+                  {otherExpenseCategories.map((category, index) => {
+                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0)
+                    return (
+                      <TableRow
+                        key={category.id}
+                        className={index % 2 === 0 ? 'bg-white' : 'bg-[#F28482]/5'}
+                      >
+                        <TableCell className="font-medium">{baseIndex + index + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-sm">{category.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            value={transactionData[category.id] || ''}
+                            onChange={(e) =>
+                              handleAmountChange(category.id, e.target.value)
+                            }
+                            className="text-right"
+                            placeholder="0.00"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
-                <TableFooter>
-                  <TableRow className="bg-red-100">
-                    <TableCell colSpan={2} className="font-bold text-red-700">
-                      รวมค่าใช้จ่าย
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-red-700">
-                      {formatNumber(totalExpense)}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
               </Table>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Summary */}
-      {!loading && (
-        <Card>
-          <CardHeader>
-            <CardTitle>สรุป</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-              <div className="rounded-lg bg-green-50 p-4">
-                <p className="text-sm text-green-600">รวมรายได้</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {formatNumber(totalIncome)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-red-50 p-4">
-                <p className="text-sm text-red-600">รวมค่าใช้จ่าย</p>
-                <p className="text-2xl font-bold text-red-700">
-                  {formatNumber(totalExpense)}
-                </p>
-              </div>
-              <div
-                className={`rounded-lg p-4 ${
-                  totalIncome - totalExpense >= 0 ? 'bg-blue-50' : 'bg-orange-50'
-                }`}
-              >
-                <p
-                  className={`text-sm ${
-                    totalIncome - totalExpense >= 0
-                      ? 'text-blue-600'
-                      : 'text-orange-600'
-                  }`}
-                >
-                  Gross Profit
-                </p>
-                <p
-                  className={`text-2xl font-bold ${
-                    totalIncome - totalExpense >= 0
-                      ? 'text-blue-700'
-                      : 'text-orange-700'
-                  }`}
-                >
-                  {formatNumber(totalIncome - totalExpense)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

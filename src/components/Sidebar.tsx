@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -12,21 +12,71 @@ import {
   Building2,
   Menu,
   X,
+  Users,
+  UserCog,
+  LogOut,
+  Calendar,
+  Clock,
 } from 'lucide-react'
+import { useAccess } from '@/contexts/AccessContext'
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt },
-  { name: 'ตั้งค่า', href: '/settings', icon: Settings },
-  { name: 'ดาวน์โหลดรายงาน', href: '/reports', icon: FileDown },
+// Format วันที่และเวลาเป็นภาษาไทย
+const formatDateTime = (date: Date) => {
+  const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+  const months = [
+    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+  ]
+
+  const dayName = days[date.getDay()]
+  const day = date.getDate()
+  const month = months[date.getMonth()]
+  const year = date.getFullYear() // ปี ค.ศ.
+
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+
+  return {
+    date: `${dayName} ${day} ${month} ${year}`,
+    time: `${hours}:${minutes}`
+  }
+}
+
+const allNavigation = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, partnerOnly: true },
+  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false },
+  { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true },
+  { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true },
+  { name: 'ตั้งค่า', href: '/settings', icon: Settings, partnerOnly: true },
+  { name: 'ดาวน์โหลดรายงาน', href: '/reports', icon: FileDown, partnerOnly: true },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const { role, user, isPartner, logout } = useAccess()
 
   const toggleMenu = () => setIsOpen(!isOpen)
   const closeMenu = () => setIsOpen(false)
+
+  // อัพเดทเวลาทุกนาที
+  useEffect(() => {
+    setCurrentTime(new Date())
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // อัพเดททุก 1 นาที
+
+    return () => clearInterval(timer)
+  }, [])
+
+  const dateTime = currentTime ? formatDateTime(currentTime) : null
+
+  // กรอง navigation ตาม role
+  const navigation = allNavigation.filter(item => {
+    if (isPartner) return true // Partner เห็นทุกเมนู
+    return !item.partnerOnly // Staff เห็นเฉพาะเมนูที่ไม่ใช่ partnerOnly
+  })
 
   return (
     <>
@@ -101,12 +151,51 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-[#6b8a84] p-4">
-          <p className="text-xs text-white/60">
-            ARUN SA WAD
-            <br />
-            Property Management
-          </p>
+        <div className="border-t border-[#6b8a84] p-4 space-y-3">
+          {/* แสดงวันเวลา */}
+          {dateTime && (
+            <div className="space-y-1 rounded-lg bg-white/10 p-2">
+              <div className="flex items-center gap-2 text-xs text-white/90">
+                <Calendar className="h-3.5 w-3.5" />
+                {dateTime.date}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-white/70">
+                <Clock className="h-3.5 w-3.5" />
+                {dateTime.time} น.
+              </div>
+            </div>
+          )}
+
+          {/* แสดงข้อมูล user */}
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "h-2 w-2 rounded-full",
+              isPartner ? "bg-[#F6BD60]" : "bg-[#F28482]"
+            )} />
+            <div className="flex flex-col">
+              {user && (
+                <span className="text-xs font-medium text-white">
+                  {user.name}
+                </span>
+              )}
+              <span className="text-[10px] text-white/60">
+                {isPartner ? 'หุ้นส่วน' : 'พนักงาน'}
+              </span>
+            </div>
+          </div>
+
+          {/* ปุ่มออกจากระบบ */}
+          <button
+            onClick={() => {
+              logout()
+              closeMenu()
+              window.location.href = '/access'
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+            ออกจากระบบ
+          </button>
         </div>
       </div>
     </>

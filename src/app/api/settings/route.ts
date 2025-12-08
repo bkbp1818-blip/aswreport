@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requirePartner, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงการตั้งค่า
 export async function GET(request: NextRequest) {
@@ -29,9 +30,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - อัปเดตการตั้งค่า
+// PUT - อัปเดตการตั้งค่า (ต้องเป็น Partner)
 export async function PUT(request: NextRequest) {
   try {
+    await requirePartner()
+
     const body = await request.json()
     const {
       buildingId,
@@ -68,6 +71,10 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(settings)
   } catch (error) {
+    const authError = handleAuthError(error)
+    if (authError) {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error('Error updating settings:', error)
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า' },

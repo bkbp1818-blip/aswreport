@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงรายการ transactions
 export async function GET(request: NextRequest) {
@@ -41,9 +42,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - สร้างหรืออัปเดต transaction
+// POST - สร้างหรืออัปเดต transaction (ต้อง login)
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth()
+
     const body = await request.json()
     const { buildingId, categoryId, amount, month, year, note } = body
 
@@ -83,6 +86,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(transaction)
   } catch (error) {
+    const authError = handleAuthError(error)
+    if (authError) {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error('Error saving transaction:', error)
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' },
@@ -91,9 +98,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - อัปเดตหลายรายการพร้อมกัน (bulk update)
+// PUT - อัปเดตหลายรายการพร้อมกัน (bulk update) (ต้อง login)
 export async function PUT(request: NextRequest) {
   try {
+    await requireAuth()
+
     const body = await request.json()
     const { transactions } = body
 
@@ -105,42 +114,46 @@ export async function PUT(request: NextRequest) {
     }
 
     // ใช้ transaction เพื่อให้แน่ใจว่าทุกอย่างสำเร็จหรือไม่สำเร็จพร้อมกัน
-    const results = await prisma.$transaction(
-      transactions.map((t: {
-        buildingId: number
-        categoryId: number
-        amount: number
-        month: number
-        year: number
-        note?: string
-      }) =>
-        prisma.transaction.upsert({
-          where: {
-            buildingId_categoryId_month_year: {
-              buildingId: t.buildingId,
-              categoryId: t.categoryId,
-              month: t.month,
-              year: t.year,
-            },
-          },
-          update: {
-            amount: t.amount || 0,
-            note: t.note || null,
-          },
-          create: {
+    const upsertOperations = transactions.map((t: {
+      buildingId: number
+      categoryId: number
+      amount: number
+      month: number
+      year: number
+      note?: string
+    }) =>
+      prisma.transaction.upsert({
+        where: {
+          buildingId_categoryId_month_year: {
             buildingId: t.buildingId,
             categoryId: t.categoryId,
-            amount: t.amount || 0,
             month: t.month,
             year: t.year,
-            note: t.note || null,
           },
-        })
-      )
+        },
+        update: {
+          amount: t.amount || 0,
+          note: t.note || null,
+        },
+        create: {
+          buildingId: t.buildingId,
+          categoryId: t.categoryId,
+          amount: t.amount || 0,
+          month: t.month,
+          year: t.year,
+          note: t.note || null,
+        },
+      })
     )
+
+    const results = await Promise.all(upsertOperations)
 
     return NextResponse.json({ success: true, count: results.length })
   } catch (error) {
+    const authError = handleAuthError(error)
+    if (authError) {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
     console.error('Error bulk updating transactions:', error)
     return NextResponse.json(
       { error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' },

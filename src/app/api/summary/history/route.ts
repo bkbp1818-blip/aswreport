@@ -1,78 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, handleAuthError } from '@/lib/auth'
+import { requirePartner, handleAuthError } from '@/lib/auth'
 
-// GET - ดึงข้อมูลสรุป (ต้อง login)
+// GET - ดึงข้อมูลย้อนหลังหลายเดือน (ต้องเป็น Partner)
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth()
+    await requirePartner()
 
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')
-    const month = searchParams.get('month')
-    const year = searchParams.get('year')
+    const months = parseInt(searchParams.get('months') || '6') // จำนวนเดือนย้อนหลัง (ถ้าไม่ใช่ custom)
 
-    if (!month || !year) {
+    // รองรับ custom range
+    const startMonth = searchParams.get('startMonth')
+    const startYear = searchParams.get('startYear')
+    const endMonth = searchParams.get('endMonth')
+    const endYear = searchParams.get('endYear')
+
+    if (!buildingId) {
       return NextResponse.json(
-        { error: 'กรุณาระบุเดือนและปี' },
+        { error: 'กรุณาระบุ buildingId' },
         { status: 400 }
       )
     }
 
-    const monthInt = parseInt(month)
-    const yearInt = parseInt(year)
+    const historyData = []
 
-    // ถ้าระบุ buildingId ให้คำนวณเฉพาะอาคารนั้น
-    if (buildingId) {
-      const summary = await calculateBuildingSummary(
-        parseInt(buildingId),
-        monthInt,
-        yearInt
-      )
-      return NextResponse.json(summary)
+    if (startMonth && startYear && endMonth && endYear) {
+      // Custom range mode
+      const start = new Date(parseInt(startYear), parseInt(startMonth) - 1, 1)
+      const end = new Date(parseInt(endYear), parseInt(endMonth) - 1, 1)
+
+      const current = new Date(start)
+      while (current <= end) {
+        const month = current.getMonth() + 1
+        const year = current.getFullYear()
+
+        const summary = await calculateBuildingSummary(
+          parseInt(buildingId),
+          month,
+          year
+        )
+
+        historyData.push({
+          ...summary,
+          monthLabel: `${getShortMonthName(month)}`,
+          monthYear: `${getShortMonthName(month)} ${year}`,
+        })
+
+        // เพิ่มเดือน
+        current.setMonth(current.getMonth() + 1)
+      }
+    } else {
+      // Default: ย้อนหลังจากเดือนปัจจุบัน
+      const now = new Date()
+      for (let i = months - 1; i >= 0; i--) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const month = targetDate.getMonth() + 1
+        const year = targetDate.getFullYear()
+
+        const summary = await calculateBuildingSummary(
+          parseInt(buildingId),
+          month,
+          year
+        )
+
+        historyData.push({
+          ...summary,
+          monthLabel: `${getShortMonthName(month)}`,
+          monthYear: `${getShortMonthName(month)} ${year}`,
+        })
+      }
     }
 
-    // ถ้าไม่ระบุ ให้คำนวณทุกอาคาร
-    const buildings = await prisma.building.findMany()
-    const summaries = await Promise.all(
-      buildings.map((b) => calculateBuildingSummary(b.id, monthInt, yearInt))
-    )
-
-    // คำนวณยอดรวมทั้งหมด
-    const totalSummary = {
-      buildingId: null,
-      buildingName: 'รวมทั้งหมด',
-      totalIncome: summaries.reduce((sum, s) => sum + s.totalIncome, 0),
-      totalExpense: summaries.reduce((sum, s) => sum + s.totalExpense, 0),
-      grossProfit: summaries.reduce((sum, s) => sum + s.grossProfit, 0),
-      managementFee: summaries.reduce((sum, s) => sum + s.managementFee, 0),
-      vat: summaries.reduce((sum, s) => sum + s.vat, 0),
-      littleHotelierExpense: summaries.reduce(
-        (sum, s) => sum + s.littleHotelierExpense,
-        0
-      ),
-      monthlyRent: summaries.reduce((sum, s) => sum + s.monthlyRent, 0),
-      netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
-      amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
-      incomeByChannel: {},
-      expenseByCategory: {},
-    }
-
-    return NextResponse.json({
-      buildings: summaries,
-      total: totalSummary,
-    })
+    return NextResponse.json(historyData)
   } catch (error) {
     const authError = handleAuthError(error)
     if (authError) {
       return NextResponse.json({ error: authError.error }, { status: authError.status })
     }
-    console.error('Error fetching summary:', error)
+    console.error('Error fetching history:', error)
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการคำนวณสรุป' },
+      { error: 'เกิดข้อผิดพลาดในการดึงข้อมูลย้อนหลัง' },
       { status: 500 }
     )
   }
+}
+
+function getShortMonthName(month: number): string {
+  const months = [
+    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+  ]
+  return months[month - 1] || ''
 }
 
 async function calculateBuildingSummary(
@@ -87,7 +107,16 @@ async function calculateBuildingSummary(
   })
 
   if (!building) {
-    throw new Error(`Building ${buildingId} not found`)
+    return {
+      buildingId,
+      buildingName: 'Unknown',
+      month,
+      year,
+      totalIncome: 0,
+      totalExpense: 0,
+      grossProfit: 0,
+      netProfit: 0,
+    }
   }
 
   const settings = building.settings
@@ -135,9 +164,9 @@ async function calculateBuildingSummary(
     .reduce((sum, t) => sum + Number(t.amount), 0)
 
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
-  const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
+  const monthlyRent = settings ? Number(settings.monthlyRent) : 0
   // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + เงินเดือนพนักงาน
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + salaryPerBuilding
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRent + salaryPerBuilding
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -148,12 +177,14 @@ async function calculateBuildingSummary(
   // แยกรายจ่ายตามหมวดหมู่
   const expenseByCategory: Record<string, number> = {}
   expenseTransactions.forEach((t) => {
-    expenseByCategory[t.category.name] = Number(t.amount)
+    if (t.category.name !== 'เงินเดือนพนักงาน') {
+      expenseByCategory[t.category.name] = Number(t.amount)
+    }
   })
 
   // เพิ่มค่าเช่าอาคารเข้าไปในรายจ่าย (ถ้ามี)
-  if (monthlyRentFromSettings > 0) {
-    expenseByCategory['ค่าเช่าอาคาร'] = monthlyRentFromSettings
+  if (monthlyRent > 0) {
+    expenseByCategory['ค่าเช่าอาคาร'] = monthlyRent
   }
 
   // เพิ่มเงินเดือนพนักงานเข้าไปในรายจ่าย (ถ้ามี)
@@ -167,7 +198,6 @@ async function calculateBuildingSummary(
     ? Number(settings.managementFeePercent)
     : 13.5
   const vatPercent = settings ? Number(settings.vatPercent) : 7
-  const monthlyRent = settings ? Number(settings.monthlyRent) : 0
   const littleHotelierExpense = settings
     ? Number(settings.littleHotelierExpense)
     : 0
@@ -181,7 +211,6 @@ async function calculateBuildingSummary(
   // monthlyRent รวมอยู่ใน totalExpense แล้ว (ถูกหักใน grossProfit) จึงไม่ต้องหักอีก
   // Net Profit หัก VAT ด้วย เพราะ VAT เป็นรายจ่ายที่ต้องจ่ายจริง
   const netProfit = grossProfit - managementFee - littleHotelierExpense - vat
-  const amountToBePaid = managementFee + vat
 
   return {
     buildingId,
@@ -199,7 +228,7 @@ async function calculateBuildingSummary(
     littleHotelierExpense,
     monthlyRent,
     netProfit,
-    amountToBePaid,
+    amountToBePaid: managementFee + vat,
     incomeByChannel,
     expenseByCategory,
   }

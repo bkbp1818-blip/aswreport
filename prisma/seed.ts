@@ -1,7 +1,8 @@
-import { PrismaClient, CategoryType } from '@prisma/client'
+import { PrismaClient, CategoryType, Position } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import * as dotenv from 'dotenv'
+import bcrypt from 'bcryptjs'
 
 // โหลด environment variables จาก .env.local
 dotenv.config({ path: '.env.local' })
@@ -51,6 +52,7 @@ async function main() {
 
   // สร้างหมวดหมู่รายจ่าย
   const expenseCategories = [
+    'Little Hotelier Expense',
     'ค่าไฟฟ้า',
     'ค่าน้ำประปา',
     'ค่า Internet',
@@ -67,6 +69,7 @@ async function main() {
     'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
     'ค่าซ่อมบำรุงอาคาร',
     'ค่าเดินทางแม่บ้าน',
+    'ค่าทำความสะอาด',
   ]
 
   // ลบหมวดหมู่เก่า (ถ้ามี) และสร้างใหม่
@@ -192,7 +195,71 @@ async function main() {
 
   console.log('✅ สร้างข้อมูลตัวอย่างเรียบร้อย (อาคาร Chinatown, เดือน', currentMonth + '/' + currentYear + ')')
 
+  // ===== สร้าง Users ตัวอย่าง =====
+  console.log('\n🔐 กำลังสร้าง Users ตัวอย่าง...')
+
+  const hashedPassword = await bcrypt.hash('1234', 10)
+
+  const users = [
+    { username: 'partner1', password: hashedPassword, name: 'หุ้นส่วน 1', role: 'PARTNER' as const },
+    { username: 'partner2', password: hashedPassword, name: 'หุ้นส่วน 2', role: 'PARTNER' as const },
+    { username: 'staff1', password: hashedPassword, name: 'พนักงาน 1', role: 'STAFF' as const },
+    { username: 'staff2', password: hashedPassword, name: 'พนักงาน 2', role: 'STAFF' as const },
+  ]
+
+  for (const user of users) {
+    const existing = await prisma.user.findUnique({
+      where: { username: user.username },
+    })
+
+    if (!existing) {
+      await prisma.user.create({ data: user })
+      console.log(`  ✅ Created user: ${user.username}`)
+    } else if (!existing.password.startsWith('$2')) {
+      await prisma.user.update({
+        where: { username: user.username },
+        data: { password: hashedPassword },
+      })
+      console.log(`  🔄 Updated password hash: ${user.username}`)
+    }
+  }
+
+  // ===== สร้างพนักงานตัวอย่าง =====
+  console.log('\n👥 กำลังสร้างพนักงานตัวอย่าง...')
+
+  const employees = [
+    // หุ้นส่วน (ไม่มีเงินเดือน)
+    { firstName: 'สมชาย', lastName: 'ใจดี', nickname: 'ชาย', position: Position.PARTNER, salary: 0 },
+    { firstName: 'สมหญิง', lastName: 'ใจงาม', nickname: 'หญิง', position: Position.PARTNER, salary: 0 },
+    // ผู้จัดการ
+    { firstName: 'มานี', lastName: 'มีทรัพย์', nickname: 'นี', position: Position.MANAGER, salary: 25000 },
+    // แม่บ้าน
+    { firstName: 'สมศรี', lastName: 'รักสะอาด', nickname: 'ศรี', position: Position.MAID, salary: 15000 },
+    { firstName: 'สมใจ', lastName: 'ขยัน', nickname: 'ใจ', position: Position.MAID, salary: 15000 },
+    { firstName: 'สมปอง', lastName: 'ใฝ่ดี', nickname: 'ปอง', position: Position.MAID, salary: 14000 },
+  ]
+
+  for (const emp of employees) {
+    const existing = await prisma.employee.findFirst({
+      where: {
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+      }
+    })
+
+    if (!existing) {
+      await prisma.employee.create({
+        data: {
+          ...emp,
+          isActive: true,
+        }
+      })
+      console.log(`  ✅ Created employee: ${emp.nickname || emp.firstName}`)
+    }
+  }
+
   console.log('\n🎉 Seed ข้อมูลเสร็จสมบูรณ์!')
+  console.log('📝 Default user password: 1234')
 }
 
 main()
