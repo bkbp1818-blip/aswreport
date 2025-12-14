@@ -39,6 +39,7 @@ const iconColors: Record<string, string> = {
   'Booking': 'text-[#003580]',           // Booking.com Blue
   'Agoda': 'text-[#5392F9]',             // Agoda Blue
   'Trip': 'text-[#287DFA]',              // Trip.com Blue
+  'Ctrip': 'text-[#2577E3]',             // Ctrip Blue (darker)
   'Expedia': 'text-[#FFCC00]',           // Expedia Yellow
   'RB': 'text-[#6B4C9A]',                // Roombix Purple
   'ช่องทางอื่น': 'text-gray-500',
@@ -87,7 +88,10 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   if (lowerName.includes('agoda')) {
     return { Icon: Globe, color: iconColors['Agoda'] }
   }
-  if (lowerName.includes('trip')) {
+  if (lowerName.includes('ctrip')) {
+    return { Icon: Map, color: iconColors['Ctrip'] }
+  }
+  if (lowerName.includes('trip') && !lowerName.includes('ctrip')) {
     return { Icon: Plane, color: iconColors['Trip'] }
   }
   if (lowerName.includes('expedia')) {
