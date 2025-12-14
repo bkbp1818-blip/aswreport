@@ -670,8 +670,8 @@ export default function ReportsPage() {
         bgColor: '#EC489920',
         textColor: '#EC4899',
       },
-      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity)
-      ...(cowayWaterFilterExpense > 0 ? [{
+      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity) - แสดงเสมอ
+      {
         name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
         shortName: 'ค่ากรองน้ำ Coway',
         value: cowayWaterFilterExpense,
@@ -679,7 +679,7 @@ export default function ReportsPage() {
         divisor: 1,
         bgColor: '#06B6D420',
         textColor: '#06B6D4',
-      }] : []),
+      },
       {
         name: 'ค่าน้ำเปล่า',
         shortName: 'ค่าน้ำเปล่า',
@@ -1503,10 +1503,24 @@ export default function ReportsPage() {
 
   // Print - เปิดหน้าต่างพิมพ์ที่แสดงเหมือน PDF
   const handlePrint = async (data: Summary, buildingName: string) => {
-    // สร้าง HTML content เหมือน PDF
-    const page1 = createPDFPage1(data, buildingName)
-    const page2 = createPDFPage2(data, buildingName)
-    const page3 = createPDFPage3(data, buildingName)
+    // รายการค่าใช้จ่ายส่วนกลาง (เหมือน PDF export)
+    const globalExpenseNames = [
+      'ค่าดูแล MAX', 'ค่าดูแลจราจร', 'ค่าขนส่งสินค้า',
+      'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
+      'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
+      'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
+      'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+      'ค่าเช่าเครื่องกรองน้ำ Coway',
+      'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+      'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+      'ค่าน้ำมันรถมอเตอร์ไซค์',
+      'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+      'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+    ]
+
+    // สร้าง HTML content เหมือน PDF (Modern Layout 2 หน้า)
+    const page1 = createModernSummaryPage(data, buildingName, 1, 2)
+    const page2 = createModernTablePage(data, buildingName, 2, 2, globalExpenseNames)
 
     const printContent = `
       <!DOCTYPE html>
@@ -1527,7 +1541,6 @@ export default function ReportsPage() {
       <body>
         <div class="page">${page1}</div>
         <div class="page">${page2}</div>
-        <div class="page">${page3}</div>
       </body>
       </html>
     `
@@ -1546,15 +1559,35 @@ export default function ReportsPage() {
   const handlePrintAll = async () => {
     if (!allSummaryData) return
 
-    // สร้าง HTML content สำหรับทุกอาคาร
+    // รายการค่าใช้จ่ายส่วนกลาง (เหมือน PDF export)
+    const globalExpenseNames = [
+      'ค่าดูแล MAX', 'ค่าดูแลจราจร', 'ค่าขนส่งสินค้า',
+      'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
+      'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
+      'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
+      'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+      'ค่าเช่าเครื่องกรองน้ำ Coway',
+      'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+      'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+      'ค่าน้ำมันรถมอเตอร์ไซค์',
+      'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+      'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+    ]
+
+    // คำนวณจำนวนหน้าทั้งหมด (2 หน้าต่ออาคาร + 1 หน้าสรุป)
+    const totalPages = allSummaryData.buildings.length * 2 + 1
+
+    // สร้าง HTML content สำหรับทุกอาคาร (Modern Layout 2 หน้าต่ออาคาร)
     let allPages = ''
+    let pageNumber = 1
     for (const building of allSummaryData.buildings) {
-      allPages += `<div class="page">${createPDFPage1(building, building.buildingName)}</div>`
-      allPages += `<div class="page">${createPDFPage2(building, building.buildingName)}</div>`
-      allPages += `<div class="page">${createPDFPage3(building, building.buildingName)}</div>`
+      allPages += `<div class="page">${createModernSummaryPage(building, building.buildingName, pageNumber, totalPages)}</div>`
+      pageNumber++
+      allPages += `<div class="page">${createModernTablePage(building, building.buildingName, pageNumber, totalPages, globalExpenseNames)}</div>`
+      pageNumber++
     }
     // เพิ่มหน้าสรุปรวม
-    allPages += `<div class="page">${createTotalSummaryContent(allSummaryData.total, allSummaryData.buildings, allSummaryData.buildings.length * 3 + 1, allSummaryData.buildings.length * 3 + 1)}</div>`
+    allPages += `<div class="page">${createTotalSummaryContent(allSummaryData.total, allSummaryData.buildings, pageNumber, totalPages)}</div>`
 
     const printContent = `
       <!DOCTYPE html>
@@ -1661,8 +1694,8 @@ export default function ReportsPage() {
         bgClass: 'bg-pink-100/50',
         textClass: 'text-pink-500',
       },
-      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity)
-      ...(cowayWaterFilterExpense > 0 ? [{
+      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity) - แสดงเสมอ
+      {
         name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
         value: cowayWaterFilterExpense,
         totalValue: cowayWaterFilterExpense,
@@ -1670,7 +1703,7 @@ export default function ReportsPage() {
         bgClass: 'bg-cyan-100/50',
         textClass: 'text-cyan-600',
         isPerBuilding: true, // flag บอกว่าเป็นค่าแยกตามอาคาร
-      }] : []),
+      },
       {
         name: 'ค่าน้ำเปล่า',
         value: globalSettings.waterBottleExpensePerBuilding,
