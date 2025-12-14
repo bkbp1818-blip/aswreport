@@ -42,6 +42,7 @@ export async function PUT(request: NextRequest) {
       vatPercent,
       monthlyRent,
       littleHotelierExpense,
+      cowayWaterFilterExpense,
     } = body
 
     if (!buildingId) {
@@ -58,6 +59,7 @@ export async function PUT(request: NextRequest) {
         vatPercent: parseFloat(vatPercent) || 7,
         monthlyRent: parseFloat(monthlyRent) || 0,
         littleHotelierExpense: parseFloat(littleHotelierExpense) || 0,
+        cowayWaterFilterExpense: parseFloat(cowayWaterFilterExpense) || 0,
       },
       create: {
         buildingId: parseInt(buildingId),
@@ -65,6 +67,7 @@ export async function PUT(request: NextRequest) {
         vatPercent: parseFloat(vatPercent) || 7,
         monthlyRent: parseFloat(monthlyRent) || 0,
         littleHotelierExpense: parseFloat(littleHotelierExpense) || 0,
+        cowayWaterFilterExpense: parseFloat(cowayWaterFilterExpense) || 0,
       },
       include: { building: true },
     })

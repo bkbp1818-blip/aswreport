@@ -36,6 +36,7 @@ interface Summary {
   vatPercent: number
   vat: number
   littleHotelierExpense: number
+  cowayWaterFilterExpense: number
   monthlyRent: number
   netProfit: number
   amountToBePaid: number
@@ -48,8 +49,48 @@ interface AllSummaryData {
   total: Summary
 }
 
+interface GlobalSettings {
+  id: number
+  buildingCount: number
+  careExpenseDivisor: number
+  maxCareExpense: number
+  trafficCareExpense: number
+  shippingExpense: number
+  amenityExpense: number
+  waterBottleExpense: number
+  cookieExpense: number
+  coffeeExpense: number
+  fuelExpense: number
+  parkingExpense: number
+  motorcycleMaintenanceExpense: number
+  maidTravelExpense: number
+  cleaningSupplyExpense: number
+  laundryDetergentExpense: number
+  maxCareExpensePerBuilding: number
+  trafficCareExpensePerBuilding: number
+  shippingExpensePerBuilding: number
+  amenityExpensePerBuilding: number
+  waterBottleExpensePerBuilding: number
+  cookieExpensePerBuilding: number
+  coffeeExpensePerBuilding: number
+  fuelExpensePerBuilding: number
+  parkingExpensePerBuilding: number
+  motorcycleMaintenanceExpensePerBuilding: number
+  maidTravelExpensePerBuilding: number
+  cleaningSupplyExpensePerBuilding: number
+  laundryDetergentExpensePerBuilding: number
+}
+
+interface Category {
+  id: number
+  name: string
+  type: 'INCOME' | 'EXPENSE'
+  order: number
+}
+
 export default function ReportsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<string>(
     String(new Date().getMonth() + 1)
@@ -59,17 +100,25 @@ export default function ReportsPage() {
   )
   const [summaryData, setSummaryData] = useState<Summary | null>(null)
   const [allSummaryData, setAllSummaryData] = useState<AllSummaryData | null>(null)
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [exportingPDF, setExportingPDF] = useState(false)
 
   const years = generateYears()
 
-  // โหลดรายการอาคาร
+  // โหลดรายการอาคาร, หมวดหมู่ และ GlobalSettings
   useEffect(() => {
-    fetch('/api/buildings')
-      .then((res) => res.json())
-      .then((data) => setBuildings(data))
-      .catch((err) => console.error('Error loading buildings:', err))
+    Promise.all([
+      fetch('/api/buildings').then((res) => res.json()),
+      fetch('/api/categories').then((res) => res.json()),
+      fetch('/api/global-settings').then((res) => res.json()),
+    ])
+      .then(([buildingsData, categoriesData, globalData]) => {
+        setBuildings(buildingsData)
+        setCategories(categoriesData)
+        setGlobalSettings(globalData)
+      })
+      .catch((err) => console.error('Error loading data:', err))
   }, [])
 
   // โหลดข้อมูลสรุป
@@ -144,6 +193,9 @@ export default function ReportsPage() {
     if (lowerName.includes('ซ่อมบำรุงอาคาร')) return '🏗️'
     if (lowerName.includes('เดินทาง') || lowerName.includes('แม่บ้าน')) return '🚌'
     if (lowerName.includes('little hotelier') || lowerName.includes('hotelier')) return '🏨'
+    if (lowerName.includes('กรองน้ำ') || lowerName.includes('coway')) return '🚰'
+    if (lowerName.includes('อุปกรณ์ทำความสะอาด') || lowerName.includes('ทำความสะอาด')) return '🧹'
+    if (lowerName.includes('น้ำยาซักผ้า') || lowerName.includes('ซักผ้า')) return '🧺'
 
     // Default
     return '📋'
@@ -190,6 +242,336 @@ export default function ReportsPage() {
           </div>
           <div style="background: #e0e0e0; border-radius: 4px; height: 20px; overflow: hidden;">
             <div style="background: linear-gradient(90deg, ${profit >= 0 ? '#F6BD60, #b8893f' : '#F28482, #d96f6d'}); width: ${profitPercent}%; height: 100%; border-radius: 4px;"></div>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  // ==================== PDF Design ใหม่ - Modern Corporate ====================
+
+  // หน้า 1: Summary Cards + กราฟ (Modern Design)
+  const createModernSummaryPage = (data: Summary, buildingName: string, pageNumber: number, totalPages: number): string => {
+    const monthYear = `${getMonthName(parseInt(selectedMonth))} ${selectedYear}`
+    const salary = data.expenseByCategory?.['เงินเดือนพนักงาน'] || 0
+
+    // คำนวณ % กำไร
+    const profitPercent = data.totalIncome > 0 ? ((data.netProfit / data.totalIncome) * 100).toFixed(1) : '0'
+
+    // สร้าง Summary Cards
+    const cards = [
+      { label: 'รวมรายได้', value: data.totalIncome, icon: '📈', color: '#84A59D', bgColor: '#84A59D15' },
+      { label: 'รวมค่าใช้จ่าย', value: data.totalExpense, icon: '📉', color: '#F28482', bgColor: '#F2848215' },
+      { label: 'Gross Profit', value: data.grossProfit, icon: '💰', color: '#5B9BD5', bgColor: '#5B9BD515' },
+      { label: 'Net Profit', value: data.netProfit, icon: '⭐', color: data.netProfit >= 0 ? '#F6BD60' : '#F28482', bgColor: data.netProfit >= 0 ? '#F6BD6020' : '#F2848220' },
+      { label: `Management Fee (${data.managementFeePercent}%)`, value: data.managementFee, icon: '🏷️', color: '#b8893f', bgColor: '#F6BD6010' },
+      { label: `Amount to be Paid (รวม VAT ${data.vatPercent}%)`, value: data.amountToBePaid, icon: '💵', color: '#b8893f', bgColor: '#F6BD6015' },
+      { label: 'ค่าเช่าอาคาร/เดือน', value: data.monthlyRent, icon: '🏠', color: '#d96f6d', bgColor: '#F2848210' },
+      { label: 'เงินเดือนพนักงาน', value: salary, icon: '👥', color: '#5a7d75', bgColor: '#84A59D10' },
+    ]
+
+    // สร้าง bar chart
+    const maxVal = Math.max(data.totalIncome, data.totalExpense, Math.abs(data.netProfit)) || 1
+    const incomePercent = (data.totalIncome / maxVal) * 100
+    const expensePercent = (data.totalExpense / maxVal) * 100
+    const netProfitPercent = (Math.abs(data.netProfit) / maxVal) * 100
+
+    return `
+      <div style="font-family: 'Sarabun', Arial, sans-serif; padding: 0; background: white; color: #333; width: 750px; min-height: 1050px; display: flex; flex-direction: column; box-sizing: border-box;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #84A59D 0%, #6b8a84 100%); padding: 20px 30px; color: white;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="width: 50px; height: 50px; background: #F6BD60; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                <span style="font-size: 18px; font-weight: bold; color: #84A59D;">ASW</span>
+              </div>
+              <div>
+                <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 1px;">ARUN SA WAD</h1>
+                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Monthly Financial Report</p>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <p style="margin: 0; font-size: 12px; opacity: 0.8;">รายงานประจำเดือน</p>
+              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold;">${monthYear}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Building Title Bar -->
+        <div style="background: linear-gradient(90deg, #F6BD60 0%, #e5a84f 100%); padding: 12px 30px;">
+          <h2 style="margin: 0; font-size: 16px; color: #333; font-weight: bold;">📍 ${buildingName}</h2>
+        </div>
+
+        <!-- Main Content -->
+        <div style="flex: 1; padding: 25px 30px;">
+          <!-- Section Title -->
+          <div style="margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; color: #333; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+              <span style="background: #84A59D; color: white; width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">📊</span>
+              สรุปผลประกอบการ
+            </h3>
+          </div>
+
+          <!-- Summary Cards Grid - 2 rows x 4 cols -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px;">
+            ${cards.map((card, i) => `
+              <div style="background: ${card.bgColor}; border: 1px solid ${card.color}30; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 18px;">${card.icon}</span>
+                  <span style="font-size: 10px; color: #666; line-height: 1.2;">${card.label}</span>
+                </div>
+                <div style="font-size: ${i < 4 ? '18px' : '15px'}; font-weight: bold; color: ${card.color};">
+                  ${formatNumber(card.value)}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Bar Chart Section -->
+          <div style="background: #f8f9fa; border-radius: 16px; padding: 25px; border: 1px solid #e5e5e5;">
+            <h4 style="margin: 0 0 20px 0; font-size: 14px; color: #333; font-weight: bold;">📊 กราฟเปรียบเทียบ รายรับ-รายจ่าย-กำไรสุทธิ</h4>
+
+            <!-- รายรับ -->
+            <div style="margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: #5a7d75;">📈 รายรับ</span>
+                <span style="font-size: 14px; font-weight: bold; color: #5a7d75;">${formatNumber(data.totalIncome)} บาท</span>
+              </div>
+              <div style="background: #e0e0e0; border-radius: 8px; height: 35px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(90deg, #84A59D, #5a7d75); width: ${incomePercent}%; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                  <span style="color: white; font-weight: bold; font-size: 12px;">${incomePercent.toFixed(0)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- รายจ่าย -->
+            <div style="margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: #d96f6d;">📉 รายจ่าย</span>
+                <span style="font-size: 14px; font-weight: bold; color: #d96f6d;">${formatNumber(data.totalExpense)} บาท</span>
+              </div>
+              <div style="background: #e0e0e0; border-radius: 8px; height: 35px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(90deg, #F28482, #d96f6d); width: ${expensePercent}%; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                  <span style="color: white; font-weight: bold; font-size: 12px;">${expensePercent.toFixed(0)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- กำไรสุทธิ -->
+            <div style="margin-bottom: 25px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: ${data.netProfit >= 0 ? '#b8893f' : '#d96f6d'};">⭐ กำไรสุทธิ (Net Profit)</span>
+                <span style="font-size: 16px; font-weight: bold; color: ${data.netProfit >= 0 ? '#b8893f' : '#d96f6d'};">${formatNumber(data.netProfit)} บาท</span>
+              </div>
+              <div style="background: #e0e0e0; border-radius: 8px; height: 40px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(90deg, ${data.netProfit >= 0 ? '#F6BD60, #b8893f' : '#F28482, #d96f6d'}); width: ${netProfitPercent}%; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                  <span style="color: white; font-weight: bold; font-size: 13px;">${netProfitPercent.toFixed(0)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profit Ratio Box -->
+            <div style="background: white; border-radius: 12px; padding: 20px; text-align: center; border: 2px solid ${data.netProfit >= 0 ? '#F6BD60' : '#F28482'};">
+              <div style="font-size: 12px; color: #666; margin-bottom: 8px;">อัตราส่วนกำไรสุทธิ</div>
+              <div style="font-size: 36px; font-weight: bold; color: ${data.netProfit >= 0 ? '#b8893f' : '#d96f6d'};">
+                ${profitPercent}%
+              </div>
+              <div style="font-size: 11px; color: #999; margin-top: 4px;">ของรายรับทั้งหมด</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f8f9fa; border-top: 1px solid #e5e5e5; padding: 12px 30px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="color: #999; font-size: 10px;">
+            พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} น.
+          </div>
+          <div style="color: #666; font-size: 11px; font-weight: 600;">
+            หน้า ${pageNumber} / ${totalPages}
+          </div>
+          <div style="color: #999; font-size: 10px;">
+            ARUN SA WAD Report
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  // หน้า 2: ตารางรายรับ/รายจ่าย (Modern Design)
+  const createModernTablePage = (data: Summary, buildingName: string, pageNumber: number, totalPages: number, globalExpenseNames: string[]): string => {
+    const monthYear = `${getMonthName(parseInt(selectedMonth))} ${selectedYear}`
+
+    // ดึง categories
+    const incomeCategories = categories.filter(c => c.type === 'INCOME')
+    const expenseCategories = categories.filter(c => c.type === 'EXPENSE')
+
+    // สร้าง entries
+    const incomeEntries: [string, number][] = incomeCategories.map(cat => [
+      cat.name,
+      data.incomeByChannel?.[cat.name] || 0
+    ])
+
+    const expenseEntries: [string, number][] = expenseCategories.map(cat => [
+      cat.name,
+      data.expenseByCategory?.[cat.name] || 0
+    ])
+
+    // ค่าใช้จ่ายส่วนกลาง
+    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data.buildingCode, data.cowayWaterFilterExpense)
+
+    // จัดกลุ่มรายจ่าย
+    const rentEntry: [string, number] = ['ค่าเช่าอาคาร', data.expenseByCategory?.['ค่าเช่าอาคาร'] || 0]
+    const salaryEntry: [string, number] = ['เงินเดือนพนักงาน', data.expenseByCategory?.['เงินเดือนพนักงาน'] || 0]
+    const otherExpenseEntries = expenseEntries.filter(([name]) =>
+      name !== 'ค่าเช่าอาคาร' &&
+      name !== 'เงินเดือนพนักงาน' &&
+      !globalExpenseNames.includes(name)
+    )
+
+    return `
+      <div style="font-family: 'Sarabun', Arial, sans-serif; padding: 0; background: white; color: #333; width: 750px; min-height: 1050px; display: flex; flex-direction: column; box-sizing: border-box;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #84A59D 0%, #6b8a84 100%); padding: 20px 30px; color: white;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="width: 50px; height: 50px; background: #F6BD60; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                <span style="font-size: 18px; font-weight: bold; color: #84A59D;">ASW</span>
+              </div>
+              <div>
+                <h1 style="margin: 0; font-size: 20px; font-weight: bold; letter-spacing: 1px;">ARUN SA WAD</h1>
+                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">Monthly Financial Report</p>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <p style="margin: 0; font-size: 12px; opacity: 0.8;">รายงานประจำเดือน</p>
+              <p style="margin: 4px 0 0 0; font-size: 18px; font-weight: bold;">${monthYear}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Building Title Bar -->
+        <div style="background: linear-gradient(90deg, #F6BD60 0%, #e5a84f 100%); padding: 12px 30px;">
+          <h2 style="margin: 0; font-size: 16px; color: #333; font-weight: bold;">📍 ${buildingName}</h2>
+        </div>
+
+        <!-- Main Content -->
+        <div style="flex: 1; padding: 20px 25px;">
+          <div style="display: flex; gap: 20px; height: 100%;">
+            <!-- รายรับ -->
+            <div style="flex: 1; display: flex; flex-direction: column;">
+              <div style="background: linear-gradient(135deg, #84A59D 0%, #5a7d75 100%); color: white; padding: 12px 16px; border-radius: 12px 12px 0 0; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">📈</span>
+                <strong>รายรับ</strong>
+              </div>
+              <div style="border: 2px solid #84A59D30; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; flex: 1; background: white;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                  <thead>
+                    <tr style="background: #84A59D10;">
+                      <th style="padding: 8px 10px; text-align: center; border-bottom: 2px solid #84A59D30; width: 30px; color: #666;">#</th>
+                      <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #84A59D30; color: #333;">รายการ</th>
+                      <th style="padding: 8px 10px; text-align: right; border-bottom: 2px solid #84A59D30; width: 80px; color: #333;">จำนวน (฿)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${incomeEntries.map(([name, amount], i) => `
+                      <tr style="background: ${i % 2 === 0 ? 'white' : '#f9fafb'};">
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee; color: #999; text-align: center; font-size: 9px;">${i + 1}</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee;">
+                          <span style="color: ${amount === 0 ? '#ccc' : '#333'};">${getCategoryEmoji(name)} ${name}</span>
+                        </td>
+                        <td style="padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${amount === 0 ? '#ccc' : '#5a7d75'};">${formatNumber(amount)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background: linear-gradient(90deg, #84A59D20, #84A59D40);">
+                      <td colspan="2" style="padding: 10px; font-weight: bold; color: #5a7d75; font-size: 11px;">รวมรายได้</td>
+                      <td style="padding: 10px; text-align: right; font-weight: bold; color: #5a7d75; font-size: 12px;">${formatNumber(data.totalIncome)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- รายจ่าย -->
+            <div style="flex: 1; display: flex; flex-direction: column;">
+              <div style="background: linear-gradient(135deg, #F28482 0%, #d96f6d 100%); color: white; padding: 12px 16px; border-radius: 12px 12px 0 0; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">📉</span>
+                <strong>รายจ่าย</strong>
+              </div>
+              <div style="border: 2px solid #F2848230; border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; flex: 1; background: white;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                  <thead>
+                    <tr style="background: #F2848210;">
+                      <th style="padding: 8px 10px; text-align: center; border-bottom: 2px solid #F2848230; width: 30px; color: #666;">#</th>
+                      <th style="padding: 8px 10px; text-align: left; border-bottom: 2px solid #F2848230; color: #333;">รายการ</th>
+                      <th style="padding: 8px 10px; text-align: right; border-bottom: 2px solid #F2848230; width: 80px; color: #333;">จำนวน (฿)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- 1. ค่าเช่าอาคาร -->
+                    <tr style="background: #F6BD6015;">
+                      <td style="padding: 6px 10px; border-bottom: 1px solid #eee; color: #999; text-align: center; font-size: 9px;">1</td>
+                      <td style="padding: 6px 10px; border-bottom: 1px solid #eee;">
+                        <span style="color: ${rentEntry[1] === 0 ? '#ccc' : '#D4A24C'};">🏢 ค่าเช่าอาคาร</span>
+                      </td>
+                      <td style="padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${rentEntry[1] === 0 ? '#ccc' : '#D4A24C'};">${formatNumber(rentEntry[1])}</td>
+                    </tr>
+                    <!-- 2. เงินเดือนพนักงาน -->
+                    <tr style="background: #84A59D10;">
+                      <td style="padding: 6px 10px; border-bottom: 1px solid #eee; color: #999; text-align: center; font-size: 9px;">2</td>
+                      <td style="padding: 6px 10px; border-bottom: 1px solid #eee;">
+                        <span style="color: ${salaryEntry[1] === 0 ? '#ccc' : '#5a7d75'};">👥 เงินเดือนพนักงาน</span>
+                      </td>
+                      <td style="padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${salaryEntry[1] === 0 ? '#ccc' : '#5a7d75'};">${formatNumber(salaryEntry[1])}</td>
+                    </tr>
+                    <!-- 3. ค่าใช้จ่ายส่วนกลาง -->
+                    ${pdfGlobalExpenseConfig.map((expense, index) => {
+                      const shortName = expense.shortName || expense.name
+                      return `
+                      <tr style="background: ${expense.bgColor};">
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee; color: #999; text-align: center; font-size: 9px;">${3 + index}</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee;">
+                          <span style="color: ${expense.value === 0 ? '#ccc' : expense.textColor};">${getCategoryEmoji(expense.name)} ${shortName}</span>
+                        </td>
+                        <td style="padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${expense.value === 0 ? '#ccc' : expense.textColor};">${formatNumber(expense.value)}</td>
+                      </tr>
+                    `}).join('')}
+                    <!-- 4. รายจ่ายอื่นๆ -->
+                    ${otherExpenseEntries.map(([name, amount], index) => {
+                      const baseIndex = 3 + pdfGlobalExpenseConfig.length + index
+                      return `
+                      <tr style="background: ${index % 2 === 0 ? 'white' : '#fef7f7'};">
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee; color: #999; text-align: center; font-size: 9px;">${baseIndex}</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #eee;">
+                          <span style="color: ${amount === 0 ? '#ccc' : '#333'};">${getCategoryEmoji(name)} ${name}</span>
+                        </td>
+                        <td style="padding: 6px 10px; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${amount === 0 ? '#ccc' : '#d96f6d'};">${formatNumber(amount)}</td>
+                      </tr>
+                    `}).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background: linear-gradient(90deg, #F2848220, #F2848240);">
+                      <td colspan="2" style="padding: 10px; font-weight: bold; color: #d96f6d; font-size: 11px;">รวมค่าใช้จ่าย</td>
+                      <td style="padding: 10px; text-align: right; font-weight: bold; color: #d96f6d; font-size: 12px;">${formatNumber(data.totalExpense)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #f8f9fa; border-top: 1px solid #e5e5e5; padding: 12px 30px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="color: #999; font-size: 10px;">
+            พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} น.
+          </div>
+          <div style="color: #666; font-size: 11px; font-weight: 600;">
+            หน้า ${pageNumber} / ${totalPages}
+          </div>
+          <div style="color: #999; font-size: 10px;">
+            ARUN SA WAD Report
           </div>
         </div>
       </div>
@@ -244,25 +626,187 @@ export default function ReportsPage() {
     `
   }
 
+  // ข้อมูลค่าใช้จ่ายส่วนกลางสำหรับ PDF พร้อมสีและรายละเอียด
+  const getPdfGlobalExpenseConfig = (buildingCode?: string, cowayWaterFilterExpense: number = 0) => {
+    if (!globalSettings) return []
+
+    // เช็คว่าอาคารที่เลือกเป็น 3 อาคาร (NANA, CT, YW) หรือไม่
+    const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
+    const isEligibleForCareExpense = !buildingCode || eligibleBuildingsForCare.includes(buildingCode)
+
+    return [
+      // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร
+      ...(isEligibleForCareExpense && globalSettings.maxCareExpensePerBuilding > 0 ? [{
+        name: 'ค่าดูแล MAX',
+        value: globalSettings.maxCareExpensePerBuilding,
+        totalValue: globalSettings.maxCareExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgColor: '#9B59B615',
+        textColor: '#9B59B6',
+      }] : []),
+      ...(isEligibleForCareExpense && globalSettings.trafficCareExpensePerBuilding > 0 ? [{
+        name: 'ค่าดูแลจราจร',
+        value: globalSettings.trafficCareExpensePerBuilding,
+        totalValue: globalSettings.trafficCareExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgColor: '#E74C3C15',
+        textColor: '#E74C3C',
+      }] : []),
+      ...(isEligibleForCareExpense && globalSettings.shippingExpensePerBuilding > 0 ? [{
+        name: 'ค่าขนส่งสินค้า',
+        value: globalSettings.shippingExpensePerBuilding,
+        totalValue: globalSettings.shippingExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgColor: '#F5811820',
+        textColor: '#F58118',
+      }] : []),
+      // ค่าใช้จ่ายส่วนกลาง - ทุกอาคาร (แสดงเสมอ)
+      {
+        name: 'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+        shortName: 'ค่า Amenity',
+        value: globalSettings.amenityExpensePerBuilding,
+        totalValue: globalSettings.amenityExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#EC489920',
+        textColor: '#EC4899',
+      },
+      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity)
+      ...(cowayWaterFilterExpense > 0 ? [{
+        name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
+        shortName: 'ค่ากรองน้ำ Coway',
+        value: cowayWaterFilterExpense,
+        totalValue: cowayWaterFilterExpense,
+        divisor: 1,
+        bgColor: '#06B6D420',
+        textColor: '#06B6D4',
+      }] : []),
+      {
+        name: 'ค่าน้ำเปล่า',
+        shortName: 'ค่าน้ำเปล่า',
+        value: globalSettings.waterBottleExpensePerBuilding,
+        totalValue: globalSettings.waterBottleExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#06B6D420',
+        textColor: '#06B6D4',
+      },
+      {
+        name: 'ค่าขนมคุ้กกี้',
+        shortName: 'ค่าขนมคุ้กกี้',
+        value: globalSettings.cookieExpensePerBuilding,
+        totalValue: globalSettings.cookieExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#F59E0B20',
+        textColor: '#F59E0B',
+      },
+      {
+        name: 'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+        shortName: 'ค่ากาแฟซอง',
+        value: globalSettings.coffeeExpensePerBuilding,
+        totalValue: globalSettings.coffeeExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#B4530040',
+        textColor: '#B45300',
+      },
+      {
+        name: 'ค่าน้ำมันรถมอเตอร์ไซค์',
+        shortName: 'ค่าน้ำมันรถ',
+        value: globalSettings.fuelExpensePerBuilding,
+        totalValue: globalSettings.fuelExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#6B728015',
+        textColor: '#6B7280',
+      },
+      {
+        name: 'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+        shortName: 'ค่าเช่าที่จอดรถ',
+        value: globalSettings.parkingExpensePerBuilding,
+        totalValue: globalSettings.parkingExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#47556915',
+        textColor: '#475569',
+      },
+      {
+        name: 'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+        shortName: 'ค่าซ่อมบำรุงรถ',
+        value: globalSettings.motorcycleMaintenanceExpensePerBuilding,
+        totalValue: globalSettings.motorcycleMaintenanceExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#F4363620',
+        textColor: '#F43636',
+      },
+      {
+        name: 'ค่าเดินทางแม่บ้าน',
+        shortName: 'ค่าเดินทางแม่บ้าน',
+        value: globalSettings.maidTravelExpensePerBuilding,
+        totalValue: globalSettings.maidTravelExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#8B5CF620',
+        textColor: '#8B5CF6',
+      },
+      {
+        name: 'ค่าอุปกรณ์ทำความสะอาด',
+        shortName: 'ค่าอุปกรณ์ทำความสะอาด',
+        value: globalSettings.cleaningSupplyExpensePerBuilding,
+        totalValue: globalSettings.cleaningSupplyExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#14B8A620',
+        textColor: '#14B8A6',
+      },
+      {
+        name: 'ค่าน้ำยาสำหรับซักผ้า',
+        shortName: 'ค่าน้ำยาซักผ้า',
+        value: globalSettings.laundryDetergentExpensePerBuilding,
+        totalValue: globalSettings.laundryDetergentExpense,
+        divisor: globalSettings.buildingCount,
+        bgColor: '#0EA5E920',
+        textColor: '#0EA5E9',
+      },
+    ]
+  }
+
   // หน้า 1: ตารางรายรับ/รายจ่าย (พอดี 1 หน้า - ลดขนาดให้กระชับ)
   const createPDFPage1 = (data: Summary, buildingName: string, pageNumber?: number, totalPages?: number): string => {
-    const incomeEntries = Object.entries(data.incomeByChannel || {}).filter(([, v]) => v > 0)
-    const expenseEntries = Object.entries(data.expenseByCategory || {}).filter(([, v]) => v > 0)
+    // ดึง categories ทั้งหมดจาก state แล้วจับคู่กับข้อมูลจริง
+    const incomeCategories = categories.filter(c => c.type === 'INCOME')
+    const expenseCategories = categories.filter(c => c.type === 'EXPENSE')
 
-    // จัดเรียงรายจ่าย: ค่าเช่าอาคาร, เงินเดือนพนักงาน, อื่นๆ
-    const rentEntry = expenseEntries.find(([name]) => name === 'ค่าเช่าอาคาร')
-    const salaryEntry = expenseEntries.find(([name]) => name === 'เงินเดือนพนักงาน')
-    const otherExpenseEntries = expenseEntries.filter(([name]) => name !== 'ค่าเช่าอาคาร' && name !== 'เงินเดือนพนักงาน')
-    const sortedExpenseEntries: [string, number][] = []
-    if (rentEntry) sortedExpenseEntries.push(rentEntry)
-    if (salaryEntry) sortedExpenseEntries.push(salaryEntry)
-    sortedExpenseEntries.push(...otherExpenseEntries)
+    // สร้าง entries จากทุก category (แสดงทุกรายการแม้ค่าเป็น 0)
+    const incomeEntries: [string, number][] = incomeCategories.map(cat => [
+      cat.name,
+      data.incomeByChannel?.[cat.name] || 0
+    ])
+
+    // รายจ่ายจาก categories
+    const expenseEntries: [string, number][] = expenseCategories.map(cat => [
+      cat.name,
+      data.expenseByCategory?.[cat.name] || 0
+    ])
+
+    // ค่าใช้จ่ายส่วนกลางพร้อมข้อมูลครบ
+    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data.buildingCode, data.cowayWaterFilterExpense)
+
+    // จัดเรียงรายจ่าย: ค่าเช่าอาคาร, เงินเดือนพนักงาน, รายจ่ายอื่นๆ
+    // ไม่รวมรายการที่ซ้ำกับค่าใช้จ่ายส่วนกลาง (globalExpenseNamesAll)
+    const rentEntry: [string, number] = ['ค่าเช่าอาคาร', data.expenseByCategory?.['ค่าเช่าอาคาร'] || 0]
+    const salaryEntry: [string, number] = ['เงินเดือนพนักงาน', data.expenseByCategory?.['เงินเดือนพนักงาน'] || 0]
+    const otherExpenseEntries = expenseEntries.filter(([name]) =>
+      name !== 'ค่าเช่าอาคาร' &&
+      name !== 'เงินเดือนพนักงาน' &&
+      !globalExpenseNamesAll.includes(name)
+    )
+
+    // คำนวณจำนวนรายการทั้งหมด
+    const totalExpenseRows = 2 + pdfGlobalExpenseConfig.length + otherExpenseEntries.length
 
     // คำนวณขนาด font ตามจำนวนรายการ (ถ้ามีหลายรายการให้ลดขนาด)
-    const maxRows = Math.max(incomeEntries.length, sortedExpenseEntries.length)
-    const fontSize = maxRows > 12 ? '10px' : maxRows > 8 ? '11px' : '12px'
-    const cellPadding = maxRows > 12 ? '6px 8px' : maxRows > 8 ? '7px 10px' : '8px 10px'
-    const headerPadding = maxRows > 12 ? '6px' : '8px'
+    const maxRows = Math.max(incomeEntries.length, totalExpenseRows)
+    // ปรับขนาดให้เล็กลงเพื่อให้พอดีหน้า - ใช้ขนาดเล็กเสมอเพื่อให้พอดี
+    const fontSize = '9px'
+    const cellPadding = '3px 4px'
+    const headerPadding = '4px'
+    const subTextSize = '7px'
+    const numColWidth = '20px'
+    const amountColWidth = '70px'
 
     return `
       <div style="font-family: 'Sarabun', Arial, sans-serif; padding: 0; background: white; color: #333; width: 750px; min-height: 1050px; display: flex; flex-direction: column; box-sizing: border-box;">
@@ -276,32 +820,35 @@ export default function ReportsPage() {
               <div style="background: linear-gradient(135deg, #84A59D 0%, #6b8a84 100%); color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-size: 13px;">
                 <strong>📈 รายรับ</strong>
               </div>
-              <div style="border: 2px solid #84A59D30; border-top: none; border-radius: 0 0 6px 6px; overflow: hidden; flex: 1;">
-                <table style="width: 100%; border-collapse: collapse; font-size: ${fontSize};">
+              <div style="border: 1px solid #84A59D30; border-top: none; border-radius: 0 0 6px 6px; overflow: hidden; flex: 1;">
+                <table style="width: 100%; border-collapse: collapse; font-size: ${fontSize}; table-layout: fixed;">
+                  <colgroup>
+                    <col style="width: ${numColWidth};">
+                    <col>
+                    <col style="width: ${amountColWidth};">
+                  </colgroup>
                   <thead>
                     <tr style="background: #84A59D15;">
-                      <th style="padding: ${headerPadding}; text-align: left; border-bottom: 1px solid #84A59D30; width: 25px;">#</th>
+                      <th style="padding: ${headerPadding}; text-align: center; border-bottom: 1px solid #84A59D30;">#</th>
                       <th style="padding: ${headerPadding}; text-align: left; border-bottom: 1px solid #84A59D30;">รายการ</th>
-                      <th style="padding: ${headerPadding}; text-align: right; border-bottom: 1px solid #84A59D30; width: 80px;">จำนวนเงิน</th>
+                      <th style="padding: ${headerPadding}; text-align: right; border-bottom: 1px solid #84A59D30;">จำนวน</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${incomeEntries.length > 0 ? incomeEntries.map(([name, amount], i) => `
+                    ${incomeEntries.map(([name, amount], i) => `
                       <tr style="background: ${i % 2 === 0 ? 'white' : '#f9fafb'};">
-                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666;">${i + 1}</td>
-                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">
-                          <span style="margin-right: 4px;">${getCategoryEmoji(name)}</span>${name}
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666; text-align: center;">${i + 1}</td>
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis;">
+                          ${getCategoryEmoji(name)} ${name}
                         </td>
-                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500;">${formatNumber(amount)}</td>
+                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; ${amount === 0 ? 'color: #ccc;' : ''}">${formatNumber(amount)}</td>
                       </tr>
-                    `).join('') : `
-                      <tr><td colspan="3" style="padding: 15px; text-align: center; color: #999;">ไม่มีรายการ</td></tr>
-                    `}
+                    `).join('')}
                   </tbody>
                   <tfoot>
                     <tr style="background: linear-gradient(to right, #84A59D30, #84A59D50);">
-                      <td colspan="2" style="padding: 10px; font-weight: bold; color: #5a7d75; font-size: 12px;">รวมรายได้</td>
-                      <td style="padding: 10px; text-align: right; font-weight: bold; color: #5a7d75; font-size: 13px;">${formatNumber(data.totalIncome)}</td>
+                      <td colspan="2" style="padding: ${cellPadding}; font-weight: bold; color: #5a7d75;">รวมรายได้</td>
+                      <td style="padding: ${cellPadding}; text-align: right; font-weight: bold; color: #5a7d75;">${formatNumber(data.totalIncome)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -313,36 +860,75 @@ export default function ReportsPage() {
               <div style="background: linear-gradient(135deg, #F28482 0%, #d96f6d 100%); color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-size: 13px;">
                 <strong>📉 รายจ่าย</strong>
               </div>
-              <div style="border: 2px solid #F2848230; border-top: none; border-radius: 0 0 6px 6px; overflow: hidden; flex: 1;">
-                <table style="width: 100%; border-collapse: collapse; font-size: ${fontSize};">
+              <div style="border: 1px solid #F2848230; border-top: none; border-radius: 0 0 6px 6px; overflow: hidden; flex: 1;">
+                <table style="width: 100%; border-collapse: collapse; font-size: ${fontSize}; table-layout: fixed;">
+                  <colgroup>
+                    <col style="width: ${numColWidth};">
+                    <col>
+                    <col style="width: ${amountColWidth};">
+                  </colgroup>
                   <thead>
                     <tr style="background: #F2848215;">
-                      <th style="padding: ${headerPadding}; text-align: left; border-bottom: 1px solid #F2848230; width: 25px;">#</th>
+                      <th style="padding: ${headerPadding}; text-align: center; border-bottom: 1px solid #F2848230;">#</th>
                       <th style="padding: ${headerPadding}; text-align: left; border-bottom: 1px solid #F2848230;">รายการ</th>
-                      <th style="padding: ${headerPadding}; text-align: right; border-bottom: 1px solid #F2848230; width: 80px;">จำนวนเงิน</th>
+                      <th style="padding: ${headerPadding}; text-align: right; border-bottom: 1px solid #F2848230;">จำนวน</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${sortedExpenseEntries.length > 0 ? sortedExpenseEntries.map(([name, amount], i) => {
-                      const isRent = name === 'ค่าเช่าอาคาร'
-                      const isSalary = name === 'เงินเดือนพนักงาน'
-                      const bgColor = isRent ? '#F6BD6020' : isSalary ? '#84A59D15' : (i % 2 === 0 ? 'white' : '#fef7f7')
-                      return `
-                      <tr style="background: ${bgColor};">
-                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666;">${i + 1}</td>
-                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">
-                          <span style="margin-right: 4px;">${getCategoryEmoji(name)}</span>${name}
+                    ${/* 1. ค่าเช่าอาคาร */`
+                      <tr style="background: #F6BD6020;">
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666; text-align: center;">1</td>
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; overflow: hidden;">
+                          <div style="color: ${rentEntry[1] === 0 ? '#ccc' : '#D4A24C'};">
+                            ${getCategoryEmoji('ค่าเช่าอาคาร')} ค่าเช่าอาคาร
+                          </div>
                         </td>
-                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500;">${formatNumber(amount)}</td>
+                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${rentEntry[1] === 0 ? '#ccc' : '#D4A24C'};">${formatNumber(rentEntry[1])}</td>
                       </tr>
-                    `}).join('') : `
-                      <tr><td colspan="3" style="padding: 15px; text-align: center; color: #999;">ไม่มีรายการ</td></tr>
                     `}
+                    ${/* 2. เงินเดือนพนักงาน */`
+                      <tr style="background: #84A59D15;">
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666; text-align: center;">2</td>
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; overflow: hidden;">
+                          <div style="color: ${salaryEntry[1] === 0 ? '#ccc' : '#84A59D'};">
+                            ${getCategoryEmoji('เงินเดือนพนักงาน')} เงินเดือนพนักงาน
+                          </div>
+                        </td>
+                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${salaryEntry[1] === 0 ? '#ccc' : '#84A59D'};">${formatNumber(salaryEntry[1])}</td>
+                      </tr>
+                    `}
+                    ${/* 3. ค่าใช้จ่ายส่วนกลาง */
+                    pdfGlobalExpenseConfig.map((expense, index) => {
+                      const baseIndex = 2 + index + 1
+                      const shortName = expense.shortName || expense.name
+                      return `
+                      <tr style="background: ${expense.bgColor};">
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666; text-align: center;">${baseIndex}</td>
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; overflow: hidden;">
+                          <div style="color: ${expense.value === 0 ? '#ccc' : expense.textColor};">
+                            ${getCategoryEmoji(expense.name)} ${shortName}
+                          </div>
+                        </td>
+                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; color: ${expense.value === 0 ? '#ccc' : expense.textColor};">${formatNumber(expense.value)}</td>
+                      </tr>
+                    `}).join('')}
+                    ${/* 4. รายจ่ายอื่นๆ */
+                    otherExpenseEntries.map(([name, amount], index) => {
+                      const baseIndex = 2 + pdfGlobalExpenseConfig.length + index + 1
+                      return `
+                      <tr style="background: ${index % 2 === 0 ? 'white' : '#fef7f7'};">
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; color: #666; text-align: center;">${baseIndex}</td>
+                        <td style="padding: ${cellPadding}; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis;">
+                          ${getCategoryEmoji(name)} ${name}
+                        </td>
+                        <td style="padding: ${cellPadding}; text-align: right; border-bottom: 1px solid #eee; font-weight: 500; ${amount === 0 ? 'color: #ccc;' : ''}">${formatNumber(amount)}</td>
+                      </tr>
+                    `}).join('')}
                   </tbody>
                   <tfoot>
                     <tr style="background: linear-gradient(to right, #F2848230, #F2848250);">
-                      <td colspan="2" style="padding: 10px; font-weight: bold; color: #d96f6d; font-size: 12px;">รวมค่าใช้จ่าย</td>
-                      <td style="padding: 10px; text-align: right; font-weight: bold; color: #d96f6d; font-size: 13px;">${formatNumber(data.totalExpense)}</td>
+                      <td colspan="2" style="padding: ${cellPadding}; font-weight: bold; color: #d96f6d;">รวมค่าใช้จ่าย</td>
+                      <td style="padding: ${cellPadding}; text-align: right; font-weight: bold; color: #d96f6d;">${formatNumber(data.totalExpense)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -556,7 +1142,7 @@ export default function ReportsPage() {
     return createPDFPage1(data, buildingName, pageNumber, totalPages)
   }
 
-  // Export to PDF - Single Building (ใช้ html2canvas รองรับภาษาไทย) - แยก 3 หน้า
+  // Export to PDF - Single Building (ใช้ html2canvas รองรับภาษาไทย) - Modern Design 2 หน้า
   const handleExportPDF = async (data: Summary, buildingName: string) => {
     setExportingPDF(true)
     try {
@@ -564,7 +1150,22 @@ export default function ReportsPage() {
       const pdfWidth = 210
       const margin = 10
       const contentWidth = pdfWidth - (margin * 2)
-      const totalPages = 3
+      const totalPages = 2
+
+      // รายการค่าใช้จ่ายส่วนกลาง
+      const globalExpenseNames = [
+        'ค่าดูแล MAX', 'ค่าดูแลจราจร', 'ค่าขนส่งสินค้า',
+        'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
+        'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
+        'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
+        'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+        'ค่าเช่าเครื่องกรองน้ำ Coway',
+        'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+        'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+        'ค่าน้ำมันรถมอเตอร์ไซค์',
+        'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+        'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+      ]
 
       // สร้าง temporary container
       const tempContainer = document.createElement('div')
@@ -595,14 +1196,11 @@ export default function ReportsPage() {
         pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight)
       }
 
-      // หน้า 1: ตารางรายรับ/รายจ่าย
-      await addPageFromHTML(createPDFPage1(data, buildingName, 1, totalPages), true)
+      // หน้า 1: Summary Cards + กราฟ (Modern Design)
+      await addPageFromHTML(createModernSummaryPage(data, buildingName, 1, totalPages), true)
 
-      // หน้า 2: สรุปผลประกอบการ
-      await addPageFromHTML(createPDFPage2(data, buildingName, 2, totalPages), false)
-
-      // หน้า 3: กราฟแท่ง
-      await addPageFromHTML(createPDFPage3(data, buildingName, 3, totalPages), false)
+      // หน้า 2: ตารางรายรับ/รายจ่าย (Modern Design)
+      await addPageFromHTML(createModernTablePage(data, buildingName, 2, totalPages, globalExpenseNames), false)
 
       // ลบ temp container
       document.body.removeChild(tempContainer)
@@ -809,7 +1407,7 @@ export default function ReportsPage() {
     `
   }
 
-  // Export All Buildings to PDF (ใช้ html2canvas รองรับภาษาไทย) - ปรับปรุงการแยกหน้า (3 หน้าต่ออาคาร)
+  // Export All Buildings to PDF (ใช้ html2canvas รองรับภาษาไทย) - Modern Design 2 หน้าต่ออาคาร
   const handleExportAllPDF = async () => {
     if (!allSummaryData) return
 
@@ -820,8 +1418,23 @@ export default function ReportsPage() {
       const margin = 10
       const contentWidth = pdfWidth - (margin * 2)
 
-      // คำนวณจำนวนหน้าทั้งหมด (อาคาร × 3 + หน้าสรุป)
-      const totalPages = (allSummaryData.buildings.length * 3) + 1
+      // รายการค่าใช้จ่ายส่วนกลาง
+      const globalExpenseNames = [
+        'ค่าดูแล MAX', 'ค่าดูแลจราจร', 'ค่าขนส่งสินค้า',
+        'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
+        'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
+        'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
+        'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+        'ค่าเช่าเครื่องกรองน้ำ Coway',
+        'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+        'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+        'ค่าน้ำมันรถมอเตอร์ไซค์',
+        'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+        'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+      ]
+
+      // คำนวณจำนวนหน้าทั้งหมด (อาคาร × 2 + หน้าสรุป)
+      const totalPages = (allSummaryData.buildings.length * 2) + 1
 
       // สร้าง temp container สำหรับ render
       const tempContainer = document.createElement('div')
@@ -853,21 +1466,17 @@ export default function ReportsPage() {
         pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight)
       }
 
-      // สร้าง PDF สำหรับแต่ละอาคาร (3 หน้าต่ออาคาร)
+      // สร้าง PDF สำหรับแต่ละอาคาร (2 หน้าต่ออาคาร - Modern Design)
       for (let i = 0; i < allSummaryData.buildings.length; i++) {
         const building = allSummaryData.buildings[i]
-        const page1Number = (i * 3) + 1
-        const page2Number = (i * 3) + 2
-        const page3Number = (i * 3) + 3
+        const page1Number = (i * 2) + 1
+        const page2Number = (i * 2) + 2
 
-        // หน้า 1: ตารางรายรับ/รายจ่าย
-        await addPageFromHTML(createPDFPage1(building, building.buildingName, page1Number, totalPages), i === 0)
+        // หน้า 1: Summary Cards + กราฟ (Modern Design)
+        await addPageFromHTML(createModernSummaryPage(building, building.buildingName, page1Number, totalPages), i === 0)
 
-        // หน้า 2: สรุปผลประกอบการ
-        await addPageFromHTML(createPDFPage2(building, building.buildingName, page2Number, totalPages), false)
-
-        // หน้า 3: กราฟแท่ง
-        await addPageFromHTML(createPDFPage3(building, building.buildingName, page3Number, totalPages), false)
+        // หน้า 2: ตารางรายรับ/รายจ่าย (Modern Design)
+        await addPageFromHTML(createModernTablePage(building, building.buildingName, page2Number, totalPages, globalExpenseNames), false)
       }
 
       // สรุปรวมทุกอาคาร (หน้าสุดท้าย)
@@ -980,9 +1589,182 @@ export default function ReportsPage() {
   }
 
   // Render Income/Expense Detail Tables
+  // รายการค่าใช้จ่ายส่วนกลาง - ไม่รวมใน regularExpenseEntries
+  // รวมทั้งชื่อที่แสดงในหน้าจัดการค่าใช้จ่ายส่วนกลาง และชื่อใน categories database
+  const globalExpenseNamesAll = [
+    // ชื่อที่แสดงในหน้าดาวน์โหลด (จาก GlobalSettings)
+    'ค่าดูแล MAX',
+    'ค่าดูแลจราจร',
+    'ค่าขนส่งสินค้า',
+    'ค่า Amenity',
+    'ค่าน้ำเปล่า',
+    'ค่าขนมคุ้กกี้',
+    'ค่ากาแฟ',
+    'ค่าน้ำมัน',
+    'ค่าเช่าที่จอดรถ',
+    'ค่าซ่อมบำรุงรถ',
+    'ค่าเดินทางแม่บ้าน',
+    'ค่าอุปกรณ์ทำความสะอาด',
+    'ค่าน้ำยาสำหรับซักผ้า',
+    'ค่าน้ำยาซักผ้า',
+    // ค่าใช้จ่ายแยกอาคาร (จาก Settings)
+    'ค่าเช่าเครื่องกรองน้ำ Coway',
+    // ชื่อใน categories database ที่ซ้ำซ้อน
+    'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+    'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+    'ค่าน้ำมันรถมอเตอร์ไซค์',
+    'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+    'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+  ]
+
+  // ข้อมูลค่าใช้จ่ายส่วนกลางพร้อมสีและรายละเอียด
+  const getGlobalExpenseConfig = (cowayWaterFilterExpense: number = 0) => {
+    if (!globalSettings) return []
+
+    // เช็คว่าอาคารที่เลือกเป็น 3 อาคาร (NANA, CT, YW) หรือไม่
+    const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+    const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
+    const isEligibleForCareExpense = selectedBuilding === 'all' || eligibleBuildingsForCare.includes(selectedBuildingCode)
+
+    return [
+      // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร
+      ...(isEligibleForCareExpense && globalSettings.maxCareExpensePerBuilding > 0 ? [{
+        name: 'ค่าดูแล MAX',
+        value: globalSettings.maxCareExpensePerBuilding,
+        totalValue: globalSettings.maxCareExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgClass: 'bg-[#9B59B6]/10',
+        textClass: 'text-[#9B59B6]',
+      }] : []),
+      ...(isEligibleForCareExpense && globalSettings.trafficCareExpensePerBuilding > 0 ? [{
+        name: 'ค่าดูแลจราจร',
+        value: globalSettings.trafficCareExpensePerBuilding,
+        totalValue: globalSettings.trafficCareExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgClass: 'bg-[#E74C3C]/10',
+        textClass: 'text-[#E74C3C]',
+      }] : []),
+      ...(isEligibleForCareExpense && globalSettings.shippingExpensePerBuilding > 0 ? [{
+        name: 'ค่าขนส่งสินค้า',
+        value: globalSettings.shippingExpensePerBuilding,
+        totalValue: globalSettings.shippingExpense,
+        divisor: globalSettings.careExpenseDivisor,
+        bgClass: 'bg-orange-100/50',
+        textClass: 'text-orange-600',
+      }] : []),
+      // ค่าใช้จ่ายส่วนกลาง - ทุกอาคาร (แสดงเสมอ)
+      {
+        name: 'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
+        value: globalSettings.amenityExpensePerBuilding,
+        totalValue: globalSettings.amenityExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-pink-100/50',
+        textClass: 'text-pink-500',
+      },
+      // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity)
+      ...(cowayWaterFilterExpense > 0 ? [{
+        name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
+        value: cowayWaterFilterExpense,
+        totalValue: cowayWaterFilterExpense,
+        divisor: 1,
+        bgClass: 'bg-cyan-100/50',
+        textClass: 'text-cyan-600',
+        isPerBuilding: true, // flag บอกว่าเป็นค่าแยกตามอาคาร
+      }] : []),
+      {
+        name: 'ค่าน้ำเปล่า',
+        value: globalSettings.waterBottleExpensePerBuilding,
+        totalValue: globalSettings.waterBottleExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-cyan-100/50',
+        textClass: 'text-cyan-500',
+      },
+      {
+        name: 'ค่าขนมคุ้กกี้',
+        value: globalSettings.cookieExpensePerBuilding,
+        totalValue: globalSettings.cookieExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-amber-100/50',
+        textClass: 'text-amber-500',
+      },
+      {
+        name: 'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
+        value: globalSettings.coffeeExpensePerBuilding,
+        totalValue: globalSettings.coffeeExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-amber-200/50',
+        textClass: 'text-amber-700',
+      },
+      {
+        name: 'ค่าน้ำมันรถมอเตอร์ไซค์',
+        value: globalSettings.fuelExpensePerBuilding,
+        totalValue: globalSettings.fuelExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-gray-100/50',
+        textClass: 'text-gray-600',
+      },
+      {
+        name: 'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
+        value: globalSettings.parkingExpensePerBuilding,
+        totalValue: globalSettings.parkingExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-slate-100/50',
+        textClass: 'text-slate-600',
+      },
+      {
+        name: 'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+        value: globalSettings.motorcycleMaintenanceExpensePerBuilding,
+        totalValue: globalSettings.motorcycleMaintenanceExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-rose-100/50',
+        textClass: 'text-rose-600',
+      },
+      {
+        name: 'ค่าเดินทางแม่บ้าน',
+        value: globalSettings.maidTravelExpensePerBuilding,
+        totalValue: globalSettings.maidTravelExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-violet-100/50',
+        textClass: 'text-violet-600',
+      },
+      {
+        name: 'ค่าอุปกรณ์ทำความสะอาด',
+        value: globalSettings.cleaningSupplyExpensePerBuilding,
+        totalValue: globalSettings.cleaningSupplyExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-teal-100/50',
+        textClass: 'text-teal-600',
+      },
+      {
+        name: 'ค่าน้ำยาสำหรับซักผ้า',
+        value: globalSettings.laundryDetergentExpensePerBuilding,
+        totalValue: globalSettings.laundryDetergentExpense,
+        divisor: globalSettings.buildingCount,
+        bgClass: 'bg-sky-100/50',
+        textClass: 'text-sky-600',
+      },
+    ]
+  }
+
   const renderDetailTables = (data: Summary) => {
-    const incomeEntries = Object.entries(data.incomeByChannel || {}).filter(([, v]) => v > 0)
-    const expenseEntries = Object.entries(data.expenseByCategory || {}).filter(([, v]) => v > 0)
+    // ดึง categories ทั้งหมดจาก state แล้วจับคู่กับข้อมูลจริง
+    const incomeCategories = categories.filter(c => c.type === 'INCOME')
+    const expenseCategories = categories.filter(c => c.type === 'EXPENSE')
+
+    // สร้าง entries จากทุก category (แสดงทุกรายการแม้ค่าเป็น 0)
+    const incomeEntries: [string, number][] = incomeCategories.map(cat => [
+      cat.name,
+      data.incomeByChannel?.[cat.name] || 0
+    ])
+
+    // รายจ่ายจาก categories (ไม่รวมค่าใช้จ่ายส่วนกลางที่ดึงจาก GlobalSettings)
+    const expenseEntries: [string, number][] = expenseCategories.map(cat => [
+      cat.name,
+      data.expenseByCategory?.[cat.name] || 0
+    ])
+
+    // ค่าใช้จ่ายส่วนกลางพร้อมข้อมูลครบ (รวม ค่าเช่าเครื่องกรองน้ำ Coway)
+    const globalExpenseConfig = getGlobalExpenseConfig(data.cowayWaterFilterExpense)
 
     // แยกรายได้เป็น 2 กลุ่ม: ค่าเช่า และ รายได้อื่นๆ
     const rentalIncomeEntries = incomeEntries.filter(([name]) => name.includes('ค่าเช่า'))
@@ -990,130 +1772,163 @@ export default function ReportsPage() {
     const totalRentalIncome = rentalIncomeEntries.reduce((sum, [, v]) => sum + v, 0)
     const totalOtherIncome = otherIncomeEntries.reduce((sum, [, v]) => sum + v, 0)
 
-    // แยกรายจ่าย: ค่าเช่าอาคาร, เงินเดือนพนักงาน, และอื่นๆ
-    const rentEntry = expenseEntries.find(([name]) => name === 'ค่าเช่าอาคาร')
-    const salaryEntry = expenseEntries.find(([name]) => name === 'เงินเดือนพนักงาน')
-    const otherExpenseEntries = expenseEntries.filter(([name]) => name !== 'ค่าเช่าอาคาร' && name !== 'เงินเดือนพนักงาน')
-
-    // จัดเรียงรายจ่ายใหม่
-    const sortedExpenseEntries: [string, number][] = []
-    if (rentEntry) sortedExpenseEntries.push(rentEntry)
-    if (salaryEntry) sortedExpenseEntries.push(salaryEntry)
-    sortedExpenseEntries.push(...otherExpenseEntries)
+    // แยกรายจ่าย: ค่าเช่าอาคาร, เงินเดือนพนักงาน, และอื่นๆ (จาก categories)
+    // ไม่รวมรายการที่ซ้ำกับค่าใช้จ่ายส่วนกลาง (globalExpenseNamesAll)
+    const rentEntry: [string, number] = ['ค่าเช่าอาคาร', data.expenseByCategory?.['ค่าเช่าอาคาร'] || 0]
+    const salaryEntry: [string, number] = ['เงินเดือนพนักงาน', data.expenseByCategory?.['เงินเดือนพนักงาน'] || 0]
+    const otherExpenseEntries = expenseEntries.filter(([name]) =>
+      name !== 'ค่าเช่าอาคาร' &&
+      name !== 'เงินเดือนพนักงาน' &&
+      !globalExpenseNamesAll.includes(name)
+    )
 
     return (
       <div className="grid gap-4 md:grid-cols-2 mb-4">
         {/* รายรับ */}
-        {incomeEntries.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-[#84A59D]/30">
-            <div className="bg-[#84A59D] px-4 py-2">
-              <h4 className="font-bold text-white">รายรับ</h4>
+        <div className="overflow-hidden rounded-lg border border-[#84A59D]/30">
+          <div className="bg-[#84A59D] px-4 py-2">
+            <h4 className="font-bold text-white">รายรับ</h4>
+          </div>
+
+          {/* กลุ่ม 1: รายได้ค่าเช่า */}
+          <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</span>
+              <span className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalRentalIncome)}</span>
             </div>
+          </div>
+          <table className="w-full">
+            <tbody>
+              {rentalIncomeEntries.map(([name, value], index) => (
+                <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
+                  <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
+                      <span>{name}</span>
+                    </div>
+                  </td>
+                  <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-            {/* กลุ่ม 1: รายได้ค่าเช่า */}
-            {rentalIncomeEntries.length > 0 && (
-              <>
-                <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</span>
-                    <span className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalRentalIncome)}</span>
-                  </div>
-                </div>
-                <table className="w-full">
-                  <tbody>
-                    {rentalIncomeEntries.map(([name, value], index) => (
-                      <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                        <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                            <span>{name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-right text-sm">{formatNumber(value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-
-            {/* กลุ่ม 2: รายได้อื่นๆ */}
-            {otherIncomeEntries.length > 0 && (
-              <>
-                <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-[#D4A24C]">รายได้อื่นๆ</span>
-                    <span className="text-sm font-bold text-[#D4A24C]">{formatNumber(totalOtherIncome)}</span>
-                  </div>
-                </div>
-                <table className="w-full">
-                  <tbody>
-                    {otherIncomeEntries.map(([name, value], index) => (
-                      <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
-                        <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
-                        <td className="px-4 py-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                            <span>{name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-right text-sm">{formatNumber(value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
+          {/* กลุ่ม 2: รายได้อื่นๆ */}
+          <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-[#D4A24C]">รายได้อื่นๆ</span>
+              <span className="text-sm font-bold text-[#D4A24C]">{formatNumber(totalOtherIncome)}</span>
+            </div>
+          </div>
+          <table className="w-full">
+            <tbody>
+              {otherIncomeEntries.map(([name, value], index) => (
+                <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
+                  <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
+                  <td className="px-4 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
+                      <span>{name}</span>
+                    </div>
+                  </td>
+                  <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
             {/* Footer รวมรายได้ */}
-            <div className="bg-[#84A59D]/20 px-4 py-2">
-              <div className="flex justify-between">
-                <span className="font-bold text-[#84A59D]">รวมรายได้</span>
-                <span className="font-bold text-[#84A59D]">{formatNumber(data.totalIncome)}</span>
-              </div>
+          <div className="bg-[#84A59D]/20 px-4 py-2">
+            <div className="flex justify-between">
+              <span className="font-bold text-[#84A59D]">รวมรายได้</span>
+              <span className="font-bold text-[#84A59D]">{formatNumber(data.totalIncome)}</span>
             </div>
           </div>
-        )}
+        </div>
 
         {/* รายจ่าย */}
-        {sortedExpenseEntries.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-[#F28482]/30">
-            <div className="bg-[#F28482] px-4 py-2">
-              <h4 className="font-bold text-white">รายจ่าย</h4>
-            </div>
-            <table className="w-full">
-              <tbody>
-                {sortedExpenseEntries.map(([name, value], index) => {
-                  const isRent = name === 'ค่าเช่าอาคาร'
-                  const isSalary = name === 'เงินเดือนพนักงาน'
-                  const bgClass = isRent ? 'bg-[#F6BD60]/10' : isSalary ? 'bg-[#84A59D]/10' : (index % 2 === 0 ? 'bg-white' : 'bg-[#F28482]/5')
-                  const textClass = isRent ? 'text-[#D4A24C] font-medium' : isSalary ? 'text-[#84A59D] font-medium' : ''
-
-                  return (
-                    <tr key={name} className={bgClass}>
-                      <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
-                      <td className="px-4 py-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                          <span className={textClass}>{name}</span>
+        <div className="overflow-hidden rounded-lg border border-[#F28482]/30">
+          <div className="bg-[#F28482] px-4 py-2">
+            <h4 className="font-bold text-white">รายจ่าย</h4>
+          </div>
+          <table className="w-full">
+            <tbody>
+              {/* 1. ค่าเช่าอาคาร */}
+              <tr className="bg-[#F6BD60]/10">
+                <td className="px-4 py-2 text-sm w-[40px]">1</td>
+                <td className="px-4 py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon name="ค่าเช่าอาคาร" className="h-4 w-4 flex-shrink-0" />
+                    <div>
+                      <span className="text-[#D4A24C] font-medium">ค่าเช่าอาคาร</span>
+                      <p className="text-xs text-slate-400">(ดึงจากหน้าตั้งค่าอาคาร)</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`px-4 py-2 text-right text-sm font-medium ${rentEntry[1] === 0 ? 'text-slate-300' : 'text-[#D4A24C]'}`}>{formatNumber(rentEntry[1])}</td>
+              </tr>
+              {/* 2. เงินเดือนพนักงาน */}
+              <tr className="bg-[#84A59D]/10">
+                <td className="px-4 py-2 text-sm w-[40px]">2</td>
+                <td className="px-4 py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon name="เงินเดือนพนักงาน" className="h-4 w-4 flex-shrink-0" />
+                    <div>
+                      <span className="text-[#84A59D] font-medium">เงินเดือนพนักงาน</span>
+                      <p className="text-xs text-[#84A59D]">(คำนวณจากหน้าเงินเดือนพนักงาน)</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={`px-4 py-2 text-right text-sm font-medium ${salaryEntry[1] === 0 ? 'text-slate-300' : 'text-[#84A59D]'}`}>{formatNumber(salaryEntry[1])}</td>
+              </tr>
+              {/* 3. ค่าใช้จ่ายส่วนกลาง */}
+              {globalExpenseConfig.map((expense, index) => {
+                const baseIndex = 2 + index + 1
+                return (
+                  <tr key={expense.name} className={expense.bgClass}>
+                    <td className="px-4 py-2 text-sm w-[40px]">{baseIndex}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon name={expense.name} className="h-4 w-4 flex-shrink-0" />
+                        <div>
+                          <span className={`font-medium ${expense.value === 0 ? 'text-slate-400' : expense.textClass}`}>{expense.name}</span>
+                          <p className={`text-xs ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>
+                            (ดึงจากหน้าตั้งค่า: {formatNumber(expense.totalValue)} / {expense.divisor} อาคาร)
+                          </p>
                         </div>
-                      </td>
-                      <td className={`px-4 py-2 text-right text-sm ${textClass}`}>{formatNumber(value)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {/* Footer รวมค่าใช้จ่าย */}
-            <div className="bg-[#F28482]/20 px-4 py-2">
-              <div className="flex justify-between">
-                <span className="font-bold text-[#F28482]">รวมค่าใช้จ่าย</span>
-                <span className="font-bold text-[#F28482]">{formatNumber(data.totalExpense)}</span>
-              </div>
+                      </div>
+                    </td>
+                    <td className={`px-4 py-2 text-right text-sm font-medium ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>{formatNumber(expense.value)}</td>
+                  </tr>
+                )
+              })}
+              {/* 4. รายจ่ายอื่นๆ */}
+              {otherExpenseEntries.map(([name, value], index) => {
+                const baseIndex = 2 + globalExpenseConfig.length + index + 1
+                return (
+                  <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F28482]/5'}>
+                    <td className="px-4 py-2 text-sm w-[40px]">{baseIndex}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
+                        <span>{name}</span>
+                      </div>
+                    </td>
+                    <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {/* Footer รวมค่าใช้จ่าย */}
+          <div className="bg-[#F28482]/20 px-4 py-2">
+            <div className="flex justify-between">
+              <span className="font-bold text-[#F28482]">รวมค่าใช้จ่าย</span>
+              <span className="font-bold text-[#F28482]">{formatNumber(data.totalExpense)}</span>
             </div>
           </div>
-        )}
+        </div>
       </div>
     )
   }

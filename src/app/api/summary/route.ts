@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
       parkingExpense: summaries.reduce((sum, s) => sum + s.parkingExpense, 0),
       motorcycleMaintenanceExpense: summaries.reduce((sum, s) => sum + s.motorcycleMaintenanceExpense, 0),
       maidTravelExpense: summaries.reduce((sum, s) => sum + s.maidTravelExpense, 0),
+      cleaningSupplyExpense: summaries.reduce((sum, s) => sum + s.cleaningSupplyExpense, 0),
+      laundryDetergentExpense: summaries.reduce((sum, s) => sum + s.laundryDetergentExpense, 0),
+      cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
       incomeByChannel: {},
@@ -164,12 +167,22 @@ async function calculateBuildingSummary(
   const maidTravelExpensePerBuilding = globalSettings && buildingCount > 0
     ? Number(globalSettings.maidTravelExpense) / buildingCount
     : 0
+  const cleaningSupplyExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.cleaningSupplyExpense) / buildingCount
+    : 0
+  const laundryDetergentExpensePerBuilding = globalSettings && buildingCount > 0
+    ? Number(globalSettings.laundryDetergentExpense) / buildingCount
+    : 0
+
+  // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก settings (แยกแต่ละอาคาร)
+  const cowayWaterFilterExpense = settings ? Number(settings.cowayWaterFilterExpense) : 0
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
-    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding
+    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
+    cleaningSupplyExpensePerBuilding + laundryDetergentExpensePerBuilding
 
   // คำนวณรายรับ
   const incomeTransactions = transactions.filter(
@@ -196,8 +209,8 @@ async function calculateBuildingSummary(
 
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
-  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + salaryPerBuilding + totalGlobalExpensePerBuilding
+  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -216,12 +229,16 @@ async function calculateBuildingSummary(
     expenseByCategory['ค่าเช่าอาคาร'] = monthlyRentFromSettings
   }
 
+  // เพิ่มค่าเช่าเครื่องกรองน้ำ Coway เข้าไปในรายจ่าย (แสดงเสมอ)
+  expenseByCategory['ค่าเช่าเครื่องกรองน้ำ Coway'] = cowayWaterFilterExpense
+
   // เพิ่มเงินเดือนพนักงานเข้าไปในรายจ่าย (ถ้ามี)
   if (salaryPerBuilding > 0) {
     expenseByCategory['เงินเดือนพนักงาน'] = salaryPerBuilding
   }
 
-  // เพิ่มค่าใช้จ่ายส่วนกลางทั้งหมดเข้าไปในรายจ่าย (ถ้ามี)
+  // เพิ่มค่าใช้จ่ายส่วนกลางทั้งหมดเข้าไปในรายจ่าย (แสดงเสมอ)
+  // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - หาร 3 อาคาร (NANA, CT, YW)
   if (maxCareExpensePerBuilding > 0) {
     expenseByCategory['ค่าดูแล MAX'] = maxCareExpensePerBuilding
   }
@@ -231,30 +248,17 @@ async function calculateBuildingSummary(
   if (shippingExpensePerBuilding > 0) {
     expenseByCategory['ค่าขนส่งสินค้า'] = shippingExpensePerBuilding
   }
-  if (amenityExpensePerBuilding > 0) {
-    expenseByCategory['ค่า Amenity'] = amenityExpensePerBuilding
-  }
-  if (waterBottleExpensePerBuilding > 0) {
-    expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
-  }
-  if (cookieExpensePerBuilding > 0) {
-    expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
-  }
-  if (coffeeExpensePerBuilding > 0) {
-    expenseByCategory['ค่ากาแฟ'] = coffeeExpensePerBuilding
-  }
-  if (fuelExpensePerBuilding > 0) {
-    expenseByCategory['ค่าน้ำมัน'] = fuelExpensePerBuilding
-  }
-  if (parkingExpensePerBuilding > 0) {
-    expenseByCategory['ค่าเช่าที่จอดรถ'] = parkingExpensePerBuilding
-  }
-  if (motorcycleMaintenanceExpensePerBuilding > 0) {
-    expenseByCategory['ค่าซ่อมบำรุงรถ'] = motorcycleMaintenanceExpensePerBuilding
-  }
-  if (maidTravelExpensePerBuilding > 0) {
-    expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
-  }
+  // ค่าใช้จ่ายส่วนกลาง 8 รายการ - หารทุกอาคาร (แสดงเสมอแม้เป็น 0)
+  expenseByCategory['ค่า Amenity'] = amenityExpensePerBuilding
+  expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
+  expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
+  expenseByCategory['ค่ากาแฟ'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่าน้ำมัน'] = fuelExpensePerBuilding
+  expenseByCategory['ค่าเช่าที่จอดรถ'] = parkingExpensePerBuilding
+  expenseByCategory['ค่าซ่อมบำรุงรถ'] = motorcycleMaintenanceExpensePerBuilding
+  expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
+  expenseByCategory['ค่าอุปกรณ์ทำความสะอาด'] = cleaningSupplyExpensePerBuilding
+  expenseByCategory['ค่าน้ำยาซักผ้า'] = laundryDetergentExpensePerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
@@ -305,6 +309,10 @@ async function calculateBuildingSummary(
     parkingExpense: parkingExpensePerBuilding,
     motorcycleMaintenanceExpense: motorcycleMaintenanceExpensePerBuilding,
     maidTravelExpense: maidTravelExpensePerBuilding,
+    cleaningSupplyExpense: cleaningSupplyExpensePerBuilding,
+    laundryDetergentExpense: laundryDetergentExpensePerBuilding,
+    // ค่าเช่าเครื่องกรองน้ำ Coway (แยกแต่ละอาคาร)
+    cowayWaterFilterExpense,
     netProfit,
     amountToBePaid,
     incomeByChannel,

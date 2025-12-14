@@ -23,7 +23,14 @@ import {
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 import { CategoryIcon } from '@/lib/category-icons'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Plus, Minus } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { getBuildingColor } from '@/lib/building-colors'
 
 interface Building {
@@ -58,6 +65,7 @@ interface SalarySummary {
 
 interface BuildingSettings {
   monthlyRent: number
+  cowayWaterFilterExpense: number
 }
 
 interface GlobalSettings {
@@ -72,6 +80,8 @@ interface GlobalSettings {
   parkingExpense: number
   motorcycleMaintenanceExpense: number
   maidTravelExpense: number
+  cleaningSupplyExpense: number
+  laundryDetergentExpense: number
   buildingCount: number
   careExpenseDivisor: number // จำนวนอาคารที่ร่วมจ่ายค่าดูแล MAX, จราจร, ขนส่งสินค้า (3 อาคาร)
   maxCareExpensePerBuilding: number
@@ -85,6 +95,8 @@ interface GlobalSettings {
   parkingExpensePerBuilding: number
   motorcycleMaintenanceExpensePerBuilding: number
   maidTravelExpensePerBuilding: number
+  cleaningSupplyExpensePerBuilding: number
+  laundryDetergentExpensePerBuilding: number
 }
 
 export default function TransactionsPage() {
@@ -103,6 +115,13 @@ export default function TransactionsPage() {
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
+
+  // State สำหรับ Dialog เพิ่ม/ลดยอด
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
+  const [adjustType, setAdjustType] = useState<'add' | 'subtract'>('add')
+  const [adjustCategoryId, setAdjustCategoryId] = useState<number | null>(null)
+  const [adjustCategoryName, setAdjustCategoryName] = useState('')
+  const [adjustAmount, setAdjustAmount] = useState<string>('')
 
   const years = generateYears()
 
@@ -158,7 +177,8 @@ export default function TransactionsPage() {
       // เก็บ settings ของอาคาร
       if (settings) {
         setBuildingSettings({
-          monthlyRent: Number(settings.monthlyRent) || 0
+          monthlyRent: Number(settings.monthlyRent) || 0,
+          cowayWaterFilterExpense: Number(settings.cowayWaterFilterExpense) || 0,
         })
       } else {
         setBuildingSettings(null)
@@ -194,6 +214,8 @@ export default function TransactionsPage() {
     'ค่า Amenity',
     'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
     'Amenity',
+    'ค่าเช่าเครื่องกรองน้ำ Coway',
+    'ค่าเช่าเครื่องกรองน้ำ',
     'ค่าน้ำเปล่า',
     'ค่าขนมคุ้กกี้',
     'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
@@ -205,6 +227,9 @@ export default function TransactionsPage() {
     'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
     'ค่าซ่อมบำรุงรถ',
     'ค่าเดินทางแม่บ้าน',
+    'ค่าอุปกรณ์ทำความสะอาด',
+    'ค่าน้ำยาซักผ้า',
+    'ค่าน้ำยาสำหรับซักผ้า',
   ]
 
   // แยกรายจ่ายเป็น 2 กลุ่ม: เงินเดือนพนักงาน และ รายจ่ายอื่นๆ (ไม่รวมรายการที่จัดการใน GlobalSettings แล้ว)
@@ -240,6 +265,9 @@ export default function TransactionsPage() {
   // รวมค่าเช่าอาคารจาก settings ด้วย
   const monthlyRent = buildingSettings?.monthlyRent || 0
 
+  // ค่าเช่าเครื่องกรองน้ำ Coway จาก settings
+  const cowayWaterFilterExpense = buildingSettings?.cowayWaterFilterExpense || 0
+
   // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
   const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
   const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
@@ -258,20 +286,23 @@ export default function TransactionsPage() {
   const parkingExpensePerBuilding = globalSettings?.parkingExpensePerBuilding || 0
   const motorcycleMaintenanceExpensePerBuilding = globalSettings?.motorcycleMaintenanceExpensePerBuilding || 0
   const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpensePerBuilding || 0
+  const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpensePerBuilding || 0
+  const laundryDetergentExpensePerBuilding = globalSettings?.laundryDetergentExpensePerBuilding || 0
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
-    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding
+    motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
+    cleaningSupplyExpensePerBuilding + laundryDetergentExpensePerBuilding
 
-  // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่าใช้จ่ายส่วนกลาง
+  // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่า Coway + ค่าใช้จ่ายส่วนกลาง
   const salaryExpense = salarySummary?.salaryPerBuilding || 0
   const otherExpense = otherExpenseCategories.reduce(
     (sum, c) => sum + (transactionData[c.id] || 0),
     0
   )
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + totalGlobalExpense
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense
 
   // อัปเดตค่าในตาราง
   const handleAmountChange = (categoryId: number, value: string) => {
@@ -280,6 +311,37 @@ export default function TransactionsPage() {
       ...prev,
       [categoryId]: numValue,
     }))
+  }
+
+  // เปิด Dialog เพิ่ม/ลดยอด
+  const openAdjustDialog = (type: 'add' | 'subtract', categoryId: number, categoryName: string) => {
+    setAdjustType(type)
+    setAdjustCategoryId(categoryId)
+    setAdjustCategoryName(categoryName)
+    setAdjustAmount('')
+    setAdjustDialogOpen(true)
+  }
+
+  // คำนวณยอดใหม่ (preview)
+  const getNewAmount = () => {
+    if (adjustCategoryId === null) return 0
+    const currentValue = transactionData[adjustCategoryId] || 0
+    const adjustValue = parseFloat(adjustAmount) || 0
+    const newValue = adjustType === 'add'
+      ? currentValue + adjustValue
+      : currentValue - adjustValue
+    return Math.max(0, newValue) // ไม่ให้ติดลบ
+  }
+
+  // ยืนยันการเพิ่ม/ลดยอด
+  const handleAdjustConfirm = () => {
+    if (adjustCategoryId === null) return
+    const newValue = getNewAmount()
+    setTransactionData((prev) => ({
+      ...prev,
+      [adjustCategoryId]: newValue,
+    }))
+    setAdjustDialogOpen(false)
   }
 
   // บันทึกข้อมูล
@@ -452,7 +514,7 @@ export default function TransactionsPage() {
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
                     <TableHead>รายการ</TableHead>
-                    <TableHead className="w-[150px] text-right">จำนวนเงิน</TableHead>
+                    <TableHead className="w-[220px] text-right">จำนวนเงิน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -466,15 +528,34 @@ export default function TransactionsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          value={transactionData[category.id] || ''}
-                          onChange={(e) =>
-                            handleAmountChange(category.id, e.target.value)
-                          }
-                          className="text-right"
-                          placeholder="0.00"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={transactionData[category.id] || ''}
+                            onChange={(e) =>
+                              handleAmountChange(category.id, e.target.value)
+                            }
+                            className="text-right flex-1"
+                            style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
+                            placeholder="0.00"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                            onClick={() => openAdjustDialog('add', category.id, category.name)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                            onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -501,16 +582,35 @@ export default function TransactionsPage() {
                               <span className="text-sm">{category.name}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right w-[150px]">
-                            <Input
-                              type="number"
-                              value={transactionData[category.id] || ''}
-                              onChange={(e) =>
-                                handleAmountChange(category.id, e.target.value)
-                              }
-                              className="text-right"
-                              placeholder="0.00"
-                            />
+                          <TableCell className="text-right w-[220px]">
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                value={transactionData[category.id] || ''}
+                                onChange={(e) =>
+                                  handleAmountChange(category.id, e.target.value)
+                                }
+                                className="text-right flex-1"
+                                style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
+                                placeholder="0.00"
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                                onClick={() => openAdjustDialog('add', category.id, category.name)}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -536,7 +636,7 @@ export default function TransactionsPage() {
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
                     <TableHead>รายการ</TableHead>
-                    <TableHead className="w-[150px] text-right">จำนวนเงิน</TableHead>
+                    <TableHead className="w-[220px] text-right">จำนวนเงิน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -562,10 +662,10 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* อันดับ 2: เงินเดือนพนักงาน */}
+                  {/* เงินเดือนพนักงาน */}
                   {salaryCategory && salarySummary && (
                     <TableRow className="bg-[#84A59D]/10">
-                      <TableCell className="font-medium">{monthlyRent > 0 ? 2 : 1}</TableCell>
+                      <TableCell className="font-medium">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <CategoryIcon name={salaryCategory.name} className="h-4 w-4 flex-shrink-0" />
@@ -677,13 +777,35 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
+                      {/* ค่าเช่าเครื่องกรองน้ำ Coway - แสดงเสมอ (หลัง Amenity) */}
+                      <TableRow className="bg-cyan-100/50">
+                        <TableCell className="font-medium">
+                          {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                           (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                           (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <CategoryIcon name="กรองน้ำ" className="h-4 w-4 flex-shrink-0" />
+                            <div>
+                              <span className="text-sm font-medium text-cyan-600">ค่าเช่าเครื่องกรองน้ำ Coway</span>
+                              <p className="text-xs text-cyan-500">
+                                (ดึงจากหน้าตั้งค่าอาคาร)
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <p className="font-medium text-cyan-600">{formatNumber(cowayWaterFilterExpense)}</p>
+                        </TableCell>
+                      </TableRow>
                       {/* ค่าน้ำเปล่า - แสดงเสมอ */}
                       {globalSettings && (
-                        <TableRow className="bg-cyan-100/50">
+                        <TableRow className="bg-sky-100/50">
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -707,7 +829,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -731,7 +853,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -755,7 +877,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -779,7 +901,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -803,7 +925,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -827,7 +949,7 @@ export default function TransactionsPage() {
                           <TableCell className="font-medium">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -845,14 +967,62 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
+                      {/* ค่าอุปกรณ์ทำความสะอาด - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-teal-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-teal-600">ค่าอุปกรณ์ทำความสะอาด</span>
+                                <p className="text-xs text-teal-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.cleaningSupplyExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-teal-600">{formatNumber(cleaningSupplyExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* ค่าน้ำยาซักผ้า - แสดงเสมอ */}
+                      {globalSettings && (
+                        <TableRow className="bg-indigo-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ซักผ้า" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-indigo-600">ค่าน้ำยาซักผ้า</span>
+                                <p className="text-xs text-indigo-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.laundryDetergentExpense)} / {globalSettings.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-indigo-600">{formatNumber(laundryDetergentExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
-                    // baseIndex = ค่าเช่าอาคาร + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 8 รายการค่าใช้จ่ายส่วนกลาง
-                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                    // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 10 รายการค่าใช้จ่ายส่วนกลาง
+                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + 1 + (salaryCategory && salarySummary ? 1 : 0) +
                       (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 8 : 0)
+                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 10 : 0)
                     return (
                       <TableRow
                         key={category.id}
@@ -866,15 +1036,34 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={transactionData[category.id] || ''}
-                            onChange={(e) =>
-                              handleAmountChange(category.id, e.target.value)
-                            }
-                            className="text-right"
-                            placeholder="0.00"
-                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={transactionData[category.id] || ''}
+                              onChange={(e) =>
+                                handleAmountChange(category.id, e.target.value)
+                              }
+                              className="text-right flex-1"
+                              style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
+                              placeholder="0.00"
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', category.id, category.name)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )
@@ -886,6 +1075,54 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      {/* Dialog เพิ่ม/ลดยอด */}
+      <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className={adjustType === 'add' ? 'text-green-600' : 'text-red-600'}>
+              {adjustType === 'add' ? '+ เพิ่มยอด' : '- ลดยอด'}: {adjustCategoryName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">ยอดปัจจุบัน:</span>
+              <span className="font-medium">
+                {formatNumber(adjustCategoryId !== null ? transactionData[adjustCategoryId] || 0 : 0)} บาท
+              </span>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">
+                จำนวนที่ต้องการ{adjustType === 'add' ? 'เพิ่ม' : 'ลด'}:
+              </label>
+              <Input
+                type="number"
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
+                className="mt-1 text-right text-lg"
+                placeholder="0"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-between items-center border-t pt-4">
+              <span className="text-sm font-medium">ยอดใหม่:</span>
+              <span className={`text-lg font-bold ${adjustType === 'add' ? 'text-green-600' : 'text-red-600'}`}>
+                {formatNumber(getNewAmount())} บาท
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={handleAdjustConfirm}
+              className={adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            >
+              ยืนยัน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

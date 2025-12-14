@@ -28,7 +28,9 @@ import {
   Fuel,
   ParkingCircle,
   Wrench,
-  Bus
+  Bus,
+  Waves,
+  SprayCan,
 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { getBuildingColor } from '@/lib/building-colors'
@@ -46,6 +48,7 @@ interface Settings {
   vatPercent: number
   monthlyRent: number
   littleHotelierExpense: number
+  cowayWaterFilterExpense: number
   building?: Building
 }
 
@@ -63,6 +66,8 @@ interface GlobalSettings {
   parkingExpense: number
   motorcycleMaintenanceExpense: number
   maidTravelExpense: number
+  cleaningSupplyExpense: number
+  laundryDetergentExpense: number
   [key: string]: number // for dynamic fields
 }
 
@@ -81,6 +86,7 @@ export default function SettingsPage() {
     managementFeePercent: 13.5,
     vatPercent: 7,
     monthlyRent: 0,
+    cowayWaterFilterExpense: 0,
   })
 
   // Global settings form state
@@ -96,6 +102,8 @@ export default function SettingsPage() {
     parkingExpense: 0,
     motorcycleMaintenanceExpense: 0,
     maidTravelExpense: 0,
+    cleaningSupplyExpense: 0,
+    laundryDetergentExpense: 0,
   })
 
   // โหลดรายการอาคารและ Global Settings
@@ -122,6 +130,8 @@ export default function SettingsPage() {
           parkingExpense: globalData.parkingExpense || 0,
           motorcycleMaintenanceExpense: globalData.motorcycleMaintenanceExpense || 0,
           maidTravelExpense: globalData.maidTravelExpense || 0,
+          cleaningSupplyExpense: globalData.cleaningSupplyExpense || 0,
+          laundryDetergentExpense: globalData.laundryDetergentExpense || 0,
         })
       })
       .catch((err) => console.error('Error loading data:', err))
@@ -142,6 +152,7 @@ export default function SettingsPage() {
             managementFeePercent: Number(data.managementFeePercent) || 13.5,
             vatPercent: Number(data.vatPercent) || 7,
             monthlyRent: Number(data.monthlyRent) || 0,
+            cowayWaterFilterExpense: Number(data.cowayWaterFilterExpense) || 0,
           })
         }
       })
@@ -393,6 +404,28 @@ export default function SettingsPage() {
                     />
                     <p className="text-xs text-[#666]">
                       ค่าเช่าอาคารรายเดือน
+                    </p>
+                  </div>
+
+                  {/* Coway Water Filter */}
+                  <div className="space-y-2 rounded-lg border border-blue-400/30 bg-white p-4 shadow-sm">
+                    <Label htmlFor="cowayWaterFilter" className="text-blue-500 font-semibold">
+                      ค่าเช่าเครื่องกรองน้ำ Coway (บาท/เดือน)
+                    </Label>
+                    <Input
+                      id="cowayWaterFilter"
+                      type="number"
+                      value={formData.cowayWaterFilterExpense}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          cowayWaterFilterExpense: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="bg-blue-50 border-blue-200 focus:border-blue-400 focus:ring-blue-400"
+                    />
+                    <p className="text-xs text-[#666]">
+                      ค่าเช่าเครื่องกรองน้ำ Coway สำหรับอาคารนี้
                     </p>
                   </div>
                 </div>
@@ -650,6 +683,46 @@ export default function SettingsPage() {
                     <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
                   </div>
                 </div>
+
+                {/* ค่าอุปกรณ์ทำความสะอาด */}
+                <div className="space-y-3 rounded-xl border border-teal-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10">
+                      <SprayCan className="h-4 w-4 text-teal-600" />
+                    </div>
+                    <Label className="text-teal-600 font-semibold text-sm">ค่าอุปกรณ์ทำความสะอาด</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.cleaningSupplyExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, cleaningSupplyExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-teal-50 border-teal-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-teal-600">{formatNumber(globalFormData.cleaningSupplyExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าน้ำยาสำหรับซักผ้า */}
+                <div className="space-y-3 rounded-xl border border-indigo-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
+                      <Waves className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <Label className="text-indigo-600 font-semibold text-sm">ค่าน้ำยาซักผ้า</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={globalFormData.laundryDetergentExpense}
+                    onChange={(e) => setGlobalFormData((prev) => ({ ...prev, laundryDetergentExpense: parseFloat(e.target.value) || 0 }))}
+                    className="bg-indigo-50 border-indigo-200"
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-indigo-600">{formatNumber(globalFormData.laundryDetergentExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                  </div>
+                </div>
               </div>
 
               {/* สรุปค่าใช้จ่ายต่ออาคาร */}
@@ -720,6 +793,16 @@ export default function SettingsPage() {
                       <span className="text-slate-600 flex-1">ค่าเดินทางแม่บ้าน</span>
                       <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / globalSettings.buildingCount)}</span>
                     </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-teal-500/10 text-sm">
+                      <SprayCan className="h-4 w-4 text-teal-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าอุปกรณ์ทำความสะอาด</span>
+                      <span className="font-semibold text-teal-600">{formatNumber(globalFormData.cleaningSupplyExpense / globalSettings.buildingCount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-indigo-500/10 text-sm">
+                      <Waves className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าน้ำยาซักผ้า</span>
+                      <span className="font-semibold text-indigo-600">{formatNumber(globalFormData.laundryDetergentExpense / globalSettings.buildingCount)}</span>
+                    </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-200">
                     <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
@@ -736,7 +819,9 @@ export default function SettingsPage() {
                           (globalFormData.fuelExpense / globalSettings.buildingCount) +
                           (globalFormData.parkingExpense / globalSettings.buildingCount) +
                           (globalFormData.motorcycleMaintenanceExpense / globalSettings.buildingCount) +
-                          (globalFormData.maidTravelExpense / globalSettings.buildingCount)
+                          (globalFormData.maidTravelExpense / globalSettings.buildingCount) +
+                          (globalFormData.cleaningSupplyExpense / globalSettings.buildingCount) +
+                          (globalFormData.laundryDetergentExpense / globalSettings.buildingCount)
                         )}
                       </span>
                     </div>
