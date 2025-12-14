@@ -107,15 +107,51 @@ async function calculateBuildingSummary(
 
   const settings = building.settings
 
-  // ดึง transactions ของเดือนนี้
-  const transactions = await prisma.transaction.findMany({
+  // ดึง categories ทั้งหมด
+  const categories = await prisma.category.findMany()
+  const categoryMap = new Map(categories.map(c => [c.id, c]))
+
+  // ดึง expense history ของเดือนนี้ (แทน Transaction table)
+  const expenseHistory = await prisma.expenseHistory.findMany({
     where: {
-      buildingId,
+      targetType: 'TRANSACTION',
+      targetId: buildingId,
       month,
       year,
     },
-    include: { category: true },
   })
+
+  // คำนวณยอดรวมจาก expense history แยกตาม categoryId (fieldName)
+  const categoryTotals: Record<number, number> = {}
+  for (const item of expenseHistory) {
+    const categoryId = parseInt(item.fieldName)
+    if (!categoryTotals[categoryId]) {
+      categoryTotals[categoryId] = 0
+    }
+    const amount = Number(item.amount)
+    if (item.actionType === 'ADD') {
+      categoryTotals[categoryId] += amount
+    } else {
+      categoryTotals[categoryId] -= amount
+    }
+  }
+  // ไม่ให้ติดลบ
+  for (const key of Object.keys(categoryTotals)) {
+    categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
+  }
+
+  // สร้าง virtual transactions จาก expense history totals
+  const transactions: { category: { id: number; name: string; type: string }; amount: number }[] = []
+  for (const [categoryIdStr, amount] of Object.entries(categoryTotals)) {
+    const categoryId = parseInt(categoryIdStr)
+    const category = categoryMap.get(categoryId)
+    if (category && amount > 0) {
+      transactions.push({
+        category: { id: category.id, name: category.name, type: category.type },
+        amount,
+      })
+    }
+  }
 
   // ดึงข้อมูลเงินเดือนพนักงาน (คำนวณจาก employees table)
   const buildings = await prisma.building.findMany()
@@ -238,6 +274,7 @@ async function calculateBuildingSummary(
   }
 
   // เพิ่มค่าใช้จ่ายส่วนกลางทั้งหมดเข้าไปในรายจ่าย (แสดงเสมอ)
+  // ใช้ชื่อเต็มที่ตรงกับ categories table เพื่อให้หน้า Reports แสดงผลถูกต้อง
   // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - หาร 3 อาคาร (NANA, CT, YW)
   if (maxCareExpensePerBuilding > 0) {
     expenseByCategory['ค่าดูแล MAX'] = maxCareExpensePerBuilding
@@ -248,17 +285,18 @@ async function calculateBuildingSummary(
   if (shippingExpensePerBuilding > 0) {
     expenseByCategory['ค่าขนส่งสินค้า'] = shippingExpensePerBuilding
   }
-  // ค่าใช้จ่ายส่วนกลาง 8 รายการ - หารทุกอาคาร (แสดงเสมอแม้เป็น 0)
-  expenseByCategory['ค่า Amenity'] = amenityExpensePerBuilding
+  // ค่าใช้จ่ายส่วนกลาง - หารทุกอาคาร (แสดงเสมอแม้เป็น 0)
+  // ใช้ชื่อเต็มที่ตรงกับ categories table
+  expenseByCategory['ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)'] = amenityExpensePerBuilding
   expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
   expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
-  expenseByCategory['ค่ากาแฟ'] = coffeeExpensePerBuilding
-  expenseByCategory['ค่าน้ำมัน'] = fuelExpensePerBuilding
-  expenseByCategory['ค่าเช่าที่จอดรถ'] = parkingExpensePerBuilding
-  expenseByCategory['ค่าซ่อมบำรุงรถ'] = motorcycleMaintenanceExpensePerBuilding
+  expenseByCategory['ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่าน้ำมันรถมอเตอร์ไซค์'] = fuelExpensePerBuilding
+  expenseByCategory['ค่าเช่าที่จอดรถมอเตอร์ไซค์'] = parkingExpensePerBuilding
+  expenseByCategory['ค่าซ่อมบำรุงรถมอเตอร์ไซค์'] = motorcycleMaintenanceExpensePerBuilding
   expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
   expenseByCategory['ค่าอุปกรณ์ทำความสะอาด'] = cleaningSupplyExpensePerBuilding
-  expenseByCategory['ค่าน้ำยาซักผ้า'] = laundryDetergentExpensePerBuilding
+  expenseByCategory['ค่าน้ำยาสำหรับซักผ้า'] = laundryDetergentExpensePerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense

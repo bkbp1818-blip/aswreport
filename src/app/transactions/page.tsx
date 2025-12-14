@@ -23,7 +23,7 @@ import {
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 import { CategoryIcon } from '@/lib/category-icons'
-import { Save, Loader2, Plus, Minus } from 'lucide-react'
+import { Loader2, Plus, Minus, Trash2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -99,6 +99,20 @@ interface GlobalSettings {
   laundryDetergentExpensePerBuilding: number
 }
 
+interface ExpenseHistoryItem {
+  id: number
+  targetType: string
+  targetId: number | null
+  fieldName: string
+  fieldLabel: string
+  actionType: string
+  amount: string
+  description: string
+  month: number
+  year: number
+  createdAt: string
+}
+
 export default function TransactionsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -111,7 +125,6 @@ export default function TransactionsPage() {
   )
   const [transactionData, setTransactionData] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
@@ -122,6 +135,16 @@ export default function TransactionsPage() {
   const [adjustCategoryId, setAdjustCategoryId] = useState<number | null>(null)
   const [adjustCategoryName, setAdjustCategoryName] = useState('')
   const [adjustAmount, setAdjustAmount] = useState<string>('')
+  const [adjustDescription, setAdjustDescription] = useState<string>('')
+
+  // State สำหรับประวัติค่าใช้จ่าย
+  const [adjustMonth, setAdjustMonth] = useState<string>(String(new Date().getMonth() + 1))
+  const [adjustYear, setAdjustYear] = useState<string>(String(new Date().getFullYear()))
+  const [expenseHistory, setExpenseHistory] = useState<ExpenseHistoryItem[]>([])
+  const [historyTotal, setHistoryTotal] = useState<number>(0)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [savingHistory, setSavingHistory] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const years = generateYears()
 
@@ -152,26 +175,29 @@ export default function TransactionsPage() {
 
     setLoading(true)
     try {
-      const params = new URLSearchParams({
-        buildingId: selectedBuilding,
+      const historyParams = new URLSearchParams({
+        targetType: 'TRANSACTION',
+        targetId: selectedBuilding,
         month: selectedMonth,
         year: selectedYear,
       })
 
-      // โหลด transactions และ settings พร้อมกัน
-      const [transactionsRes, settingsRes] = await Promise.all([
-        fetch(`/api/transactions?${params}`),
+      // โหลด expense history totals และ settings พร้อมกัน
+      const [historyTotalsRes, settingsRes] = await Promise.all([
+        fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`)
       ])
 
-      const data: Transaction[] = await transactionsRes.json()
+      const historyData = await historyTotalsRes.json()
       const settings = await settingsRes.json()
 
-      // แปลงข้อมูลเป็น Record<categoryId, amount>
+      // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
-      data.forEach((t) => {
-        dataMap[t.categoryId] = Number(t.amount)
-      })
+      if (historyData.totals) {
+        for (const [fieldName, amount] of Object.entries(historyData.totals)) {
+          dataMap[parseInt(fieldName)] = amount as number
+        }
+      }
       setTransactionData(dataMap)
 
       // เก็บ settings ของอาคาร
@@ -304,13 +330,71 @@ export default function TransactionsPage() {
   )
   const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense
 
-  // อัปเดตค่าในตาราง
-  const handleAmountChange = (categoryId: number, value: string) => {
-    const numValue = parseFloat(value) || 0
-    setTransactionData((prev) => ({
-      ...prev,
-      [categoryId]: numValue,
-    }))
+  // ดึงประวัติค่าใช้จ่าย
+  const fetchExpenseHistory = async (categoryId: number, month: string, year: string) => {
+    if (!selectedBuilding) return
+
+    setLoadingHistory(true)
+    try {
+      const params = new URLSearchParams({
+        targetType: 'TRANSACTION',
+        targetId: selectedBuilding,
+        fieldName: String(categoryId),
+        month,
+        year,
+      })
+      const res = await fetch(`/api/expense-history?${params}`)
+      const data = await res.json()
+      setExpenseHistory(data.history || [])
+      setHistoryTotal(data.total || 0)
+    } catch (error) {
+      console.error('Error fetching expense history:', error)
+      setExpenseHistory([])
+      setHistoryTotal(0)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // ลบรายการประวัติ
+  const handleDeleteHistory = async (historyId: number) => {
+    if (!confirm('ต้องการลบรายการนี้?')) return
+
+    setDeletingId(historyId)
+    try {
+      const res = await fetch(`/api/expense-history/${historyId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setExpenseHistory(data.history || [])
+        setHistoryTotal(data.total || 0)
+        // อัปเดตยอดใน transactionData ด้วย
+        if (adjustCategoryId !== null) {
+          setTransactionData((prev) => ({
+            ...prev,
+            [adjustCategoryId]: data.total || 0,
+          }))
+        }
+      } else {
+        const errorData = await res.json()
+        alert(errorData.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch (error) {
+      console.error('Error deleting history:', error)
+      alert('เกิดข้อผิดพลาดในการลบ')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // เปลี่ยนเดือน/ปีในDialog
+  const handleAdjustMonthYearChange = (newMonth: string, newYear: string) => {
+    setAdjustMonth(newMonth)
+    setAdjustYear(newYear)
+    if (adjustCategoryId !== null) {
+      fetchExpenseHistory(adjustCategoryId, newMonth, newYear)
+    }
   }
 
   // เปิด Dialog เพิ่ม/ลดยอด
@@ -319,79 +403,89 @@ export default function TransactionsPage() {
     setAdjustCategoryId(categoryId)
     setAdjustCategoryName(categoryName)
     setAdjustAmount('')
+    setAdjustDescription('')
+    // ใช้เดือน/ปีที่เลือกในหน้าหลัก
+    setAdjustMonth(selectedMonth)
+    setAdjustYear(selectedYear)
     setAdjustDialogOpen(true)
+    // ดึงประวัติ
+    fetchExpenseHistory(categoryId, selectedMonth, selectedYear)
   }
 
   // คำนวณยอดใหม่ (preview)
   const getNewAmount = () => {
-    if (adjustCategoryId === null) return 0
-    const currentValue = transactionData[adjustCategoryId] || 0
     const adjustValue = parseFloat(adjustAmount) || 0
     const newValue = adjustType === 'add'
-      ? currentValue + adjustValue
-      : currentValue - adjustValue
+      ? historyTotal + adjustValue
+      : historyTotal - adjustValue
     return Math.max(0, newValue) // ไม่ให้ติดลบ
   }
 
   // ยืนยันการเพิ่ม/ลดยอด
-  const handleAdjustConfirm = () => {
-    if (adjustCategoryId === null) return
-    const newValue = getNewAmount()
-    setTransactionData((prev) => ({
-      ...prev,
-      [adjustCategoryId]: newValue,
-    }))
-    setAdjustDialogOpen(false)
-  }
-
-  // บันทึกข้อมูล
-  const handleSave = async () => {
-    if (!selectedBuilding) {
-      alert('กรุณาเลือกอาคาร')
+  const handleAdjustConfirm = async () => {
+    if (adjustCategoryId === null || !selectedBuilding) return
+    if (!adjustDescription.trim()) {
+      alert('กรุณากรอกรายละเอียด')
+      return
+    }
+    if (!adjustAmount || parseFloat(adjustAmount) <= 0) {
+      alert('กรุณากรอกจำนวนเงิน')
       return
     }
 
-    setSaving(true)
+    // เก็บค่าไว้ก่อน async call เพื่อหลีกเลี่ยงปัญหา closure
+    const currentCategoryId = adjustCategoryId
+    const requestMonth = adjustMonth
+    const requestYear = adjustYear
+    const currentSelectedMonth = selectedMonth
+    const currentSelectedYear = selectedYear
+
+    setSavingHistory(true)
     try {
-      // กรองเฉพาะ categories ที่ต้องบันทึก (ไม่รวมค่าที่จัดการใน GlobalSettings แล้ว)
-      const categoriesToSave = categories.filter(
-        (c) => !globalSettingsCategoryNames.includes(c.name)
-      )
-
-      // ใช้ getDisplayAmount เพื่อบันทึกค่าเงินเดือนพนักงานด้วย
-      const transactions = categoriesToSave.map((c) => ({
-        buildingId: parseInt(selectedBuilding),
-        categoryId: c.id,
-        amount: getDisplayAmount(c.id),
-        month: parseInt(selectedMonth),
-        year: parseInt(selectedYear),
-      }))
-
-      const res = await fetch('/api/transactions', {
-        method: 'PUT',
+      const res = await fetch('/api/expense-history', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions }),
+        body: JSON.stringify({
+          targetType: 'TRANSACTION',
+          targetId: selectedBuilding,
+          fieldName: String(currentCategoryId),
+          fieldLabel: adjustCategoryName,
+          actionType: adjustType === 'add' ? 'ADD' : 'SUBTRACT',
+          amount: adjustAmount,
+          description: adjustDescription.trim(),
+          month: requestMonth,
+          year: requestYear,
+        }),
       })
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
+      if (res.ok) {
+        const data = await res.json()
+        setExpenseHistory(data.history || [])
+        setHistoryTotal(data.total || 0)
+        // อัปเดตยอดใน transactionData ถ้าเดือน/ปีตรงกับที่เลือกในหน้าหลัก
+        if (requestMonth === currentSelectedMonth && requestYear === currentSelectedYear) {
+          setTransactionData((prev) => ({
+            ...prev,
+            [currentCategoryId]: data.total || 0,
+          }))
+        }
+        // Reset form
+        setAdjustAmount('')
+        setAdjustDescription('')
+      } else {
+        const errorData = await res.json()
         if (res.status === 401) {
           alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
           window.location.href = '/access/staff'
           return
         }
-        if (res.status === 403) {
-          alert('คุณไม่มีสิทธิ์ในการบันทึกข้อมูลนี้')
-          return
-        }
-        throw new Error(errorData.error || 'Failed to save')
+        alert(errorData.error || 'เกิดข้อผิดพลาด')
       }
-      alert('บันทึกข้อมูลสำเร็จ')
-    } catch (err) {
-      console.error('Error saving:', err)
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    } catch (error) {
+      console.error('Error saving expense history:', error)
+      alert('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
-      setSaving(false)
+      setSavingHistory(false)
     }
   }
 
@@ -457,19 +551,6 @@ export default function TransactionsPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving || !selectedBuilding}
-            className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6b8a84]"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            บันทึก
-          </Button>
         </div>
       </div>
 
@@ -529,16 +610,11 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            value={transactionData[category.id] || ''}
-                            onChange={(e) =>
-                              handleAmountChange(category.id, e.target.value)
-                            }
-                            className="text-right flex-1"
-                            style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
-                            placeholder="0.00"
-                          />
+                          <div
+                            className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                          >
+                            {formatNumber(transactionData[category.id] || 0)}
+                          </div>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -584,16 +660,11 @@ export default function TransactionsPage() {
                           </TableCell>
                           <TableCell className="text-right w-[220px]">
                             <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                value={transactionData[category.id] || ''}
-                                onChange={(e) =>
-                                  handleAmountChange(category.id, e.target.value)
-                                }
-                                className="text-right flex-1"
-                                style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
-                                placeholder="0.00"
-                              />
+                              <div
+                                className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                              >
+                                {formatNumber(transactionData[category.id] || 0)}
+                              </div>
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -1037,16 +1108,11 @@ export default function TransactionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={transactionData[category.id] || ''}
-                              onChange={(e) =>
-                                handleAmountChange(category.id, e.target.value)
-                              }
-                              className="text-right flex-1"
-                              style={{ minWidth: `${Math.max(80, ((transactionData[category.id]?.toString().length || 0) + 4) * 10)}px` }}
-                              placeholder="0.00"
-                            />
+                            <div
+                              className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                            >
+                              {formatNumber(transactionData[category.id] || 0)}
+                            </div>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -1075,50 +1141,158 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Dialog เพิ่ม/ลดยอด */}
+      {/* Dialog เพิ่ม/ลดยอด พร้อมประวัติ */}
       <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className={adjustType === 'add' ? 'text-green-600' : 'text-red-600'}>
               {adjustType === 'add' ? '+ เพิ่มยอด' : '- ลดยอด'}: {adjustCategoryName}
             </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">ยอดปัจจุบัน:</span>
-              <span className="font-medium">
-                {formatNumber(adjustCategoryId !== null ? transactionData[adjustCategoryId] || 0 : 0)} บาท
-              </span>
+            {/* เลือกเดือน/ปี */}
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-gray-500 w-16">เดือน/ปี:</span>
+              <Select
+                value={adjustMonth}
+                onValueChange={(val) => handleAdjustMonthYearChange(val, adjustYear)}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={adjustYear}
+                onValueChange={(val) => handleAdjustMonthYearChange(adjustMonth, val)}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="ml-auto text-right">
+                <span className="text-sm text-gray-500">ยอดรวม: </span>
+                <span className="font-bold text-lg">{formatNumber(historyTotal)} บาท</span>
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-500">
-                จำนวนที่ต้องการ{adjustType === 'add' ? 'เพิ่ม' : 'ลด'}:
-              </label>
-              <Input
-                type="number"
-                value={adjustAmount}
-                onChange={(e) => setAdjustAmount(e.target.value)}
-                className="mt-1 text-right text-lg"
-                placeholder="0"
-                autoFocus
-              />
+
+            {/* ตารางประวัติ */}
+            <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : expenseHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  ยังไม่มีประวัติ
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">วันที่</TableHead>
+                      <TableHead>รายละเอียด</TableHead>
+                      <TableHead className="text-right w-[100px]">จำนวน</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expenseHistory.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="text-xs text-gray-500">
+                          {new Date(item.createdAt).toLocaleDateString('th-TH', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </TableCell>
+                        <TableCell className="text-sm">{item.description}</TableCell>
+                        <TableCell className={`text-right font-medium ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
+                          {item.actionType === 'ADD' ? '+' : '-'}{formatNumber(Number(item.amount))}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-gray-400 hover:text-red-600"
+                            onClick={() => handleDeleteHistory(item.id)}
+                            disabled={deletingId === item.id}
+                          >
+                            {deletingId === item.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </div>
-            <div className="flex justify-between items-center border-t pt-4">
-              <span className="text-sm font-medium">ยอดใหม่:</span>
-              <span className={`text-lg font-bold ${adjustType === 'add' ? 'text-green-600' : 'text-red-600'}`}>
-                {formatNumber(getNewAmount())} บาท
-              </span>
+
+            {/* Form เพิ่มรายการใหม่ */}
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-sm font-medium text-gray-700">
+                {adjustType === 'add' ? 'เพิ่มรายการใหม่' : 'ลดรายการใหม่'}
+              </p>
+              <div>
+                <label className="text-sm text-gray-500">รายละเอียด *</label>
+                <Input
+                  value={adjustDescription}
+                  onChange={(e) => setAdjustDescription(e.target.value)}
+                  className="mt-1"
+                  placeholder="เช่น ค่าซ่อมแอร์, ค่าฉีดปลวก..."
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500">จำนวนเงิน *</label>
+                <Input
+                  type="number"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  className="mt-1 text-right"
+                  placeholder="0"
+                />
+              </div>
+              {adjustAmount && parseFloat(adjustAmount) > 0 && (
+                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                  <span className="text-sm">ยอดใหม่หลังบันทึก:</span>
+                  <span className={`text-lg font-bold ${adjustType === 'add' ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatNumber(getNewAmount())} บาท
+                  </span>
+                </div>
+              )}
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>
-              ยกเลิก
+              ปิด
             </Button>
             <Button
               onClick={handleAdjustConfirm}
+              disabled={savingHistory || !adjustDescription.trim() || !adjustAmount}
               className={adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
             >
-              ยืนยัน
+              {savingHistory ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              บันทึก
             </Button>
           </DialogFooter>
         </DialogContent>

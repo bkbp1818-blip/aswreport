@@ -125,3 +125,20 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ประวัติการเพิ่ม/ลดค่าใช้จ่าย
+model ExpenseHistory {
+  id          Int      @id @default(autoincrement())
+  targetType  String   // "SETTINGS" หรือ "GLOBAL_SETTINGS"
+  targetId    Int?     // buildingId (สำหรับ Settings) หรือ null (สำหรับ GlobalSettings)
+  fieldName   String   // ชื่อ field เช่น "monthlyRent", "maxCareExpense"
+  fieldLabel  String   // ชื่อที่แสดง เช่น "ค่าเช่าอาคาร", "ค่าดูแล MAX"
+  actionType  String   // "ADD" หรือ "SUBTRACT"
+  amount      Decimal  @db.Decimal(15, 2) // จำนวนเงินที่เพิ่ม/ลด
+  description String   // รายละเอียด เช่น "ค่าฉีดปลวก", "ค่าซ่อมแอร์"
+  month       Int      // เดือน (1-12)
+  year        Int      // ปี (เช่น 2025)
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId, fieldName, month, year])
+}

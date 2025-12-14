@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.5.0 |
+| **Version** | 1.6.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -69,9 +69,13 @@
 
 ### 2. กรอกข้อมูล (`/transactions`)
 - เลือกอาคาร/เดือน/ปี
-- กรอกรายรับ-รายจ่าย
+- กรอกรายรับ-รายจ่ายผ่านปุ่ม +/- (ExpenseHistory) ✨ NEW
+- **ระบบประวัติการเพิ่ม/ลดยอด:**
+  - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
+  - ยอดรวม Reset เป็น 0 ทุกเดือน
+  - ดูประวัติ/ลบรายการได้
 - แสดงค่าใช้จ่ายส่วนกลางจาก GlobalSettings
-- บันทึกอัตโนมัติ
+- Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
 
 ### 3. เงินเดือนพนักงาน (`/employees`)
 - เพิ่ม/แก้ไข/ลบพนักงาน
@@ -86,11 +90,15 @@
 
 ### 5. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
 - **ทั้ง Partner และ Staff เข้าถึงได้**
+- **ระบบประวัติการเพิ่ม/ลดยอด (ExpenseHistory):** ✨ NEW
+  - กดปุ่ม +/- เปิด popup แสดงประวัติ
+  - กรอกรายละเอียด + จำนวนเงิน
+  - ยอดรวม Reset เป็น 0 ทุกเดือน
 - **Tab ตั้งค่าอาคาร:**
   - Management Fee %
   - VAT %
   - ค่าเช่าอาคาร/เดือน
-  - ค่าเช่าเครื่องกรองน้ำ Coway (แยกต่ออาคาร) ✨ NEW
+  - ค่าเช่าเครื่องกรองน้ำ Coway (แยกต่ออาคาร)
 - **Tab ค่าใช้จ่ายส่วนกลาง:**
   - ค่าดูแล MAX (หาร 3 อาคาร: NANA, CT, YW)
   - ค่าดูแลจราจร (หาร 3 อาคาร)
@@ -138,6 +146,9 @@
 | `/api/employees` | GET, POST, PUT, DELETE | จัดการพนักงาน | Partner |
 | `/api/employees/salary-summary` | GET | สรุปเงินเดือน | Partner |
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
+| `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย ✨ | Auth |
+| `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
+| `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ ✨ | - |
 
 ---
 
@@ -178,7 +189,23 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.5.0 (Current - December 2025)
+### v1.6.0 (Current - December 2025)
+- **ระบบประวัติการเพิ่ม/ลดค่าใช้จ่าย (ExpenseHistory):**
+  - เพิ่ม ExpenseHistory model สำหรับบันทึกประวัติการเพิ่ม/ลด
+  - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด (เช่น "ค่าฉีดปลวก", "ค่าซ่อมแอร์")
+  - ยอดรวม Reset เป็น 0 ทุกเดือน (คำนวณจาก ExpenseHistory)
+  - ดูประวัติ/ลบรายการได้
+- **API ใหม่:**
+  - `POST /api/expense-history` - บันทึกรายการเพิ่ม/ลด
+  - `GET /api/expense-history` - ดึงประวัติรายการ
+  - `DELETE /api/expense-history/[id]` - ลบรายการ
+  - `GET /api/expense-history/totals` - ดึงยอดรวมทุก category
+- **UI Updates:**
+  - หน้า Settings: ปุ่ม +/- เปิด popup ที่มีประวัติ + form กรอกรายการใหม่
+  - หน้า Transactions: input เป็น read-only, ใช้ปุ่ม +/- กรอกข้อมูล
+  - ยอดรวมโหลดจาก ExpenseHistory แทน Transaction table
+
+### v1.5.0 (December 2025)
 - **เพิ่ม Fields ค่าใช้จ่ายใหม่ 3 รายการ:**
   - ค่าเช่าเครื่องกรองน้ำ Coway (Settings - แยกต่ออาคาร)
   - ค่าอุปกรณ์ทำความสะอาด (GlobalSettings - หารทุกอาคาร)
@@ -310,6 +337,21 @@ npx vercel --prod        # Deploy
 | name | String | ชื่อแสดง |
 | role | Enum | PARTNER / STAFF |
 | isActive | Boolean | สถานะ |
+
+### ExpenseHistory ✨ NEW
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| targetType | String | "SETTINGS", "GLOBAL_SETTINGS", หรือ "TRANSACTION" |
+| targetId | Int? | buildingId (สำหรับ Settings/Transaction) หรือ null |
+| fieldName | String | ชื่อ field หรือ categoryId |
+| fieldLabel | String | ชื่อที่แสดง (เช่น "ค่าเช่าอาคาร") |
+| actionType | String | "ADD" หรือ "SUBTRACT" |
+| amount | Decimal | จำนวนเงิน |
+| description | String | รายละเอียด (บังคับกรอก) |
+| month | Int | เดือน (1-12) |
+| year | Int | ปี |
+| createdAt | DateTime | วันที่สร้าง |
 
 ---
 
