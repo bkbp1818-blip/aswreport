@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.7.1 |
+| **Version** | 1.8.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -111,7 +111,11 @@
   - ค่าซ่อมบำรุงรถ (หารทุกอาคาร)
   - ค่าเดินทางแม่บ้าน (หารทุกอาคาร)
   - ค่าอุปกรณ์ทำความสะอาด (หารทุกอาคาร)
-  - ค่าอาหาร (หารทุกอาคาร) ✨ NEW
+  - ค่าอาหาร (หารทุกอาคาร)
+  - **เงินสมทบประกันสังคม (หาร 5 อาคาร)** ✨ NEW
+    - เลือกพนักงานแบบ checkbox
+    - ค่าเริ่มต้น 750 บาท/คน
+    - Dialog สำหรับแก้ไขรายละเอียด
 
 ### 6. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
@@ -147,7 +151,9 @@
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
 | `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย ✨ | Auth |
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
-| `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ ✨ | - |
+| `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ | - |
+| `/api/social-security` | GET, POST | จัดการเงินสมทบประกันสังคม ✨ | Auth |
+| `/api/categories/add-payment-channels` | POST | เพิ่ม categories ใหม่ ✨ | - |
 
 ---
 
@@ -188,7 +194,29 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.7.1 (Current - December 2025)
+### v1.8.0 (Current - December 2025)
+- **ระบบเงินสมทบประกันสังคม (Social Security):**
+  - เพิ่ม SocialSecurityContribution model
+  - API `/api/social-security` สำหรับจัดการข้อมูล
+  - Card เล็กในหน้า Settings (sync กับเดือน/ปีส่วนกลาง)
+  - Dialog สำหรับแก้ไขเงินสมทบพนักงานแต่ละคน
+  - Checkbox เลือกพนักงาน (ค่าเริ่มต้น 750 บาท)
+  - แสดงในหน้า transactions และ reports/PDF
+  - หาร 5 อาคาร
+- **เพิ่ม Categories รายได้ใหม่:**
+  - ค่าเช่าจาก PayPal
+  - ค่าเช่าจาก Credit Card
+  - ค่าเช่าจาก Bank Transfer
+- **เพิ่ม Category รายจ่ายใหม่:**
+  - ค่า Fee จาก PayPal
+- **ลบ Category:**
+  - ค่าเช่าจาก ช่องทางอื่น (ไม่ใช้แล้ว)
+- **UI Components:**
+  - เพิ่ม Checkbox component (shadcn/ui)
+  - เพิ่ม HeartPulse icon สำหรับ Social Security
+  - เพิ่ม icons และสีสำหรับ PayPal, Credit Card, Bank Transfer
+
+### v1.7.1 (December 2025)
 - **แก้ไข Bug ยอดรวมไม่อัปเดต:**
   - รายได้พิเศษ (airportShuttleRentIncome, thaiBusTourIncome, coVanKesselIncome) อัปเดตยอดรวมถูกต้องแล้ว
   - ยอดรวมอัปเดตอัตโนมัติเมื่อปิด popup หลังกรอกข้อมูลผ่าน +/-
@@ -383,7 +411,7 @@ npx vercel --prod        # Deploy
 | role | Enum | PARTNER / STAFF |
 | isActive | Boolean | สถานะ |
 
-### ExpenseHistory ✨ NEW
+### ExpenseHistory
 | Field | Type | คำอธิบาย |
 |-------|------|----------|
 | id | Int | Primary key |
@@ -397,6 +425,17 @@ npx vercel --prod        # Deploy
 | month | Int | เดือน (1-12) |
 | year | Int | ปี |
 | createdAt | DateTime | วันที่สร้าง |
+
+### SocialSecurityContribution ✨ NEW
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| employeeId | Int | FK พนักงาน |
+| amount | Decimal | จำนวนเงินสมทบ (ค่าเริ่มต้น 750) |
+| month | Int | เดือน (1-12) |
+| year | Int | ปี |
+| createdAt | DateTime | วันที่สร้าง |
+| updatedAt | DateTime | วันที่อัปเดต |
 
 ---
 
