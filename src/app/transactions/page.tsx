@@ -99,6 +99,12 @@ interface GlobalSettings {
   foodExpensePerBuilding: number
 }
 
+interface SocialSecurityData {
+  totalAmount: number
+  amountPerBuilding: number
+  buildingCount: number
+}
+
 interface ExpenseHistoryItem {
   id: number
   targetType: string
@@ -131,6 +137,7 @@ export default function TransactionsPage() {
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
+  const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
 
   // State สำหรับ Dialog เพิ่ม/ลดยอด
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
@@ -184,16 +191,18 @@ export default function TransactionsPage() {
         year: selectedYear,
       })
 
-      // โหลด expense history totals, settings และ global totals พร้อมกัน
-      const [historyTotalsRes, settingsRes, globalTotalsRes] = await Promise.all([
+      // โหลด expense history totals, settings, global totals และ social security พร้อมกัน
+      const [historyTotalsRes, settingsRes, globalTotalsRes, socialSecurityRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
-        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}`)
+        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}`),
+        fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`)
       ])
 
       const historyData = await historyTotalsRes.json()
       const settings = await settingsRes.json()
       const globalTotalsData = await globalTotalsRes.json()
+      const socialSecurityDataRes = await socialSecurityRes.json()
 
       // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
@@ -266,6 +275,15 @@ export default function TransactionsPage() {
           foodExpensePerBuilding: globalTotalsData.totalsPerBuilding?.foodExpensePerBuilding || 0,
         }
         setGlobalSettings(globalData)
+      }
+
+      // เก็บข้อมูลเงินสมทบประกันสังคม
+      if (socialSecurityDataRes) {
+        setSocialSecurityData({
+          totalAmount: socialSecurityDataRes.totalAmount || 0,
+          amountPerBuilding: socialSecurityDataRes.amountPerBuilding || 0,
+          buildingCount: socialSecurityDataRes.buildingCount || 5,
+        })
       }
     } catch (err) {
       console.error('Error loading transactions:', err)
@@ -373,12 +391,15 @@ export default function TransactionsPage() {
   const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpensePerBuilding || 0
   const foodExpensePerBuilding = globalSettings?.foodExpensePerBuilding || 0
 
+  // เงินสมทบประกันสังคม (หาร 5 อาคาร)
+  const socialSecurityExpensePerBuilding = socialSecurityData?.amountPerBuilding || 0
+
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
-    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding
+    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + socialSecurityExpensePerBuilding
 
   // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่า Coway + ค่าใช้จ่ายส่วนกลาง
   const salaryExpense = salarySummary?.salaryPerBuilding || 0
@@ -1340,14 +1361,38 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
+                      {/* เงินสมทบประกันสังคม - แสดงเสมอ */}
+                      {socialSecurityData && (
+                        <TableRow className="bg-pink-100/50">
+                          <TableCell className="font-medium">
+                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon name="ประกันสังคม" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-sm font-medium text-pink-600">เงินสมทบประกันสังคม</span>
+                                <p className="text-xs text-pink-500">
+                                  (ดึงจากหน้าตั้งค่า: {formatNumber(socialSecurityData.totalAmount)} / {socialSecurityData.buildingCount} อาคาร)
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <p className="font-medium text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
-                    // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 11 รายการค่าใช้จ่ายส่วนกลาง
+                    // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 12 รายการค่าใช้จ่ายส่วนกลาง (รวมประกันสังคม)
                     const baseIndex = (monthlyRent > 0 ? 1 : 0) + 1 + (salaryCategory && salarySummary ? 1 : 0) +
                       (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 11 : 0)
+                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 11 : 0) + (socialSecurityData ? 1 : 0)
                     return (
                       <TableRow
                         key={category.id}

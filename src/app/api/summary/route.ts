@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
       cleaningSupplyExpense: summaries.reduce((sum, s) => sum + s.cleaningSupplyExpense, 0),
       foodExpense: summaries.reduce((sum, s) => sum + s.foodExpense, 0),
       cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
+      socialSecurityExpense: summaries.reduce((sum, s) => sum + s.socialSecurityExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
       incomeByChannel: {},
@@ -195,6 +196,17 @@ async function calculateBuildingSummary(
   })
   const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
   const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
+
+  // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 5 อาคาร)
+  const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({
+    where: { month, year },
+  })
+  const totalSocialSecurity = socialSecurityContributions.reduce(
+    (sum, c) => sum + Number(c.amount),
+    0
+  )
+  const socialSecurityDivisor = 5 // หาร 5 อาคาร
+  const socialSecurityPerBuilding = totalSocialSecurity / socialSecurityDivisor
 
   // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (ตามเดือน/ปี)
   const globalExpenseHistory = await prisma.expenseHistory.findMany({
@@ -330,8 +342,8 @@ async function calculateBuildingSummary(
 
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
-  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding
+  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -392,6 +404,8 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
   expenseByCategory['ค่าอุปกรณ์ทำความสะอาด'] = cleaningSupplyExpensePerBuilding
   expenseByCategory['ค่าอาหาร'] = foodExpensePerBuilding
+  // เพิ่มเงินสมทบประกันสังคม (หาร 5 อาคาร)
+  expenseByCategory['เงินสมทบประกันสังคม'] = socialSecurityPerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
@@ -446,6 +460,8 @@ async function calculateBuildingSummary(
     foodExpense: foodExpensePerBuilding,
     // ค่าเช่าเครื่องกรองน้ำ Coway (แยกแต่ละอาคาร)
     cowayWaterFilterExpense,
+    // เงินสมทบประกันสังคม (หาร 5 อาคาร)
+    socialSecurityExpense: socialSecurityPerBuilding,
     netProfit,
     amountToBePaid,
     incomeByChannel,

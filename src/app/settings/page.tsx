@@ -43,7 +43,10 @@ import {
   Trash2,
   Calendar,
   Pencil,
+  HeartPulse,
+  Check,
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { getBuildingColor } from '@/lib/building-colors'
 import { generateYears } from '@/lib/calculations'
@@ -107,6 +110,23 @@ interface ExpenseHistoryItem {
   createdAt: string
 }
 
+interface SocialSecurityEmployee {
+  id: number
+  firstName: string
+  lastName: string
+  nickname: string | null
+  position: string
+  contributionId: number | null
+  amount: number
+}
+
+interface SocialSecurityData {
+  employees: SocialSecurityEmployee[]
+  totalAmount: number
+  amountPerBuilding: number
+  buildingCount: number
+}
+
 export default function SettingsPage() {
   const [buildings, setBuildings] = useState<Building[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
@@ -159,6 +179,12 @@ export default function SettingsPage() {
   const [percentFieldName, setPercentFieldName] = useState('')
   const [percentValue, setPercentValue] = useState<string>('')
   const [savingPercent, setSavingPercent] = useState(false)
+
+  // State สำหรับเงินสมทบประกันสังคม
+  const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
+  const [loadingSocialSecurity, setLoadingSocialSecurity] = useState(false)
+  const [savingSocialSecurity, setSavingSocialSecurity] = useState<number | null>(null)
+  const [socialSecurityDialogOpen, setSocialSecurityDialogOpen] = useState(false)
 
   // Fetch ประวัติค่าใช้จ่าย
   const fetchExpenseHistory = async (
@@ -426,6 +452,47 @@ export default function SettingsPage() {
     }
   }, [])
 
+  // ดึงข้อมูลเงินสมทบประกันสังคม
+  const fetchSocialSecurity = useCallback(async (month: string, year: string) => {
+    setLoadingSocialSecurity(true)
+    try {
+      const res = await fetch(`/api/social-security?month=${month}&year=${year}`)
+      const data = await res.json()
+      if (res.ok) {
+        setSocialSecurityData(data)
+      }
+    } catch (error) {
+      console.error('Error fetching social security:', error)
+    } finally {
+      setLoadingSocialSecurity(false)
+    }
+  }, [])
+
+  // บันทึกเงินสมทบประกันสังคม
+  const saveSocialSecurityContribution = async (employeeId: number, amount: number) => {
+    setSavingSocialSecurity(employeeId)
+    try {
+      const res = await fetch('/api/social-security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          amount,
+          month: parseInt(globalSelectedMonth),
+          year: parseInt(globalSelectedYear),
+        }),
+      })
+      if (res.ok) {
+        // Refresh data
+        fetchSocialSecurity(globalSelectedMonth, globalSelectedYear)
+      }
+    } catch (error) {
+      console.error('Error saving social security:', error)
+    } finally {
+      setSavingSocialSecurity(null)
+    }
+  }
+
   // โหลดรายการอาคารและ Global Settings
   useEffect(() => {
     Promise.all([
@@ -454,6 +521,11 @@ export default function SettingsPage() {
       fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
     }
   }, [selectedBuilding, buildingSelectedMonth, buildingSelectedYear, fetchSettingsTotals])
+
+  // โหลดเงินสมทบประกันสังคมเมื่อเปลี่ยนเดือน/ปี (ซิงค์กับค่าใช้จ่ายส่วนกลาง)
+  useEffect(() => {
+    fetchSocialSecurity(globalSelectedMonth, globalSelectedYear)
+  }, [globalSelectedMonth, globalSelectedYear, fetchSocialSecurity])
 
   // โหลด settings เมื่อเลือกอาคาร
   useEffect(() => {
@@ -1075,6 +1147,26 @@ export default function SettingsPage() {
                     <span className="font-semibold text-orange-500">{formatNumber(globalTotals?.totalsPerBuilding?.foodExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
+
+                {/* เงินสมทบประกันสังคม */}
+                <div className="space-y-3 rounded-xl border border-[#E91E63]/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E91E63]/10">
+                      <HeartPulse className="h-4 w-4 text-[#E91E63]" />
+                    </div>
+                    <Label className="text-[#E91E63] font-semibold text-sm">เงินสมทบประกันสังคม</Label>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 px-3 py-2 bg-[#E91E63]/5 border border-[#E91E63]/20 rounded-md text-right font-medium">
+                      {formatNumber(socialSecurityData?.totalAmount || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-[#E91E63] hover:bg-[#E91E63]/10" onClick={() => setSocialSecurityDialogOpen(true)}><Pencil className="h-4 w-4" /></Button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร 5 อาคาร</span>
+                    <span className="font-semibold text-[#E91E63]">{formatNumber(socialSecurityData?.amountPerBuilding || 0)} บาท/อาคาร</span>
+                  </div>
+                </div>
               </div>
 
               {/* สรุปค่าใช้จ่ายต่ออาคาร */}
@@ -1155,6 +1247,11 @@ export default function SettingsPage() {
                       <span className="text-slate-600 flex-1">ค่าอาหาร</span>
                       <span className="font-semibold text-orange-500">{formatNumber(globalTotals.totalsPerBuilding?.foodExpensePerBuilding || 0)}</span>
                     </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E91E63]/10 text-sm">
+                      <HeartPulse className="h-4 w-4 text-[#E91E63] flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">เงินสมทบประกันสังคม</span>
+                      <span className="font-semibold text-[#E91E63]">{formatNumber(socialSecurityData?.amountPerBuilding || 0)}</span>
+                    </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-200">
                     <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
@@ -1168,7 +1265,145 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+
+          </TabsContent>
+
+      {/* Dialog เงินสมทบประกันสังคม */}
+      <Dialog open={socialSecurityDialogOpen} onOpenChange={setSocialSecurityDialogOpen}>
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="bg-gradient-to-r from-[#E91E63] to-[#C2185B] -mx-6 -mt-6 px-6 py-4 rounded-t-lg">
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <HeartPulse className="h-5 w-5" />
+              เงินสมทบประกันสังคม (นายจ้าง)
+            </DialogTitle>
+            <p className="text-white/80 text-sm">
+              กรอกจำนวนเงินสมทบประกันสังคมของแต่ละพนักงาน (หาร 5 อาคาร)
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-4">
+            {/* รายชื่อพนักงาน */}
+            {socialSecurityData && socialSecurityData.employees.length > 0 ? (
+              <div className="space-y-2">
+                {socialSecurityData.employees.map((emp) => (
+                  <div
+                    key={emp.id}
+                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#E91E63]/20 hover:border-[#E91E63]/40 transition-colors"
+                  >
+                    <Checkbox
+                      id={`dialog-emp-${emp.id}`}
+                      checked={emp.amount > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          // เมื่อ check ให้ตั้งค่าเริ่มต้น 750 บาท
+                          setSocialSecurityData((prev) => {
+                            if (!prev) return prev
+                            return {
+                              ...prev,
+                              employees: prev.employees.map((e) =>
+                                e.id === emp.id ? { ...e, amount: 750 } : e
+                              ),
+                            }
+                          })
+                          saveSocialSecurityContribution(emp.id, 750)
+                        } else {
+                          // เมื่อ uncheck ให้ตั้งค่าเป็น 0
+                          setSocialSecurityData((prev) => {
+                            if (!prev) return prev
+                            return {
+                              ...prev,
+                              employees: prev.employees.map((e) =>
+                                e.id === emp.id ? { ...e, amount: 0 } : e
+                              ),
+                            }
+                          })
+                          saveSocialSecurityContribution(emp.id, 0)
+                        }
+                      }}
+                      className="h-5 w-5 border-[#E91E63] data-[state=checked]:bg-[#E91E63] data-[state=checked]:border-[#E91E63]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label htmlFor={`dialog-emp-${emp.id}`} className="font-medium text-slate-700 cursor-pointer text-sm">
+                        {emp.firstName} {emp.lastName}
+                        {emp.nickname && <span className="text-slate-400 ml-1">({emp.nickname})</span>}
+                      </Label>
+                      <p className="text-xs text-slate-400">
+                        {emp.position === 'MAID' ? 'แม่บ้าน' : emp.position === 'MANAGER' ? 'ผู้จัดการ' : 'หุ้นส่วน'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={emp.amount || ''}
+                        onChange={(e) => {
+                          const newAmount = parseFloat(e.target.value) || 0
+                          setSocialSecurityData((prev) => {
+                            if (!prev) return prev
+                            return {
+                              ...prev,
+                              employees: prev.employees.map((e) =>
+                                e.id === emp.id ? { ...e, amount: newAmount } : e
+                              ),
+                            }
+                          })
+                        }}
+                        onBlur={(e) => {
+                          const newAmount = parseFloat(e.target.value) || 0
+                          saveSocialSecurityContribution(emp.id, newAmount)
+                        }}
+                        placeholder="0"
+                        className="w-24 text-right border-[#E91E63]/30 focus:border-[#E91E63]"
+                        disabled={savingSocialSecurity === emp.id}
+                      />
+                      <span className="text-xs text-slate-500">บาท</span>
+                      {savingSocialSecurity === emp.id && (
+                        <Loader2 className="h-4 w-4 animate-spin text-[#E91E63]" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-400">
+                {loadingSocialSecurity ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>กำลังโหลด...</span>
+                  </div>
+                ) : (
+                  <p>ไม่พบข้อมูลพนักงาน กรุณาเพิ่มพนักงานก่อน</p>
+                )}
+              </div>
+            )}
+
+            {/* สรุปยอดรวม */}
+            {socialSecurityData && socialSecurityData.employees.length > 0 && (
+              <div className="p-4 bg-[#E91E63]/10 rounded-xl border border-[#E91E63]/30">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-slate-700">รวมเงินสมทบประกันสังคม</span>
+                  <span className="font-bold text-[#E91E63] text-lg">
+                    {formatNumber(socialSecurityData.totalAmount || 0)} บาท
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-[#E91E63]/20">
+                  <span className="text-sm text-slate-500">หาร 5 อาคาร</span>
+                  <span className="font-semibold text-[#E91E63]">
+                    {formatNumber(socialSecurityData.amountPerBuilding || 0)} บาท/อาคาร
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSocialSecurityDialogOpen(false)}>
+              ปิด
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
         <TabsContent value="info" className="space-y-4">
           <Card className="border-0 shadow-md overflow-hidden">

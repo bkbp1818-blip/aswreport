@@ -56,6 +56,8 @@ interface Summary {
   maidTravelExpense?: number
   cleaningSupplyExpense?: number
   foodExpense?: number
+  // เงินสมทบประกันสังคม
+  socialSecurityExpense?: number
 }
 
 interface AllSummaryData {
@@ -178,7 +180,9 @@ export default function ReportsPage() {
     if (lowerName.includes('trip')) return '✈️'
     if (lowerName.includes('expedia')) return '🌍'
     if (lowerName.includes('rb') || lowerName.includes('roombix')) return '🏨'
-    if (lowerName.includes('ช่องทางอื่น')) return '💰'
+    if (lowerName.includes('paypal')) return '💳'
+    if (lowerName.includes('credit card')) return '💳'
+    if (lowerName.includes('bank transfer')) return '🏦'
 
     // รายได้ - Upsell
     if (lowerName.includes('ค่าเช่า')) return '🏠'
@@ -207,6 +211,7 @@ export default function ReportsPage() {
     if (lowerName.includes('ซ่อมบำรุงอาคาร')) return '🏗️'
     if (lowerName.includes('เดินทาง') || lowerName.includes('แม่บ้าน')) return '🚌'
     if (lowerName.includes('little hotelier') || lowerName.includes('hotelier')) return '🏨'
+    if (lowerName.includes('fee') && lowerName.includes('paypal')) return '💳'
     if (lowerName.includes('กรองน้ำ') || lowerName.includes('coway')) return '🚰'
     if (lowerName.includes('อุปกรณ์ทำความสะอาด') || lowerName.includes('ทำความสะอาด')) return '🧹'
     if (lowerName.includes('น้ำยาซักผ้า') || lowerName.includes('ซักผ้า')) return '🧺'
@@ -781,6 +786,15 @@ export default function ReportsPage() {
         divisor: buildingCount,
         bgColor: '#F9731620',
         textColor: '#F97316',
+      },
+      {
+        name: 'เงินสมทบประกันสังคม',
+        shortName: 'ประกันสังคม',
+        value: data.socialSecurityExpense || 0,
+        totalValue: (data.socialSecurityExpense || 0) * 5, // หาร 5 อาคาร
+        divisor: 5,
+        bgColor: '#E91E6320',
+        textColor: '#E91E63',
       },
     ]
   }
@@ -1671,6 +1685,9 @@ export default function ReportsPage() {
     'ค่าน้ำมันรถมอเตอร์ไซค์',
     'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
     'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
+    'ค่าอาหาร',
+    // เงินสมทบประกันสังคม
+    'เงินสมทบประกันสังคม',
   ]
 
   // ข้อมูลค่าใช้จ่ายส่วนกลางพร้อมสีและรายละเอียด
@@ -1800,6 +1817,14 @@ export default function ReportsPage() {
         divisor: buildingCount,
         bgClass: 'bg-orange-100/50',
         textClass: 'text-orange-500',
+      },
+      {
+        name: 'เงินสมทบประกันสังคม',
+        value: data.socialSecurityExpense || 0,
+        totalValue: (data.socialSecurityExpense || 0) * 5, // หาร 5 อาคาร
+        divisor: 5,
+        bgClass: 'bg-pink-100/50',
+        textClass: 'text-pink-600',
       },
     ]
   }

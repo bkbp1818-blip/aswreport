@@ -126,6 +126,24 @@ model Employee {
   isActive  Boolean  @default(true) // ยังทำงานอยู่หรือไม่
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  socialSecurityContributions SocialSecurityContribution[]
+}
+
+// เงินสมทบประกันสังคม (นายจ้างจ่าย)
+model SocialSecurityContribution {
+  id         Int      @id @default(autoincrement())
+  employeeId Int      // รหัสพนักงาน
+  amount     Decimal  @default(0) @db.Decimal(15, 2) // จำนวนเงินสมทบ
+  month      Int      // เดือน (1-12)
+  year       Int      // ปี
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, month, year])
+  @@index([month, year])
 }
 
 // ประวัติการเพิ่ม/ลดค่าใช้จ่าย

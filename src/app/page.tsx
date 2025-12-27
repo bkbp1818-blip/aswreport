@@ -80,7 +80,9 @@ const BRAND_COLORS: Record<string, string> = {
   'Trip': '#287DFA',            // Trip.com Blue
   'Expedia': '#FFCC00',         // Expedia Yellow
   'RB': '#6B4C9A',              // Roombix Purple
-  'ช่องทางอื่น': '#6B7280',      // Gray
+  'PayPal': '#003087',          // PayPal Blue
+  'Credit Card': '#1A1F71',     // Visa Blue
+  'Bank Transfer': '#00A651',   // Bank Green
 }
 
 // ฟังก์ชันดึงสีตามชื่อช่องทาง

@@ -47,12 +47,15 @@ async function main() {
     'ค่าเช่าจาก Trip',
     'ค่าเช่าจาก Expedia',
     'ค่าเช่าจาก RB',
-    'ค่าเช่าจาก ช่องทางอื่น',
+    'ค่าเช่าจาก PayPal',
+    'ค่าเช่าจาก Credit Card',
+    'ค่าเช่าจาก Bank Transfer',
   ]
 
   // สร้างหมวดหมู่รายจ่าย
   const expenseCategories = [
     'Little Hotelier Expense',
+    'ค่า Fee จาก PayPal',
     'ค่าไฟฟ้า',
     'ค่าน้ำประปา',
     'ค่า Internet',

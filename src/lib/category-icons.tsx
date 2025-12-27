@@ -28,6 +28,7 @@ import {
   Truck,
   ShieldCheck,
   TrafficCone,
+  HeartPulse,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -42,7 +43,9 @@ const iconColors: Record<string, string> = {
   'Ctrip': 'text-[#2577E3]',             // Ctrip Blue (darker)
   'Expedia': 'text-[#FFCC00]',           // Expedia Yellow
   'RB': 'text-[#6B4C9A]',                // Roombix Purple
-  'ช่องทางอื่น': 'text-gray-500',
+  'PayPal': 'text-[#003087]',             // PayPal Blue
+  'Credit Card': 'text-[#1A1F71]',        // Visa Blue
+  'Bank Transfer': 'text-[#00A651]',      // Bank Green
   'ค่าอาหาร': 'text-orange-500',
   'รับส่งสนามบิน': 'text-cyan-500',
   'ค่าทัวร์': 'text-green-500',
@@ -66,9 +69,11 @@ const iconColors: Record<string, string> = {
   'ซ่อมบำรุงอาคาร': 'text-amber-600',
   'เดินทางแม่บ้าน': 'text-violet-500',
   'Little Hotelier': 'text-teal-500',
+  'PayPal Fee': 'text-[#003087]',          // PayPal Blue
   'ค่าขนส่งสินค้า': 'text-orange-500',
   'ค่าดูแล MAX': 'text-[#9B59B6]',
   'ค่าดูแลจราจร': 'text-[#E74C3C]',
+  'ประกันสังคม': 'text-[#E91E63]',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -100,8 +105,14 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   if (lowerName.includes('rb') || lowerName.includes('roombix')) {
     return { Icon: Hotel, color: iconColors['RB'] }
   }
-  if (lowerName.includes('ช่องทางอื่น')) {
-    return { Icon: DollarSign, color: iconColors['ช่องทางอื่น'] }
+  if (lowerName.includes('paypal')) {
+    return { Icon: CreditCard, color: iconColors['PayPal'] }
+  }
+  if (lowerName.includes('credit card')) {
+    return { Icon: CreditCard, color: iconColors['Credit Card'] }
+  }
+  if (lowerName.includes('bank transfer')) {
+    return { Icon: DollarSign, color: iconColors['Bank Transfer'] }
   }
 
   // รายได้ Upsell
@@ -173,6 +184,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   if (lowerName.includes('little hotelier') || lowerName.includes('hotelier')) {
     return { Icon: Hotel, color: iconColors['Little Hotelier'] }
   }
+  if (lowerName.includes('fee') && lowerName.includes('paypal')) {
+    return { Icon: CreditCard, color: iconColors['PayPal Fee'] }
+  }
   if (lowerName.includes('ขนส่ง')) {
     return { Icon: Truck, color: iconColors['ค่าขนส่งสินค้า'] }
   }
@@ -181,6 +195,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('จราจร')) {
     return { Icon: TrafficCone, color: iconColors['ค่าดูแลจราจร'] }
+  }
+  if (lowerName.includes('ประกันสังคม')) {
+    return { Icon: HeartPulse, color: iconColors['ประกันสังคม'] }
   }
 
   // Default
