@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       motorcycleMaintenanceExpense: summaries.reduce((sum, s) => sum + s.motorcycleMaintenanceExpense, 0),
       maidTravelExpense: summaries.reduce((sum, s) => sum + s.maidTravelExpense, 0),
       cleaningSupplyExpense: summaries.reduce((sum, s) => sum + s.cleaningSupplyExpense, 0),
-      laundryDetergentExpense: summaries.reduce((sum, s) => sum + s.laundryDetergentExpense, 0),
+      foodExpense: summaries.reduce((sum, s) => sum + s.foodExpense, 0),
       cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
@@ -123,7 +123,38 @@ async function calculateBuildingSummary(
 
   // คำนวณยอดรวมจาก expense history แยกตาม categoryId (fieldName)
   const categoryTotals: Record<number, number> = {}
+  let airportShuttleRentIncome = 0
+  let thaiBusTourIncome = 0
+  let coVanKesselIncome = 0
   for (const item of expenseHistory) {
+    // ถ้าเป็น special income fields ให้เก็บแยก
+    if (item.fieldName === 'airportShuttleRentIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        airportShuttleRentIncome += amount
+      } else {
+        airportShuttleRentIncome -= amount
+      }
+      continue
+    }
+    if (item.fieldName === 'thaiBusTourIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        thaiBusTourIncome += amount
+      } else {
+        thaiBusTourIncome -= amount
+      }
+      continue
+    }
+    if (item.fieldName === 'coVanKesselIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        coVanKesselIncome += amount
+      } else {
+        coVanKesselIncome -= amount
+      }
+      continue
+    }
     const categoryId = parseInt(item.fieldName)
     if (!categoryTotals[categoryId]) {
       categoryTotals[categoryId] = 0
@@ -136,6 +167,9 @@ async function calculateBuildingSummary(
     }
   }
   // ไม่ให้ติดลบ
+  airportShuttleRentIncome = Math.max(0, airportShuttleRentIncome)
+  thaiBusTourIncome = Math.max(0, thaiBusTourIncome)
+  coVanKesselIncome = Math.max(0, coVanKesselIncome)
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
   }
@@ -162,52 +196,102 @@ async function calculateBuildingSummary(
   const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
   const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
 
-  // ดึง GlobalSettings สำหรับค่าใช้จ่ายส่วนกลางทั้งหมด
-  const globalSettings = await prisma.globalSettings.findFirst()
+  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (ตามเดือน/ปี)
+  const globalExpenseHistory = await prisma.expenseHistory.findMany({
+    where: {
+      targetType: 'GLOBAL_SETTINGS',
+      targetId: null,
+      month,
+      year,
+    },
+  })
+
+  // รายการฟิลด์ค่าใช้จ่ายส่วนกลางทั้งหมด
+  const globalExpenseFields = [
+    'maxCareExpense',
+    'trafficCareExpense',
+    'shippingExpense',
+    'amenityExpense',
+    'waterBottleExpense',
+    'cookieExpense',
+    'coffeeExpense',
+    'fuelExpense',
+    'parkingExpense',
+    'motorcycleMaintenanceExpense',
+    'maidTravelExpense',
+    'cleaningSupplyExpense',
+    'foodExpense',
+  ]
+
+  // ฟิลด์ที่หาร 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
+  const threeWaySplitFields = ['maxCareExpense', 'trafficCareExpense', 'shippingExpense']
+
+  // คำนวณยอดรวมจาก ExpenseHistory
+  const globalExpenseTotals: Record<string, number> = {}
+  for (const field of globalExpenseFields) {
+    globalExpenseTotals[field] = 0
+  }
+
+  for (const item of globalExpenseHistory) {
+    const fieldName = item.fieldName
+    if (!globalExpenseFields.includes(fieldName)) continue
+
+    const amount = Number(item.amount)
+    if (item.actionType === 'ADD') {
+      globalExpenseTotals[fieldName] += amount
+    } else {
+      globalExpenseTotals[fieldName] -= amount
+    }
+  }
+
+  // ไม่ให้ติดลบ
+  for (const field of globalExpenseFields) {
+    globalExpenseTotals[field] = Math.max(0, globalExpenseTotals[field])
+  }
 
   // ค่าดูแล MAX และค่าดูแลจราจร หารเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
   const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
   const isEligibleForCareExpense = eligibleBuildingsForCare.includes(building.code)
   const careExpenseDivisor = 3 // จำนวนอาคารที่ร่วมจ่ายค่าดูแล
 
-  const maxCareExpensePerBuilding = globalSettings && isEligibleForCareExpense
-    ? Number(globalSettings.maxCareExpense) / careExpenseDivisor
+  const maxCareExpensePerBuilding = isEligibleForCareExpense
+    ? globalExpenseTotals.maxCareExpense / careExpenseDivisor
     : 0
-  const trafficCareExpensePerBuilding = globalSettings && isEligibleForCareExpense
-    ? Number(globalSettings.trafficCareExpense) / careExpenseDivisor
+  const trafficCareExpensePerBuilding = isEligibleForCareExpense
+    ? globalExpenseTotals.trafficCareExpense / careExpenseDivisor
     : 0
-  const shippingExpensePerBuilding = globalSettings && isEligibleForCareExpense
-    ? Number(globalSettings.shippingExpense) / careExpenseDivisor
+  const shippingExpensePerBuilding = isEligibleForCareExpense
+    ? globalExpenseTotals.shippingExpense / careExpenseDivisor
     : 0
-  const amenityExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.amenityExpense) / buildingCount
+  const amenityExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.amenityExpense / buildingCount
     : 0
-  const waterBottleExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.waterBottleExpense) / buildingCount
+  const waterBottleExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.waterBottleExpense / buildingCount
     : 0
-  const cookieExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.cookieExpense) / buildingCount
+  const cookieExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.cookieExpense / buildingCount
     : 0
-  const coffeeExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.coffeeExpense) / buildingCount
+  const coffeeExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.coffeeExpense / buildingCount
     : 0
-  const fuelExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.fuelExpense) / buildingCount
+  const fuelExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.fuelExpense / buildingCount
     : 0
-  const parkingExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.parkingExpense) / buildingCount
+  const parkingExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.parkingExpense / buildingCount
     : 0
-  const motorcycleMaintenanceExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.motorcycleMaintenanceExpense) / buildingCount
+  const motorcycleMaintenanceExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.motorcycleMaintenanceExpense / buildingCount
     : 0
-  const maidTravelExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.maidTravelExpense) / buildingCount
+  const maidTravelExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.maidTravelExpense / buildingCount
     : 0
-  const cleaningSupplyExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.cleaningSupplyExpense) / buildingCount
+  const cleaningSupplyExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.cleaningSupplyExpense / buildingCount
     : 0
-  const laundryDetergentExpensePerBuilding = globalSettings && buildingCount > 0
-    ? Number(globalSettings.laundryDetergentExpense) / buildingCount
+  const foodExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.foodExpense / buildingCount
     : 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก settings (แยกแต่ละอาคาร)
@@ -218,16 +302,17 @@ async function calculateBuildingSummary(
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
-    cleaningSupplyExpensePerBuilding + laundryDetergentExpensePerBuilding
+    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding
 
   // คำนวณรายรับ
   const incomeTransactions = transactions.filter(
     (t) => t.category.type === 'INCOME'
   )
+  // รวมรายได้จาก categories + special income fields
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  )
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome
 
   // คำนวณรายได้ค่าเช่า (สำหรับ Management Fee)
   // เฉพาะหมวดหมู่ที่มีคำว่า "ค่าเช่า" เท่านั้น (ไม่รวมค่าอาหาร, รับส่งสนามบิน, ทัวร์, Thai bus, Co van)
@@ -253,6 +338,16 @@ async function calculateBuildingSummary(
   incomeTransactions.forEach((t) => {
     incomeByChannel[t.category.name] = Number(t.amount)
   })
+  // เพิ่ม special income fields
+  if (airportShuttleRentIncome > 0) {
+    incomeByChannel['ค่าเช่า รถรับส่งสนามบิน'] = airportShuttleRentIncome
+  }
+  if (thaiBusTourIncome > 0) {
+    incomeByChannel['Thai Bus Tour'] = thaiBusTourIncome
+  }
+  if (coVanKesselIncome > 0) {
+    incomeByChannel['Co Van Kessel'] = coVanKesselIncome
+  }
 
   // แยกรายจ่ายตามหมวดหมู่
   const expenseByCategory: Record<string, number> = {}
@@ -296,7 +391,7 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่าซ่อมบำรุงรถมอเตอร์ไซค์'] = motorcycleMaintenanceExpensePerBuilding
   expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
   expenseByCategory['ค่าอุปกรณ์ทำความสะอาด'] = cleaningSupplyExpensePerBuilding
-  expenseByCategory['ค่าน้ำยาสำหรับซักผ้า'] = laundryDetergentExpensePerBuilding
+  expenseByCategory['ค่าอาหาร'] = foodExpensePerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
@@ -348,7 +443,7 @@ async function calculateBuildingSummary(
     motorcycleMaintenanceExpense: motorcycleMaintenanceExpensePerBuilding,
     maidTravelExpense: maidTravelExpensePerBuilding,
     cleaningSupplyExpense: cleaningSupplyExpensePerBuilding,
-    laundryDetergentExpense: laundryDetergentExpensePerBuilding,
+    foodExpense: foodExpensePerBuilding,
     // ค่าเช่าเครื่องกรองน้ำ Coway (แยกแต่ละอาคาร)
     cowayWaterFilterExpense,
     netProfit,

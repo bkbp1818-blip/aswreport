@@ -16,7 +16,7 @@ const expenseFields = [
   'motorcycleMaintenanceExpense',
   'maidTravelExpense',
   'cleaningSupplyExpense',
-  'laundryDetergentExpense',
+  'foodExpense',
 ] as const
 
 // ฟิลด์ที่หาร 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D

@@ -61,8 +61,9 @@ model Settings {
   vatPercent              Decimal  @default(7) @db.Decimal(5, 2)
   monthlyRent             Decimal  @default(0) @db.Decimal(15, 2)
   littleHotelierExpense   Decimal  @default(0) @db.Decimal(15, 2)
-  cowayWaterFilterExpense Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าเครื่องกรองน้ำ Coway
-  createdAt               DateTime @default(now())
+  cowayWaterFilterExpense   Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าเครื่องกรองน้ำ Coway
+  airportShuttleRentExpense Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่า รถรับส่งสนามบิน
+  createdAt                 DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
@@ -84,6 +85,7 @@ model GlobalSettings {
   maidTravelExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่าเดินทางแม่บ้าน
   cleaningSupplyExpense        Decimal  @default(0) @db.Decimal(15, 2) // ค่าอุปกรณ์ทำความสะอาด
   laundryDetergentExpense      Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำยาสำหรับซักผ้า
+  foodExpense                  Decimal  @default(0) @db.Decimal(15, 2) // ค่าอาหาร
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 }

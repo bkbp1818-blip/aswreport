@@ -42,6 +42,20 @@ interface Summary {
   amountToBePaid: number
   incomeByChannel: Record<string, number>
   expenseByCategory: Record<string, number>
+  // ค่าใช้จ่ายส่วนกลาง (ต่ออาคาร) - ดึงจาก ExpenseHistory ตามเดือน/ปี
+  maxCareExpense?: number
+  trafficCareExpense?: number
+  shippingExpense?: number
+  amenityExpense?: number
+  waterBottleExpense?: number
+  cookieExpense?: number
+  coffeeExpense?: number
+  fuelExpense?: number
+  parkingExpense?: number
+  motorcycleMaintenanceExpense?: number
+  maidTravelExpense?: number
+  cleaningSupplyExpense?: number
+  foodExpense?: number
 }
 
 interface AllSummaryData {
@@ -65,7 +79,7 @@ interface GlobalSettings {
   motorcycleMaintenanceExpense: number
   maidTravelExpense: number
   cleaningSupplyExpense: number
-  laundryDetergentExpense: number
+  foodExpense: number
   maxCareExpensePerBuilding: number
   trafficCareExpensePerBuilding: number
   shippingExpensePerBuilding: number
@@ -78,7 +92,7 @@ interface GlobalSettings {
   motorcycleMaintenanceExpensePerBuilding: number
   maidTravelExpensePerBuilding: number
   cleaningSupplyExpensePerBuilding: number
-  laundryDetergentExpensePerBuilding: number
+  foodExpensePerBuilding: number
 }
 
 interface Category {
@@ -410,6 +424,10 @@ export default function ReportsPage() {
       cat.name,
       data.incomeByChannel?.[cat.name] || 0
     ])
+    // เพิ่ม special income fields (ไม่ได้อยู่ใน categories)
+    incomeEntries.push(['ค่าเช่า รถรับส่งสนามบิน', data.incomeByChannel?.['ค่าเช่า รถรับส่งสนามบิน'] || 0])
+    incomeEntries.push(['Thai Bus Tour', data.incomeByChannel?.['Thai Bus Tour'] || 0])
+    incomeEntries.push(['Co Van Kessel', data.incomeByChannel?.['Co Van Kessel'] || 0])
 
     const expenseEntries: [string, number][] = expenseCategories.map(cat => [
       cat.name,
@@ -417,7 +435,7 @@ export default function ReportsPage() {
     ])
 
     // ค่าใช้จ่ายส่วนกลาง
-    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data.buildingCode, data.cowayWaterFilterExpense)
+    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data)
 
     // จัดกลุ่มรายจ่าย
     const rentEntry: [string, number] = ['ค่าเช่าอาคาร', data.expenseByCategory?.['ค่าเช่าอาคาร'] || 0]
@@ -627,36 +645,39 @@ export default function ReportsPage() {
   }
 
   // ข้อมูลค่าใช้จ่ายส่วนกลางสำหรับ PDF พร้อมสีและรายละเอียด
-  const getPdfGlobalExpenseConfig = (buildingCode?: string, cowayWaterFilterExpense: number = 0) => {
-    if (!globalSettings) return []
+  // ใช้ค่าจาก Summary data (ตามเดือน/ปี) แทน globalSettings state (ค่าปัจจุบัน)
+  const getPdfGlobalExpenseConfig = (data: Summary) => {
+    const buildingCode = data.buildingCode
+    const buildingCount = buildings.length || 5
 
     // เช็คว่าอาคารที่เลือกเป็น 3 อาคาร (NANA, CT, YW) หรือไม่
     const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
     const isEligibleForCareExpense = !buildingCode || eligibleBuildingsForCare.includes(buildingCode)
+    const careExpenseDivisor = 3
 
     return [
       // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร
-      ...(isEligibleForCareExpense && globalSettings.maxCareExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.maxCareExpense || 0) > 0 ? [{
         name: 'ค่าดูแล MAX',
-        value: globalSettings.maxCareExpensePerBuilding,
-        totalValue: globalSettings.maxCareExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.maxCareExpense || 0,
+        totalValue: (data.maxCareExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgColor: '#9B59B615',
         textColor: '#9B59B6',
       }] : []),
-      ...(isEligibleForCareExpense && globalSettings.trafficCareExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.trafficCareExpense || 0) > 0 ? [{
         name: 'ค่าดูแลจราจร',
-        value: globalSettings.trafficCareExpensePerBuilding,
-        totalValue: globalSettings.trafficCareExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.trafficCareExpense || 0,
+        totalValue: (data.trafficCareExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgColor: '#E74C3C15',
         textColor: '#E74C3C',
       }] : []),
-      ...(isEligibleForCareExpense && globalSettings.shippingExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.shippingExpense || 0) > 0 ? [{
         name: 'ค่าขนส่งสินค้า',
-        value: globalSettings.shippingExpensePerBuilding,
-        totalValue: globalSettings.shippingExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.shippingExpense || 0,
+        totalValue: (data.shippingExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgColor: '#F5811820',
         textColor: '#F58118',
       }] : []),
@@ -664,9 +685,9 @@ export default function ReportsPage() {
       {
         name: 'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
         shortName: 'ค่า Amenity',
-        value: globalSettings.amenityExpensePerBuilding,
-        totalValue: globalSettings.amenityExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.amenityExpense || 0,
+        totalValue: (data.amenityExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#EC489920',
         textColor: '#EC4899',
       },
@@ -674,8 +695,8 @@ export default function ReportsPage() {
       {
         name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
         shortName: 'ค่ากรองน้ำ Coway',
-        value: cowayWaterFilterExpense,
-        totalValue: cowayWaterFilterExpense,
+        value: data.cowayWaterFilterExpense || 0,
+        totalValue: data.cowayWaterFilterExpense || 0,
         divisor: 1,
         bgColor: '#06B6D420',
         textColor: '#06B6D4',
@@ -683,83 +704,83 @@ export default function ReportsPage() {
       {
         name: 'ค่าน้ำเปล่า',
         shortName: 'ค่าน้ำเปล่า',
-        value: globalSettings.waterBottleExpensePerBuilding,
-        totalValue: globalSettings.waterBottleExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.waterBottleExpense || 0,
+        totalValue: (data.waterBottleExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#06B6D420',
         textColor: '#06B6D4',
       },
       {
         name: 'ค่าขนมคุ้กกี้',
         shortName: 'ค่าขนมคุ้กกี้',
-        value: globalSettings.cookieExpensePerBuilding,
-        totalValue: globalSettings.cookieExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.cookieExpense || 0,
+        totalValue: (data.cookieExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#F59E0B20',
         textColor: '#F59E0B',
       },
       {
         name: 'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
         shortName: 'ค่ากาแฟซอง',
-        value: globalSettings.coffeeExpensePerBuilding,
-        totalValue: globalSettings.coffeeExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.coffeeExpense || 0,
+        totalValue: (data.coffeeExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#B4530040',
         textColor: '#B45300',
       },
       {
         name: 'ค่าน้ำมันรถมอเตอร์ไซค์',
         shortName: 'ค่าน้ำมันรถ',
-        value: globalSettings.fuelExpensePerBuilding,
-        totalValue: globalSettings.fuelExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.fuelExpense || 0,
+        totalValue: (data.fuelExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#6B728015',
         textColor: '#6B7280',
       },
       {
         name: 'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
         shortName: 'ค่าเช่าที่จอดรถ',
-        value: globalSettings.parkingExpensePerBuilding,
-        totalValue: globalSettings.parkingExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.parkingExpense || 0,
+        totalValue: (data.parkingExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#47556915',
         textColor: '#475569',
       },
       {
         name: 'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
         shortName: 'ค่าซ่อมบำรุงรถ',
-        value: globalSettings.motorcycleMaintenanceExpensePerBuilding,
-        totalValue: globalSettings.motorcycleMaintenanceExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.motorcycleMaintenanceExpense || 0,
+        totalValue: (data.motorcycleMaintenanceExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#F4363620',
         textColor: '#F43636',
       },
       {
         name: 'ค่าเดินทางแม่บ้าน',
         shortName: 'ค่าเดินทางแม่บ้าน',
-        value: globalSettings.maidTravelExpensePerBuilding,
-        totalValue: globalSettings.maidTravelExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.maidTravelExpense || 0,
+        totalValue: (data.maidTravelExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#8B5CF620',
         textColor: '#8B5CF6',
       },
       {
         name: 'ค่าอุปกรณ์ทำความสะอาด',
         shortName: 'ค่าอุปกรณ์ทำความสะอาด',
-        value: globalSettings.cleaningSupplyExpensePerBuilding,
-        totalValue: globalSettings.cleaningSupplyExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.cleaningSupplyExpense || 0,
+        totalValue: (data.cleaningSupplyExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgColor: '#14B8A620',
         textColor: '#14B8A6',
       },
       {
-        name: 'ค่าน้ำยาสำหรับซักผ้า',
-        shortName: 'ค่าน้ำยาซักผ้า',
-        value: globalSettings.laundryDetergentExpensePerBuilding,
-        totalValue: globalSettings.laundryDetergentExpense,
-        divisor: globalSettings.buildingCount,
-        bgColor: '#0EA5E920',
-        textColor: '#0EA5E9',
+        name: 'ค่าอาหาร',
+        shortName: 'ค่าอาหาร',
+        value: data.foodExpense || 0,
+        totalValue: (data.foodExpense || 0) * buildingCount,
+        divisor: buildingCount,
+        bgColor: '#F9731620',
+        textColor: '#F97316',
       },
     ]
   }
@@ -775,6 +796,10 @@ export default function ReportsPage() {
       cat.name,
       data.incomeByChannel?.[cat.name] || 0
     ])
+    // เพิ่ม special income fields (ไม่ได้อยู่ใน categories)
+    incomeEntries.push(['ค่าเช่า รถรับส่งสนามบิน', data.incomeByChannel?.['ค่าเช่า รถรับส่งสนามบิน'] || 0])
+    incomeEntries.push(['Thai Bus Tour', data.incomeByChannel?.['Thai Bus Tour'] || 0])
+    incomeEntries.push(['Co Van Kessel', data.incomeByChannel?.['Co Van Kessel'] || 0])
 
     // รายจ่ายจาก categories
     const expenseEntries: [string, number][] = expenseCategories.map(cat => [
@@ -783,7 +808,7 @@ export default function ReportsPage() {
     ])
 
     // ค่าใช้จ่ายส่วนกลางพร้อมข้อมูลครบ
-    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data.buildingCode, data.cowayWaterFilterExpense)
+    const pdfGlobalExpenseConfig = getPdfGlobalExpenseConfig(data)
 
     // จัดเรียงรายจ่าย: ค่าเช่าอาคาร, เงินเดือนพนักงาน, รายจ่ายอื่นๆ
     // ไม่รวมรายการที่ซ้ำกับค่าใช้จ่ายส่วนกลาง (globalExpenseNamesAll)
@@ -1158,7 +1183,7 @@ export default function ReportsPage() {
         'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
         'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
         'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
-        'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+        'ค่าอุปกรณ์ทำความสะอาด',
         'ค่าเช่าเครื่องกรองน้ำ Coway',
         'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
         'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
@@ -1424,7 +1449,7 @@ export default function ReportsPage() {
         'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
         'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
         'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
-        'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+        'ค่าอุปกรณ์ทำความสะอาด',
         'ค่าเช่าเครื่องกรองน้ำ Coway',
         'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
         'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
@@ -1509,7 +1534,7 @@ export default function ReportsPage() {
       'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
       'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
       'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
-      'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+      'ค่าอุปกรณ์ทำความสะอาด',
       'ค่าเช่าเครื่องกรองน้ำ Coway',
       'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
       'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
@@ -1565,7 +1590,7 @@ export default function ReportsPage() {
       'ค่า Amenity', 'ค่าน้ำเปล่า', 'ค่าขนมคุ้กกี้',
       'ค่ากาแฟ', 'ค่าน้ำมัน', 'ค่าเช่าที่จอดรถ',
       'ค่าซ่อมบำรุงรถ', 'ค่าเดินทางแม่บ้าน',
-      'ค่าอุปกรณ์ทำความสะอาด', 'ค่าน้ำยาสำหรับซักผ้า', 'ค่าน้ำยาซักผ้า',
+      'ค่าอุปกรณ์ทำความสะอาด',
       'ค่าเช่าเครื่องกรองน้ำ Coway',
       'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
       'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
@@ -1638,8 +1663,6 @@ export default function ReportsPage() {
     'ค่าซ่อมบำรุงรถ',
     'ค่าเดินทางแม่บ้าน',
     'ค่าอุปกรณ์ทำความสะอาด',
-    'ค่าน้ำยาสำหรับซักผ้า',
-    'ค่าน้ำยาซักผ้า',
     // ค่าใช้จ่ายแยกอาคาร (จาก Settings)
     'ค่าเช่าเครื่องกรองน้ำ Coway',
     // ชื่อใน categories database ที่ซ้ำซ้อน
@@ -1651,54 +1674,56 @@ export default function ReportsPage() {
   ]
 
   // ข้อมูลค่าใช้จ่ายส่วนกลางพร้อมสีและรายละเอียด
-  const getGlobalExpenseConfig = (cowayWaterFilterExpense: number = 0) => {
-    if (!globalSettings) return []
+  // ใช้ค่าจาก Summary data (ตามเดือน/ปี) แทน globalSettings state (ค่าปัจจุบัน)
+  const getGlobalExpenseConfig = (data: Summary) => {
+    const buildingCode = data.buildingCode
+    const buildingCount = buildings.length || 5
+    const careExpenseDivisor = 3
 
     // เช็คว่าอาคารที่เลือกเป็น 3 อาคาร (NANA, CT, YW) หรือไม่
-    const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
     const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
-    const isEligibleForCareExpense = selectedBuilding === 'all' || eligibleBuildingsForCare.includes(selectedBuildingCode)
+    const isEligibleForCareExpense = !buildingCode || eligibleBuildingsForCare.includes(buildingCode)
 
     return [
       // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร
-      ...(isEligibleForCareExpense && globalSettings.maxCareExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.maxCareExpense || 0) > 0 ? [{
         name: 'ค่าดูแล MAX',
-        value: globalSettings.maxCareExpensePerBuilding,
-        totalValue: globalSettings.maxCareExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.maxCareExpense || 0,
+        totalValue: (data.maxCareExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgClass: 'bg-[#9B59B6]/10',
         textClass: 'text-[#9B59B6]',
       }] : []),
-      ...(isEligibleForCareExpense && globalSettings.trafficCareExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.trafficCareExpense || 0) > 0 ? [{
         name: 'ค่าดูแลจราจร',
-        value: globalSettings.trafficCareExpensePerBuilding,
-        totalValue: globalSettings.trafficCareExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.trafficCareExpense || 0,
+        totalValue: (data.trafficCareExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgClass: 'bg-[#E74C3C]/10',
         textClass: 'text-[#E74C3C]',
       }] : []),
-      ...(isEligibleForCareExpense && globalSettings.shippingExpensePerBuilding > 0 ? [{
+      ...(isEligibleForCareExpense && (data.shippingExpense || 0) > 0 ? [{
         name: 'ค่าขนส่งสินค้า',
-        value: globalSettings.shippingExpensePerBuilding,
-        totalValue: globalSettings.shippingExpense,
-        divisor: globalSettings.careExpenseDivisor,
+        value: data.shippingExpense || 0,
+        totalValue: (data.shippingExpense || 0) * careExpenseDivisor,
+        divisor: careExpenseDivisor,
         bgClass: 'bg-orange-100/50',
         textClass: 'text-orange-600',
       }] : []),
       // ค่าใช้จ่ายส่วนกลาง - ทุกอาคาร (แสดงเสมอ)
       {
         name: 'ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)',
-        value: globalSettings.amenityExpensePerBuilding,
-        totalValue: globalSettings.amenityExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.amenityExpense || 0,
+        totalValue: (data.amenityExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-pink-100/50',
         textClass: 'text-pink-500',
       },
       // ค่าเช่าเครื่องกรองน้ำ Coway (ค่าใช้จ่ายแยกตามอาคาร - อยู่หลัง Amenity) - แสดงเสมอ
       {
         name: 'ค่าเช่าเครื่องกรองน้ำ Coway',
-        value: cowayWaterFilterExpense,
-        totalValue: cowayWaterFilterExpense,
+        value: data.cowayWaterFilterExpense || 0,
+        totalValue: data.cowayWaterFilterExpense || 0,
         divisor: 1,
         bgClass: 'bg-cyan-100/50',
         textClass: 'text-cyan-600',
@@ -1706,75 +1731,75 @@ export default function ReportsPage() {
       },
       {
         name: 'ค่าน้ำเปล่า',
-        value: globalSettings.waterBottleExpensePerBuilding,
-        totalValue: globalSettings.waterBottleExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.waterBottleExpense || 0,
+        totalValue: (data.waterBottleExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-cyan-100/50',
         textClass: 'text-cyan-500',
       },
       {
         name: 'ค่าขนมคุ้กกี้',
-        value: globalSettings.cookieExpensePerBuilding,
-        totalValue: globalSettings.cookieExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.cookieExpense || 0,
+        totalValue: (data.cookieExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-amber-100/50',
         textClass: 'text-amber-500',
       },
       {
         name: 'ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท',
-        value: globalSettings.coffeeExpensePerBuilding,
-        totalValue: globalSettings.coffeeExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.coffeeExpense || 0,
+        totalValue: (data.coffeeExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-amber-200/50',
         textClass: 'text-amber-700',
       },
       {
         name: 'ค่าน้ำมันรถมอเตอร์ไซค์',
-        value: globalSettings.fuelExpensePerBuilding,
-        totalValue: globalSettings.fuelExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.fuelExpense || 0,
+        totalValue: (data.fuelExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-gray-100/50',
         textClass: 'text-gray-600',
       },
       {
         name: 'ค่าเช่าที่จอดรถมอเตอร์ไซค์',
-        value: globalSettings.parkingExpensePerBuilding,
-        totalValue: globalSettings.parkingExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.parkingExpense || 0,
+        totalValue: (data.parkingExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-slate-100/50',
         textClass: 'text-slate-600',
       },
       {
         name: 'ค่าซ่อมบำรุงรถมอเตอร์ไซค์',
-        value: globalSettings.motorcycleMaintenanceExpensePerBuilding,
-        totalValue: globalSettings.motorcycleMaintenanceExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.motorcycleMaintenanceExpense || 0,
+        totalValue: (data.motorcycleMaintenanceExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-rose-100/50',
         textClass: 'text-rose-600',
       },
       {
         name: 'ค่าเดินทางแม่บ้าน',
-        value: globalSettings.maidTravelExpensePerBuilding,
-        totalValue: globalSettings.maidTravelExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.maidTravelExpense || 0,
+        totalValue: (data.maidTravelExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-violet-100/50',
         textClass: 'text-violet-600',
       },
       {
         name: 'ค่าอุปกรณ์ทำความสะอาด',
-        value: globalSettings.cleaningSupplyExpensePerBuilding,
-        totalValue: globalSettings.cleaningSupplyExpense,
-        divisor: globalSettings.buildingCount,
+        value: data.cleaningSupplyExpense || 0,
+        totalValue: (data.cleaningSupplyExpense || 0) * buildingCount,
+        divisor: buildingCount,
         bgClass: 'bg-teal-100/50',
         textClass: 'text-teal-600',
       },
       {
-        name: 'ค่าน้ำยาสำหรับซักผ้า',
-        value: globalSettings.laundryDetergentExpensePerBuilding,
-        totalValue: globalSettings.laundryDetergentExpense,
-        divisor: globalSettings.buildingCount,
-        bgClass: 'bg-sky-100/50',
-        textClass: 'text-sky-600',
+        name: 'ค่าอาหาร',
+        value: data.foodExpense || 0,
+        totalValue: (data.foodExpense || 0) * buildingCount,
+        divisor: buildingCount,
+        bgClass: 'bg-orange-100/50',
+        textClass: 'text-orange-500',
       },
     ]
   }
@@ -1789,6 +1814,10 @@ export default function ReportsPage() {
       cat.name,
       data.incomeByChannel?.[cat.name] || 0
     ])
+    // เพิ่ม special income fields (ไม่ได้อยู่ใน categories)
+    incomeEntries.push(['ค่าเช่า รถรับส่งสนามบิน', data.incomeByChannel?.['ค่าเช่า รถรับส่งสนามบิน'] || 0])
+    incomeEntries.push(['Thai Bus Tour', data.incomeByChannel?.['Thai Bus Tour'] || 0])
+    incomeEntries.push(['Co Van Kessel', data.incomeByChannel?.['Co Van Kessel'] || 0])
 
     // รายจ่ายจาก categories (ไม่รวมค่าใช้จ่ายส่วนกลางที่ดึงจาก GlobalSettings)
     const expenseEntries: [string, number][] = expenseCategories.map(cat => [
@@ -1797,7 +1826,7 @@ export default function ReportsPage() {
     ])
 
     // ค่าใช้จ่ายส่วนกลางพร้อมข้อมูลครบ (รวม ค่าเช่าเครื่องกรองน้ำ Coway)
-    const globalExpenseConfig = getGlobalExpenseConfig(data.cowayWaterFilterExpense)
+    const globalExpenseConfig = getGlobalExpenseConfig(data)
 
     // แยกรายได้เป็น 2 กลุ่ม: ค่าเช่า และ รายได้อื่นๆ
     const rentalIncomeEntries = incomeEntries.filter(([name]) => name.includes('ค่าเช่า'))

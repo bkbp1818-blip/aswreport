@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.6.0 |
+| **Version** | 1.7.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -69,13 +69,17 @@
 
 ### 2. กรอกข้อมูล (`/transactions`)
 - เลือกอาคาร/เดือน/ปี
-- กรอกรายรับ-รายจ่ายผ่านปุ่ม +/- (ExpenseHistory) ✨ NEW
+- กรอกรายรับ-รายจ่ายผ่านปุ่ม +/- (ExpenseHistory)
 - **ระบบประวัติการเพิ่ม/ลดยอด:**
   - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
   - ยอดรวม Reset เป็น 0 ทุกเดือน
   - ดูประวัติ/ลบรายการได้
 - แสดงค่าใช้จ่ายส่วนกลางจาก GlobalSettings
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
+- **รายได้พิเศษ (Special Income):** ✨ NEW
+  - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
+  - Thai Bus Tour (สีม่วง purple)
+  - Co Van Kessel (สีส้ม orange)
 
 ### 3. เงินเดือนพนักงาน (`/employees`)
 - เพิ่ม/แก้ไข/ลบพนักงาน
@@ -90,15 +94,10 @@
 
 ### 5. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
 - **ทั้ง Partner และ Staff เข้าถึงได้**
-- **ระบบประวัติการเพิ่ม/ลดยอด (ExpenseHistory):** ✨ NEW
-  - กดปุ่ม +/- เปิด popup แสดงประวัติ
-  - กรอกรายละเอียด + จำนวนเงิน
-  - ยอดรวม Reset เป็น 0 ทุกเดือน
+- **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น** ✨ UPDATED
 - **Tab ตั้งค่าอาคาร:**
-  - Management Fee %
-  - VAT %
-  - ค่าเช่าอาคาร/เดือน
-  - ค่าเช่าเครื่องกรองน้ำ Coway (แยกต่ออาคาร)
+  - **Management Fee % / VAT %** - กดปุ่มแก้ไข (ดินสอ) → กรอกค่า % ใหม่ → บันทึกไป Settings table
+  - **ค่าเช่าอาคาร / ค่า Coway** - กดปุ่ม +/- → กรอกรายละเอียด+จำนวนเงิน → บันทึกผ่าน ExpenseHistory (สะสมตามเดือน)
 - **Tab ค่าใช้จ่ายส่วนกลาง:**
   - ค่าดูแล MAX (หาร 3 อาคาร: NANA, CT, YW)
   - ค่าดูแลจราจร (หาร 3 อาคาร)
@@ -111,8 +110,8 @@
   - ค่าเช่าที่จอดรถ (หารทุกอาคาร)
   - ค่าซ่อมบำรุงรถ (หารทุกอาคาร)
   - ค่าเดินทางแม่บ้าน (หารทุกอาคาร)
-  - ค่าอุปกรณ์ทำความสะอาด (หารทุกอาคาร) ✨ NEW
-  - ค่าน้ำยาสำหรับซักผ้า (หารทุกอาคาร) ✨ NEW
+  - ค่าอุปกรณ์ทำความสะอาด (หารทุกอาคาร)
+  - ค่าอาหาร (หารทุกอาคาร) ✨ NEW
 
 ### 6. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
@@ -189,7 +188,53 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.6.0 (Current - December 2025)
+### v1.7.1 (Current - December 2025)
+- **แก้ไข Bug ยอดรวมไม่อัปเดต:**
+  - รายได้พิเศษ (airportShuttleRentIncome, thaiBusTourIncome, coVanKesselIncome) อัปเดตยอดรวมถูกต้องแล้ว
+  - ยอดรวมอัปเดตอัตโนมัติเมื่อปิด popup หลังกรอกข้อมูลผ่าน +/-
+  - ยอดรวมอัปเดตเมื่อกดปุ่มถังขยะลบรายการ
+- **เพิ่มปุ่มแก้ไข (ดินสอ) ทุก field:**
+  - ตารางรายรับ - ทุก field มีปุ่มแก้ไข
+  - ตารางรายจ่าย - ทุก field มีปุ่มแก้ไข
+  - หน้า Settings - ทำงานเหมือนหน้า Transactions (ปุ่ม +/- และแก้ไข)
+- **E2E Testing ผ่านทั้งหมด:**
+  - ทดสอบ API หน้ากรอกข้อมูล (TRANSACTION)
+  - ทดสอบ API หน้าจัดการค่าใช้จ่าย (SETTINGS, GLOBAL_SETTINGS)
+  - CREATE, CALCULATE, ADD/SUBTRACT, DELETE - ทำงานถูกต้อง
+
+### v1.7.0 (December 2025)
+- **เพิ่มรายได้พิเศษ (Special Income) 3 รายการ:**
+  - ค่าเช่า รถรับส่งสนามบิน (airportShuttleRentIncome)
+  - Thai Bus Tour (thaiBusTourIncome)
+  - Co Van Kessel (coVanKesselIncome)
+- **กรอกข้อมูลผ่านหน้า Transactions โดยตรง:**
+  - ใช้ปุ่ม +/- เหมือน field อื่นๆ
+  - เก็บข้อมูลใน ExpenseHistory
+  - ไม่ต้องกรอกที่หน้า Settings
+- **เพิ่มค่าอาหาร (foodExpense) ในค่าใช้จ่ายส่วนกลาง**
+- **อัปเดต PDF และ Print:**
+  - แสดงรายได้พิเศษทั้ง 3 รายการในตารางรายรับ
+  - แสดงค่าอาหารในตารางรายจ่าย
+- **UI Updates:**
+  - ค่าเช่า รถรับส่งสนามบิน: สีเขียว (emerald)
+  - Thai Bus Tour: สีม่วง (purple)
+  - Co Van Kessel: สีส้ม (orange)
+
+### v1.6.1 (December 2025)
+- **ปรับปรุงหน้า Settings - แยกระบบ % และ จำนวนเงิน:**
+  - **Field % (Management Fee, VAT):**
+    - เปลี่ยนจากปุ่ม +/- เป็นปุ่มแก้ไข (ไอคอนดินสอ)
+    - กรอกค่า % ใหม่โดยตรง (ไม่สะสม)
+    - บันทึกไป Settings table ทันที
+  - **Field จำนวนเงิน (ค่าเช่า, Coway, ค่าใช้จ่ายส่วนกลาง):**
+    - ยังคงใช้ปุ่ม +/- สำหรับเพิ่ม/ลดยอดสะสม
+    - บันทึกผ่าน ExpenseHistory ตามเดือน/ปี
+- **UI Updates:**
+  - ทุก field เป็น read-only (ไม่สามารถกรอกโดยตรง)
+  - เพิ่ม validation messages แสดงเมื่อกรอกไม่ครบ
+  - เพิ่ม autoFocus ใน Dialog
+
+### v1.6.0 (December 2025)
 - **ระบบประวัติการเพิ่ม/ลดค่าใช้จ่าย (ExpenseHistory):**
   - เพิ่ม ExpenseHistory model สำหรับบันทึกประวัติการเพิ่ม/ลด
   - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด (เช่น "ค่าฉีดปลวก", "ค่าซ่อมแอร์")
@@ -314,8 +359,8 @@ npx vercel --prod        # Deploy
 | parkingExpense | Decimal | ค่าเช่าที่จอดรถ |
 | motorcycleMaintenanceExpense | Decimal | ค่าซ่อมบำรุงรถ |
 | maidTravelExpense | Decimal | ค่าเดินทางแม่บ้าน |
-| cleaningSupplyExpense | Decimal | ค่าอุปกรณ์ทำความสะอาด ✨ |
-| laundryDetergentExpense | Decimal | ค่าน้ำยาสำหรับซักผ้า ✨ |
+| cleaningSupplyExpense | Decimal | ค่าอุปกรณ์ทำความสะอาด |
+| foodExpense | Decimal | ค่าอาหาร ✨ |
 
 ### Employee
 | Field | Type | คำอธิบาย |

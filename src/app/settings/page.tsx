@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  Save,
   Loader2,
   Building2,
   Globe,
@@ -38,13 +37,16 @@ import {
   Bus,
   Waves,
   SprayCan,
+  Utensils,
   Plus,
   Minus,
   Trash2,
   Calendar,
+  Pencil,
 } from 'lucide-react'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, MONTHS } from '@/lib/utils'
 import { getBuildingColor } from '@/lib/building-colors'
+import { generateYears } from '@/lib/calculations'
 
 interface Building {
   id: number
@@ -66,6 +68,7 @@ interface Settings {
 interface GlobalSettings {
   id: number
   buildingCount: number
+  careExpenseDivisor: number
   maxCareExpense: number
   trafficCareExpense: number
   shippingExpense: number
@@ -78,8 +81,16 @@ interface GlobalSettings {
   motorcycleMaintenanceExpense: number
   maidTravelExpense: number
   cleaningSupplyExpense: number
-  laundryDetergentExpense: number
+  foodExpense: number
   [key: string]: number // for dynamic fields
+}
+
+interface GlobalTotals {
+  totals: Record<string, number>
+  totalsPerBuilding: Record<string, number>
+  totalGlobalExpense: number
+  buildingCount: number
+  careExpenseDivisor: number
 }
 
 interface ExpenseHistoryItem {
@@ -102,38 +113,33 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [savingGlobal, setSavingGlobal] = useState(false)
   const [activeTab, setActiveTab] = useState('building-settings')
 
-  // Form state
-  const [formData, setFormData] = useState({
-    managementFeePercent: 13.5,
-    vatPercent: 7,
-    monthlyRent: 0,
-    cowayWaterFilterExpense: 0,
-  })
+  // Global settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี
+  const [globalSelectedMonth, setGlobalSelectedMonth] = useState<string>(
+    String(new Date().getMonth() + 1)
+  )
+  const [globalSelectedYear, setGlobalSelectedYear] = useState<string>(
+    String(new Date().getFullYear())
+  )
+  const [globalTotals, setGlobalTotals] = useState<GlobalTotals | null>(null)
+  const [loadingGlobal, setLoadingGlobal] = useState(false)
+  const years = generateYears()
 
-  // Global settings form state
-  const [globalFormData, setGlobalFormData] = useState({
-    maxCareExpense: 0,
-    trafficCareExpense: 0,
-    shippingExpense: 0,
-    amenityExpense: 0,
-    waterBottleExpense: 0,
-    cookieExpense: 0,
-    coffeeExpense: 0,
-    fuelExpense: 0,
-    parkingExpense: 0,
-    motorcycleMaintenanceExpense: 0,
-    maidTravelExpense: 0,
-    cleaningSupplyExpense: 0,
-    laundryDetergentExpense: 0,
-  })
+  // Building settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี
+  const [buildingSelectedMonth, setBuildingSelectedMonth] = useState<string>(
+    String(new Date().getMonth() + 1)
+  )
+  const [buildingSelectedYear, setBuildingSelectedYear] = useState<string>(
+    String(new Date().getFullYear())
+  )
+  const [settingsTotals, setSettingsTotals] = useState<Record<string, number>>({})
+  const [loadingSettingsTotals, setLoadingSettingsTotals] = useState(false)
 
   // State สำหรับ Dialog เพิ่ม/ลดยอด
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
-  const [adjustType, setAdjustType] = useState<'add' | 'subtract'>('add')
+  const [adjustType, setAdjustType] = useState<'add' | 'subtract' | 'edit'>('add')
+  const [adjustAction, setAdjustAction] = useState<'add' | 'subtract'>('add') // สำหรับ edit mode
   const [adjustFieldKey, setAdjustFieldKey] = useState<string>('')
   const [adjustFieldName, setAdjustFieldName] = useState('')
   const [adjustAmount, setAdjustAmount] = useState<string>('')
@@ -146,6 +152,13 @@ export default function SettingsPage() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [savingHistory, setSavingHistory] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  // State สำหรับ Dialog แก้ไขค่า % (Management Fee, VAT)
+  const [percentDialogOpen, setPercentDialogOpen] = useState(false)
+  const [percentFieldKey, setPercentFieldKey] = useState<string>('')
+  const [percentFieldName, setPercentFieldName] = useState('')
+  const [percentValue, setPercentValue] = useState<string>('')
+  const [savingPercent, setSavingPercent] = useState(false)
 
   // Fetch ประวัติค่าใช้จ่าย
   const fetchExpenseHistory = async (
@@ -179,9 +192,27 @@ export default function SettingsPage() {
     }
   }
 
+  // ปิด Dialog และ reload ข้อมูล
+  const handleDialogClose = (open: boolean) => {
+    setAdjustDialogOpen(open)
+    // เมื่อปิด Dialog ให้ reload ข้อมูลใหม่
+    if (!open) {
+      if (adjustTarget === 'building') {
+        fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
+      } else {
+        fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
+      }
+    }
+  }
+
+  // ดึง action จริงที่ใช้ในการบันทึก
+  const getEffectiveAction = () => {
+    return adjustType === 'edit' ? adjustAction : adjustType
+  }
+
   // เปิด Dialog เพิ่ม/ลดยอด
   const openAdjustDialog = (
-    type: 'add' | 'subtract',
+    type: 'add' | 'subtract' | 'edit',
     fieldKey: string,
     fieldName: string,
     target: 'building' | 'global'
@@ -223,11 +254,13 @@ export default function SettingsPage() {
       if (res.ok) {
         setExpenseHistory(data.history || [])
         setHistoryTotal(data.total || 0)
-        // อัปเดตยอดใน form
+        // อัปเดตยอด - refresh totals
         if (adjustTarget === 'building') {
-          setFormData((prev) => ({ ...prev, [adjustFieldKey]: data.total || 0 }))
+          // Refresh settings totals for building
+          fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
         } else {
-          setGlobalFormData((prev) => ({ ...prev, [adjustFieldKey]: data.total || 0 }))
+          // Refresh global totals
+          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
         }
       }
     } catch (error) {
@@ -246,6 +279,7 @@ export default function SettingsPage() {
     }
 
     setSavingHistory(true)
+    const effectiveAction = getEffectiveAction()
     try {
       const targetType = adjustTarget === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
       const targetId = adjustTarget === 'building' ? selectedBuilding : null
@@ -258,7 +292,7 @@ export default function SettingsPage() {
           targetId,
           fieldName: adjustFieldKey,
           fieldLabel: adjustFieldName,
-          actionType: adjustType === 'add' ? 'ADD' : 'SUBTRACT',
+          actionType: effectiveAction === 'add' ? 'ADD' : 'SUBTRACT',
           amount: parseFloat(adjustAmount),
           description: adjustDescription.trim(),
           month: adjustMonth,
@@ -270,11 +304,13 @@ export default function SettingsPage() {
       if (res.ok) {
         setExpenseHistory(data.history || [])
         setHistoryTotal(data.total || 0)
-        // อัปเดตยอดใน form
+        // อัปเดตยอด - refresh totals
         if (adjustTarget === 'building') {
-          setFormData((prev) => ({ ...prev, [adjustFieldKey]: data.total || 0 }))
+          // Refresh settings totals for building
+          fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
         } else {
-          setGlobalFormData((prev) => ({ ...prev, [adjustFieldKey]: data.total || 0 }))
+          // Refresh global totals
+          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
         }
         // Reset form
         setAdjustAmount('')
@@ -290,86 +326,43 @@ export default function SettingsPage() {
     }
   }
 
-  // คำนวณยอดปัจจุบัน (จาก historyTotal)
-  const getCurrentAmount = () => {
-    return historyTotal
-  }
-
   // คำนวณยอดใหม่ (preview)
   const getNewAmount = () => {
     const currentValue = historyTotal
     const adjustValue = parseFloat(adjustAmount) || 0
-    const newValue = adjustType === 'add'
+    const effectiveAction = getEffectiveAction()
+    const newValue = effectiveAction === 'add'
       ? currentValue + adjustValue
       : currentValue - adjustValue
     return Math.max(0, newValue) // ไม่ให้ติดลบ
   }
 
-  // โหลดรายการอาคารและ Global Settings
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/buildings').then((res) => res.json()),
-      fetch('/api/global-settings').then((res) => res.json()),
-    ])
-      .then(([buildingsData, globalData]) => {
-        setBuildings(buildingsData)
-        if (buildingsData.length > 0) {
-          setSelectedBuilding(String(buildingsData[0].id))
-        }
-        setGlobalSettings(globalData)
-        setGlobalFormData({
-          maxCareExpense: globalData.maxCareExpense || 0,
-          trafficCareExpense: globalData.trafficCareExpense || 0,
-          shippingExpense: globalData.shippingExpense || 0,
-          amenityExpense: globalData.amenityExpense || 0,
-          waterBottleExpense: globalData.waterBottleExpense || 0,
-          cookieExpense: globalData.cookieExpense || 0,
-          coffeeExpense: globalData.coffeeExpense || 0,
-          fuelExpense: globalData.fuelExpense || 0,
-          parkingExpense: globalData.parkingExpense || 0,
-          motorcycleMaintenanceExpense: globalData.motorcycleMaintenanceExpense || 0,
-          maidTravelExpense: globalData.maidTravelExpense || 0,
-          cleaningSupplyExpense: globalData.cleaningSupplyExpense || 0,
-          laundryDetergentExpense: globalData.laundryDetergentExpense || 0,
-        })
-      })
-      .catch((err) => console.error('Error loading data:', err))
-      .finally(() => setLoading(false))
-  }, [])
+  // เปิด Dialog แก้ไขค่า %
+  const openPercentDialog = (fieldKey: string, fieldName: string, currentValue: number) => {
+    setPercentFieldKey(fieldKey)
+    setPercentFieldName(fieldName)
+    setPercentValue(String(currentValue || ''))
+    setPercentDialogOpen(true)
+  }
 
-  // โหลด settings เมื่อเลือกอาคาร
-  useEffect(() => {
-    if (!selectedBuilding) return
+  // บันทึกค่า % ไปที่ Settings table
+  const handlePercentSave = async () => {
+    if (!selectedBuilding || !percentValue) return
 
-    setLoading(true)
-    fetch(`/api/settings?buildingId=${selectedBuilding}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setSettings(data)
-        if (data) {
-          setFormData({
-            managementFeePercent: Number(data.managementFeePercent) || 13.5,
-            vatPercent: Number(data.vatPercent) || 7,
-            monthlyRent: Number(data.monthlyRent) || 0,
-            cowayWaterFilterExpense: Number(data.cowayWaterFilterExpense) || 0,
-          })
-        }
-      })
-      .catch((err) => console.error('Error loading settings:', err))
-      .finally(() => setLoading(false))
-  }, [selectedBuilding])
+    const value = parseFloat(percentValue)
+    if (isNaN(value) || value < 0) {
+      alert('กรุณากรอกค่าที่ถูกต้อง')
+      return
+    }
 
-  const handleSave = async () => {
-    if (!selectedBuilding) return
-
-    setSaving(true)
+    setSavingPercent(true)
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           buildingId: selectedBuilding,
-          ...formData,
+          [percentFieldKey]: value,
         }),
       })
 
@@ -386,50 +379,95 @@ export default function SettingsPage() {
         }
         throw new Error(errorData.error || 'Failed to save')
       }
-      alert('บันทึกการตั้งค่าสำเร็จ')
+
+      // อัปเดต settings state
+      const data = await res.json()
+      setSettings(data)
+      setPercentDialogOpen(false)
+      alert('บันทึกสำเร็จ')
     } catch (err) {
-      console.error('Error saving:', err)
+      console.error('Error saving percent:', err)
       alert('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
-      setSaving(false)
+      setSavingPercent(false)
     }
   }
 
-  const handleSaveGlobal = async () => {
-    setSavingGlobal(true)
+  // ดึง global totals จาก ExpenseHistory
+  const fetchGlobalTotals = useCallback(async (month: string, year: string) => {
+    setLoadingGlobal(true)
     try {
-      const res = await fetch('/api/global-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(globalFormData),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        if (res.status === 401) {
-          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
-          window.location.href = '/access/partner'
-          return
-        }
-        if (res.status === 403) {
-          alert('เฉพาะ Partner เท่านั้นที่สามารถแก้ไขการตั้งค่าได้')
-          return
-        }
-        throw new Error(errorData.error || 'Failed to save')
+      const res = await fetch(`/api/expense-history/global-totals?month=${month}&year=${year}`)
+      const data = await res.json()
+      if (res.ok) {
+        setGlobalTotals(data)
       }
-
-      // โหลด global settings ใหม่เพื่ออัปเดตค่าที่หารแล้ว
-      const updatedGlobal = await fetch('/api/global-settings').then((r) => r.json())
-      setGlobalSettings(updatedGlobal)
-
-      alert('บันทึกการตั้งค่าส่วนกลางสำเร็จ')
-    } catch (err) {
-      console.error('Error saving global settings:', err)
-      alert('เกิดข้อผิดพลาดในการบันทึก')
+    } catch (error) {
+      console.error('Error fetching global totals:', error)
     } finally {
-      setSavingGlobal(false)
+      setLoadingGlobal(false)
     }
-  }
+  }, [])
+
+  // ดึง settings totals จาก ExpenseHistory (per building)
+  const fetchSettingsTotals = useCallback(async (buildingId: string, month: string, year: string) => {
+    if (!buildingId) return
+    setLoadingSettingsTotals(true)
+    try {
+      const res = await fetch(`/api/expense-history/totals?targetType=SETTINGS&targetId=${buildingId}&month=${month}&year=${year}`)
+      const data = await res.json()
+      if (res.ok) {
+        setSettingsTotals(data.totals || {})
+      }
+    } catch (error) {
+      console.error('Error fetching settings totals:', error)
+    } finally {
+      setLoadingSettingsTotals(false)
+    }
+  }, [])
+
+  // โหลดรายการอาคารและ Global Settings
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/buildings').then((res) => res.json()),
+      fetch('/api/global-settings').then((res) => res.json()),
+    ])
+      .then(([buildingsData, globalData]) => {
+        setBuildings(buildingsData)
+        if (buildingsData.length > 0) {
+          setSelectedBuilding(String(buildingsData[0].id))
+        }
+        setGlobalSettings(globalData)
+      })
+      .catch((err) => console.error('Error loading data:', err))
+      .finally(() => setLoading(false))
+  }, [])
+
+  // โหลด global totals เมื่อเปลี่ยนเดือน/ปี
+  useEffect(() => {
+    fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
+  }, [globalSelectedMonth, globalSelectedYear, fetchGlobalTotals])
+
+  // โหลด settings totals เมื่อเปลี่ยนอาคาร หรือ เดือน/ปี
+  useEffect(() => {
+    if (selectedBuilding) {
+      fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
+    }
+  }, [selectedBuilding, buildingSelectedMonth, buildingSelectedYear, fetchSettingsTotals])
+
+  // โหลด settings เมื่อเลือกอาคาร
+  useEffect(() => {
+    if (!selectedBuilding) return
+
+    setLoading(true)
+    fetch(`/api/settings?buildingId=${selectedBuilding}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setSettings(data)
+      })
+      .catch((err) => console.error('Error loading settings:', err))
+      .finally(() => setLoading(false))
+  }, [selectedBuilding])
 
   const selectedBuildingData = buildings.find(
     (b) => String(b.id) === selectedBuilding
@@ -536,72 +574,105 @@ export default function SettingsPage() {
                 className="space-y-6 p-6 transition-colors duration-300"
                 style={{ background: `linear-gradient(to bottom, ${buildingColor}10, white)` }}
               >
+                {/* Selector เดือน/ปี สำหรับค่าเช่าอาคารและค่า Coway */}
+                <div className="flex flex-wrap items-center gap-3 p-4 rounded-lg" style={{ backgroundColor: `${buildingColor}15` }}>
+                  <Calendar className="h-5 w-5" style={{ color: buildingColor }} />
+                  <span className="text-sm font-medium" style={{ color: buildingColor }}>เลือกเดือน/ปี:</span>
+                  <Select value={buildingSelectedMonth} onValueChange={setBuildingSelectedMonth}>
+                    <SelectTrigger className="w-[130px] bg-white">
+                      <SelectValue placeholder="เดือน" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m) => (
+                        <SelectItem key={m.value} value={String(m.value)}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={buildingSelectedYear} onValueChange={setBuildingSelectedYear}>
+                    <SelectTrigger className="w-[100px] bg-white">
+                      <SelectValue placeholder="ปี" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {loadingSettingsTotals && <Loader2 className="h-4 w-4 animate-spin" style={{ color: buildingColor }} />}
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2 md:gap-6">
                   {/* Management Fee */}
                   <div className="space-y-2 rounded-lg border border-[#F6BD60]/30 bg-white p-4 shadow-sm">
-                    <Label htmlFor="managementFee" className="text-[#D4A24C] font-semibold">
+                    <Label className="text-[#D4A24C] font-semibold">
                       Management Fee (%)
                     </Label>
-                    <Input
-                      id="managementFee"
-                      type="number"
-                      step="0.1"
-                      value={formData.managementFeePercent}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          managementFeePercent: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      className="bg-[#F6BD60]/5 border-[#F6BD60]/30 focus:border-[#F6BD60] focus:ring-[#F6BD60]"
-                    />
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 px-3 py-2 bg-[#F6BD60]/5 border border-[#F6BD60]/30 rounded-md text-right font-medium">
+                        {formatNumber(settings?.managementFeePercent || 0)}%
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="h-9 w-9 flex-shrink-0 text-[#D4A24C] hover:bg-[#F6BD60]/20 hover:text-[#D4A24C]"
+                        onClick={() => openPercentDialog('managementFeePercent', 'Management Fee', settings?.managementFeePercent || 0)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <p className="text-xs text-[#666]">
                       เปอร์เซ็นต์ค่าบริหารจัดการ (Roombix)
                     </p>
                     <p className="text-[10px] text-slate-400">
-                      สูตร: = รายได้ค่าเช่า × {formData.managementFeePercent}%
+                      สูตร: = รายได้ค่าเช่า × {settings?.managementFeePercent || 0}%
                     </p>
                   </div>
 
                   {/* VAT */}
                   <div className="space-y-2 rounded-lg border border-[#84A59D]/30 bg-white p-4 shadow-sm">
-                    <Label htmlFor="vat" className="text-[#84A59D] font-semibold">
+                    <Label className="text-[#84A59D] font-semibold">
                       VAT (%)
                     </Label>
-                    <Input
-                      id="vat"
-                      type="number"
-                      step="0.1"
-                      value={formData.vatPercent}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          vatPercent: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      className="bg-[#84A59D]/5 border-[#84A59D]/30 focus:border-[#84A59D] focus:ring-[#84A59D]"
-                    />
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 px-3 py-2 bg-[#84A59D]/5 border border-[#84A59D]/30 rounded-md text-right font-medium">
+                        {formatNumber(settings?.vatPercent || 0)}%
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="h-9 w-9 flex-shrink-0 text-[#84A59D] hover:bg-[#84A59D]/20 hover:text-[#84A59D]"
+                        onClick={() => openPercentDialog('vatPercent', 'VAT', settings?.vatPercent || 0)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <p className="text-xs text-[#666]">ภาษีมูลค่าเพิ่ม</p>
                   </div>
 
                   {/* Monthly Rent */}
                   <div className="space-y-2 rounded-lg border border-[#F28482]/30 bg-white p-4 shadow-sm">
-                    <Label htmlFor="monthlyRent" className="text-[#F28482] font-semibold">
+                    <Label className="text-[#F28482] font-semibold">
                       ค่าเช่าอาคาร/เดือน (บาท)
                     </Label>
                     <div className="flex items-center gap-1">
-                      <Input
-                        id="monthlyRent"
-                        type="number"
-                        value={formData.monthlyRent}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            monthlyRent: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="bg-[#F28482]/5 border-[#F28482]/30 focus:border-[#F28482] focus:ring-[#F28482] flex-1"
-                      />
+                      <div className="flex-1 px-3 py-2 bg-[#F28482]/5 border border-[#F28482]/30 rounded-md text-right font-medium">
+                        {formatNumber(settingsTotals.monthlyRent || 0)}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                        onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -628,22 +699,22 @@ export default function SettingsPage() {
 
                   {/* Coway Water Filter */}
                   <div className="space-y-2 rounded-lg border border-blue-400/30 bg-white p-4 shadow-sm">
-                    <Label htmlFor="cowayWaterFilter" className="text-blue-500 font-semibold">
+                    <Label className="text-blue-500 font-semibold">
                       ค่าเช่าเครื่องกรองน้ำ Coway (บาท/เดือน)
                     </Label>
                     <div className="flex items-center gap-1">
-                      <Input
-                        id="cowayWaterFilter"
-                        type="number"
-                        value={formData.cowayWaterFilterExpense}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            cowayWaterFilterExpense: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="bg-blue-50 border-blue-200 focus:border-blue-400 focus:ring-blue-400 flex-1"
-                      />
+                      <div className="flex-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-right font-medium">
+                        {formatNumber(settingsTotals.cowayWaterFilterExpense || 0)}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                        onClick={() => openAdjustDialog('edit', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -667,22 +738,7 @@ export default function SettingsPage() {
                       ค่าเช่าเครื่องกรองน้ำ Coway สำหรับอาคารนี้
                     </p>
                   </div>
-                </div>
 
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="shadow-lg transition-colors duration-300 hover:opacity-90"
-                    style={{ backgroundColor: buildingColor }}
-                  >
-                    {saving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    บันทึกการตั้งค่า
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -698,10 +754,41 @@ export default function SettingsPage() {
                 ค่าใช้จ่ายส่วนกลาง
               </CardTitle>
               <CardDescription className="text-white/80">
-                ค่าใช้จ่ายที่ใช้ร่วมกันทุกอาคาร (หาร {globalSettings?.buildingCount || 0} อาคาร)
+                ค่าใช้จ่ายที่ใช้ร่วมกันทุกอาคาร (หาร {globalTotals?.buildingCount || 0} อาคาร)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 p-6 bg-gradient-to-b from-[#9B59B6]/5 to-white">
+              {/* Selector เดือน/ปี */}
+              <div className="flex flex-wrap items-center gap-3 p-4 bg-[#9B59B6]/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-[#9B59B6]" />
+                <span className="text-sm font-medium text-[#9B59B6]">เลือกเดือน/ปี:</span>
+                <Select value={globalSelectedMonth} onValueChange={setGlobalSelectedMonth}>
+                  <SelectTrigger className="w-[130px] bg-white">
+                    <SelectValue placeholder="เดือน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m) => (
+                      <SelectItem key={m.value} value={String(m.value)}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={globalSelectedYear} onValueChange={setGlobalSelectedYear}>
+                  <SelectTrigger className="w-[100px] bg-white">
+                    <SelectValue placeholder="ปี" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {loadingGlobal && <Loader2 className="h-4 w-4 animate-spin text-[#9B59B6]" />}
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-4">
                 {/* ค่าดูแล MAX - หาร 3 อาคาร */}
                 <div className="space-y-3 rounded-xl border border-[#9B59B6]/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -712,18 +799,16 @@ export default function SettingsPage() {
                     <Label className="text-[#9B59B6] font-semibold text-sm">ค่าดูแล MAX</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.maxCareExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, maxCareExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-[#9B59B6]/5 border-[#9B59B6]/30 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-[#9B59B6]/5 border border-[#9B59B6]/30 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.maxCareExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalFormData.maxCareExpense / 3)} บาท/อาคาร</span>
+                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals?.totalsPerBuilding?.maxCareExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -736,18 +821,16 @@ export default function SettingsPage() {
                     <Label className="text-[#E74C3C] font-semibold text-sm">ค่าดูแลจราจร</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.trafficCareExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, trafficCareExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-[#E74C3C]/5 border-[#E74C3C]/30 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-[#E74C3C]/5 border border-[#E74C3C]/30 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.trafficCareExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalFormData.trafficCareExpense / 3)} บาท/อาคาร</span>
+                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals?.totalsPerBuilding?.trafficCareExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -760,18 +843,16 @@ export default function SettingsPage() {
                     <Label className="text-orange-600 font-semibold text-sm">ค่าขนส่งสินค้า</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.shippingExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, shippingExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-orange-50 border-orange-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-orange-50 border border-orange-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.shippingExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-orange-600">{formatNumber(globalFormData.shippingExpense / 3)} บาท/อาคาร</span>
+                    <span className="font-semibold text-orange-600">{formatNumber(globalTotals?.totalsPerBuilding?.shippingExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -784,18 +865,16 @@ export default function SettingsPage() {
                     <Label className="text-pink-500 font-semibold text-sm">ค่า Amenity</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.amenityExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, amenityExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-pink-50 border-pink-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-pink-50 border border-pink-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.amenityExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'amenityExpense', 'ค่า Amenity', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'amenityExpense', 'ค่า Amenity', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'amenityExpense', 'ค่า Amenity', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-pink-500">{formatNumber(globalFormData.amenityExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-pink-500">{formatNumber(globalTotals?.totalsPerBuilding?.amenityExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -808,18 +887,16 @@ export default function SettingsPage() {
                     <Label className="text-cyan-500 font-semibold text-sm">ค่าน้ำเปล่า</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.waterBottleExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, waterBottleExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-cyan-50 border-cyan-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-cyan-50 border border-cyan-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.waterBottleExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-cyan-500">{formatNumber(globalFormData.waterBottleExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-cyan-500">{formatNumber(globalTotals?.totalsPerBuilding?.waterBottleExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -832,18 +909,16 @@ export default function SettingsPage() {
                     <Label className="text-amber-600 font-semibold text-sm">ค่าขนมคุ้กกี้</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.cookieExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, cookieExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-amber-50 border-amber-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.cookieExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-600">{formatNumber(globalFormData.cookieExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-600">{formatNumber(globalTotals?.totalsPerBuilding?.cookieExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -856,18 +931,16 @@ export default function SettingsPage() {
                     <Label className="text-amber-700 font-semibold text-sm">ค่ากาแฟซอง</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.coffeeExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, coffeeExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-amber-50 border-amber-300 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-amber-50 border border-amber-300 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.coffeeExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-700">{formatNumber(globalFormData.coffeeExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-700">{formatNumber(globalTotals?.totalsPerBuilding?.coffeeExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -880,18 +953,16 @@ export default function SettingsPage() {
                     <Label className="text-gray-600 font-semibold text-sm">ค่าน้ำมันรถ</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.fuelExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, fuelExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-gray-50 border-gray-300 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.fuelExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-gray-600">{formatNumber(globalFormData.fuelExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-gray-600">{formatNumber(globalTotals?.totalsPerBuilding?.fuelExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -904,18 +975,16 @@ export default function SettingsPage() {
                     <Label className="text-slate-600 font-semibold text-sm">ค่าที่จอดรถ</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.parkingExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, parkingExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-slate-50 border-slate-300 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.parkingExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-slate-600">{formatNumber(globalFormData.parkingExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-slate-600">{formatNumber(globalTotals?.totalsPerBuilding?.parkingExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -928,18 +997,16 @@ export default function SettingsPage() {
                     <Label className="text-rose-600 font-semibold text-sm">ค่าซ่อมบำรุงรถ</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.motorcycleMaintenanceExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, motorcycleMaintenanceExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-rose-50 border-rose-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-rose-50 border border-rose-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.motorcycleMaintenanceExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-rose-600">{formatNumber(globalFormData.motorcycleMaintenanceExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-rose-600">{formatNumber(globalTotals?.totalsPerBuilding?.motorcycleMaintenanceExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -952,18 +1019,16 @@ export default function SettingsPage() {
                     <Label className="text-violet-600 font-semibold text-sm">ค่าเดินทางแม่บ้าน</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.maidTravelExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, maidTravelExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-violet-50 border-violet-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-violet-50 border border-violet-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.maidTravelExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-violet-600">{formatNumber(globalTotals?.totalsPerBuilding?.maidTravelExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
@@ -976,48 +1041,44 @@ export default function SettingsPage() {
                     <Label className="text-teal-600 font-semibold text-sm">ค่าอุปกรณ์ทำความสะอาด</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.cleaningSupplyExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, cleaningSupplyExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-teal-50 border-teal-200 flex-1"
-                    />
+                    <div className="flex-1 px-3 py-2 bg-teal-50 border border-teal-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.cleaningSupplyExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Plus className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-teal-600">{formatNumber(globalFormData.cleaningSupplyExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-teal-600">{formatNumber(globalTotals?.totalsPerBuilding?.cleaningSupplyExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
 
-                {/* ค่าน้ำยาสำหรับซักผ้า */}
-                <div className="space-y-3 rounded-xl border border-indigo-500/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                {/* ค่าอาหาร */}
+                <div className="space-y-3 rounded-xl border border-orange-400/30 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
-                      <Waves className="h-4 w-4 text-indigo-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-400/10">
+                      <Utensils className="h-4 w-4 text-orange-500" />
                     </div>
-                    <Label className="text-indigo-600 font-semibold text-sm">ค่าน้ำยาซักผ้า</Label>
+                    <Label className="text-orange-500 font-semibold text-sm">ค่าอาหาร</Label>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      value={globalFormData.laundryDetergentExpense}
-                      onChange={(e) => setGlobalFormData((prev) => ({ ...prev, laundryDetergentExpense: parseFloat(e.target.value) || 0 }))}
-                      className="bg-indigo-50 border-indigo-200 flex-1"
-                    />
-                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'laundryDetergentExpense', 'ค่าน้ำยาซักผ้า', 'global')}><Plus className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'laundryDetergentExpense', 'ค่าน้ำยาซักผ้า', 'global')}><Minus className="h-4 w-4" /></Button>
+                    <div className="flex-1 px-3 py-2 bg-orange-50 border border-orange-200 rounded-md text-right font-medium">
+                      {formatNumber(globalTotals?.totals?.foodExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'foodExpense', 'ค่าอาหาร', 'global')}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'foodExpense', 'ค่าอาหาร', 'global')}><Plus className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-9 w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร', 'global')}><Minus className="h-4 w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalSettings?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-indigo-600">{formatNumber(globalFormData.laundryDetergentExpense / (globalSettings?.buildingCount || 1))} บาท/อาคาร</span>
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-orange-500">{formatNumber(globalTotals?.totalsPerBuilding?.foodExpensePerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
               </div>
 
               {/* สรุปค่าใช้จ่ายต่ออาคาร */}
-              {globalSettings && globalSettings.buildingCount > 0 && (
+              {globalTotals && globalTotals.buildingCount > 0 && (
                 <div className="rounded-xl border border-[#9B59B6]/20 bg-gradient-to-br from-[#9B59B6]/5 to-white p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#9B59B6]/10">
@@ -1025,115 +1086,86 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-slate-700">สรุปค่าใช้จ่ายต่ออาคาร</h4>
-                      <p className="text-[10px] text-slate-400">* หาร 3 อาคาร (CT, YW, NANA) | หาร {globalSettings.buildingCount} อาคาร (ทุกอาคาร)</p>
+                      <p className="text-[10px] text-slate-400">* หาร 3 อาคาร (CT, YW, NANA) | หาร {globalTotals.buildingCount} อาคาร (ทุกอาคาร)</p>
                     </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#9B59B6]/10 text-sm">
                       <ShieldCheck className="h-4 w-4 text-[#9B59B6] flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าดูแล MAX</span>
-                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalFormData.maxCareExpense / 3)}</span>
+                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals.totalsPerBuilding?.maxCareExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E74C3C]/10 text-sm">
                       <TrafficCone className="h-4 w-4 text-[#E74C3C] flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าดูแลจราจร</span>
-                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalFormData.trafficCareExpense / 3)}</span>
+                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals.totalsPerBuilding?.trafficCareExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-500/10 text-sm">
                       <Truck className="h-4 w-4 text-orange-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าขนส่งสินค้า</span>
-                      <span className="font-semibold text-orange-600">{formatNumber(globalFormData.shippingExpense / 3)}</span>
+                      <span className="font-semibold text-orange-600">{formatNumber(globalTotals.totalsPerBuilding?.shippingExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-pink-400/10 text-sm">
                       <Sparkles className="h-4 w-4 text-pink-500 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่า Amenity</span>
-                      <span className="font-semibold text-pink-500">{formatNumber(globalFormData.amenityExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-pink-500">{formatNumber(globalTotals.totalsPerBuilding?.amenityExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-cyan-400/10 text-sm">
                       <Droplets className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าน้ำเปล่า</span>
-                      <span className="font-semibold text-cyan-500">{formatNumber(globalFormData.waterBottleExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-cyan-500">{formatNumber(globalTotals.totalsPerBuilding?.waterBottleExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-400/10 text-sm">
                       <Cookie className="h-4 w-4 text-amber-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าขนมคุ้กกี้</span>
-                      <span className="font-semibold text-amber-600">{formatNumber(globalFormData.cookieExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-amber-600">{formatNumber(globalTotals.totalsPerBuilding?.cookieExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-700/10 text-sm">
                       <Coffee className="h-4 w-4 text-amber-700 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่ากาแฟซอง</span>
-                      <span className="font-semibold text-amber-700">{formatNumber(globalFormData.coffeeExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-amber-700">{formatNumber(globalTotals.totalsPerBuilding?.coffeeExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-500/10 text-sm">
                       <Fuel className="h-4 w-4 text-gray-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าน้ำมันรถ</span>
-                      <span className="font-semibold text-gray-600">{formatNumber(globalFormData.fuelExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-gray-600">{formatNumber(globalTotals.totalsPerBuilding?.fuelExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-500/10 text-sm">
                       <ParkingCircle className="h-4 w-4 text-slate-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าที่จอดรถ</span>
-                      <span className="font-semibold text-slate-600">{formatNumber(globalFormData.parkingExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-slate-600">{formatNumber(globalTotals.totalsPerBuilding?.parkingExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-rose-500/10 text-sm">
                       <Wrench className="h-4 w-4 text-rose-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าซ่อมบำรุงรถ</span>
-                      <span className="font-semibold text-rose-600">{formatNumber(globalFormData.motorcycleMaintenanceExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-rose-600">{formatNumber(globalTotals.totalsPerBuilding?.motorcycleMaintenanceExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-violet-500/10 text-sm">
                       <Bus className="h-4 w-4 text-violet-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าเดินทางแม่บ้าน</span>
-                      <span className="font-semibold text-violet-600">{formatNumber(globalFormData.maidTravelExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-violet-600">{formatNumber(globalTotals.totalsPerBuilding?.maidTravelExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-teal-500/10 text-sm">
                       <SprayCan className="h-4 w-4 text-teal-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าอุปกรณ์ทำความสะอาด</span>
-                      <span className="font-semibold text-teal-600">{formatNumber(globalFormData.cleaningSupplyExpense / globalSettings.buildingCount)}</span>
+                      <span className="font-semibold text-teal-600">{formatNumber(globalTotals.totalsPerBuilding?.cleaningSupplyExpensePerBuilding || 0)}</span>
                     </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-indigo-500/10 text-sm">
-                      <Waves className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าน้ำยาซักผ้า</span>
-                      <span className="font-semibold text-indigo-600">{formatNumber(globalFormData.laundryDetergentExpense / globalSettings.buildingCount)}</span>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-400/10 text-sm">
+                      <Utensils className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าอาหาร</span>
+                      <span className="font-semibold text-orange-500">{formatNumber(globalTotals.totalsPerBuilding?.foodExpensePerBuilding || 0)}</span>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-200">
                     <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
                       <span className="font-semibold text-slate-700">รวมค่าใช้จ่ายส่วนกลาง/อาคาร (ทุกอาคาร)</span>
-                      <span className="font-bold text-[#9B59B6]">
-                        {formatNumber(
-                          (globalFormData.maxCareExpense / 3) +
-                          (globalFormData.trafficCareExpense / 3) +
-                          (globalFormData.shippingExpense / 3) +
-                          (globalFormData.amenityExpense / globalSettings.buildingCount) +
-                          (globalFormData.waterBottleExpense / globalSettings.buildingCount) +
-                          (globalFormData.cookieExpense / globalSettings.buildingCount) +
-                          (globalFormData.coffeeExpense / globalSettings.buildingCount) +
-                          (globalFormData.fuelExpense / globalSettings.buildingCount) +
-                          (globalFormData.parkingExpense / globalSettings.buildingCount) +
-                          (globalFormData.motorcycleMaintenanceExpense / globalSettings.buildingCount) +
-                          (globalFormData.maidTravelExpense / globalSettings.buildingCount) +
-                          (globalFormData.cleaningSupplyExpense / globalSettings.buildingCount) +
-                          (globalFormData.laundryDetergentExpense / globalSettings.buildingCount)
-                        )}
+                      <span className="font-bold text-[#9B59B6] text-lg">
+                        {formatNumber(globalTotals.totalGlobalExpense || 0)} บาท
                       </span>
                     </div>
                   </div>
                 </div>
               )}
-
-              <div className="flex justify-end pt-4">
-                <Button
-                  onClick={handleSaveGlobal}
-                  disabled={savingGlobal}
-                  className="shadow-lg bg-[#9B59B6] hover:bg-[#8E44AD]"
-                >
-                  {savingGlobal ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  บันทึกค่าใช้จ่ายส่วนกลาง
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1215,11 +1247,22 @@ export default function SettingsPage() {
       </Tabs>
 
       {/* Dialog เพิ่ม/ลดยอด */}
-      <Dialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+      <Dialog open={adjustDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className={adjustType === 'add' ? 'text-green-600' : 'text-red-600'}>
-              {adjustType === 'add' ? (
+            <DialogTitle className={
+              adjustType === 'edit'
+                ? 'text-blue-600'
+                : adjustType === 'add'
+                  ? 'text-green-600'
+                  : 'text-red-600'
+            }>
+              {adjustType === 'edit' ? (
+                <span className="flex items-center gap-2">
+                  <Pencil className="h-5 w-5" />
+                  แก้ไข: {adjustFieldName}
+                </span>
+              ) : adjustType === 'add' ? (
                 <span className="flex items-center gap-2">
                   <Plus className="h-5 w-5" />
                   เพิ่มยอด {adjustFieldName}
@@ -1271,7 +1314,7 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[2024, 2025, 2026].map((y) => (
+                    {years.map((y) => (
                       <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1339,12 +1382,45 @@ export default function SettingsPage() {
             </div>
 
             {/* Form กรอกรายการใหม่ */}
-            <div className={`border-2 rounded-lg p-4 ${adjustType === 'add' ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
-              <div className="text-sm font-semibold mb-3 flex items-center gap-2">
-                {adjustType === 'add' ? (
-                  <><Plus className="h-4 w-4 text-green-600" /> เพิ่มรายการใหม่</>
-                ) : (
-                  <><Minus className="h-4 w-4 text-red-600" /> ลดรายการ</>
+            <div className={`border-2 rounded-lg p-4 ${
+              adjustType === 'edit'
+                ? 'border-blue-200 bg-blue-50/50'
+                : adjustType === 'add'
+                  ? 'border-green-200 bg-green-50/50'
+                  : 'border-red-200 bg-red-50/50'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  {adjustType === 'edit' ? (
+                    <><Pencil className="h-4 w-4 text-blue-600" /> เพิ่ม/ลดรายการ</>
+                  ) : adjustType === 'add' ? (
+                    <><Plus className="h-4 w-4 text-green-600" /> เพิ่มรายการใหม่</>
+                  ) : (
+                    <><Minus className="h-4 w-4 text-red-600" /> ลดรายการ</>
+                  )}
+                </div>
+                {/* ตัวเลือก add/subtract สำหรับ edit mode */}
+                {adjustType === 'edit' && (
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={adjustAction === 'add' ? 'default' : 'outline'}
+                      className={adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      onClick={() => setAdjustAction('add')}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      เพิ่ม
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={adjustAction === 'subtract' ? 'default' : 'outline'}
+                      className={adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}
+                      onClick={() => setAdjustAction('subtract')}
+                    >
+                      <Minus className="h-4 w-4 mr-1" />
+                      ลด
+                    </Button>
+                  </div>
                 )}
               </div>
               <div className="grid gap-3">
@@ -1352,22 +1428,31 @@ export default function SettingsPage() {
                   <Label htmlFor="adjustDescription" className="text-xs">รายละเอียด *</Label>
                   <Input
                     id="adjustDescription"
+                    autoFocus
                     value={adjustDescription}
                     onChange={(e) => setAdjustDescription(e.target.value)}
                     placeholder="เช่น ค่าฉีดปลวก, ค่าซ่อมแอร์"
-                    className="mt-1"
+                    className={`mt-1 ${!adjustDescription.trim() && adjustAmount ? 'border-red-300 focus:border-red-500' : ''}`}
                   />
+                  {!adjustDescription.trim() && adjustAmount && (
+                    <p className="text-xs text-red-500 mt-1">กรุณากรอกรายละเอียด</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="adjustAmount" className="text-xs">จำนวนเงิน (บาท) *</Label>
                   <Input
                     id="adjustAmount"
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     value={adjustAmount}
                     onChange={(e) => setAdjustAmount(e.target.value)}
                     placeholder="0"
-                    className="mt-1"
+                    className={`mt-1 ${adjustDescription.trim() && (!adjustAmount || parseFloat(adjustAmount) <= 0) ? 'border-red-300 focus:border-red-500' : ''}`}
                   />
+                  {adjustDescription.trim() && (!adjustAmount || parseFloat(adjustAmount) <= 0) && (
+                    <p className="text-xs text-red-500 mt-1">กรุณากรอกจำนวนเงินที่มากกว่า 0</p>
+                  )}
                 </div>
               </div>
 
@@ -1381,22 +1466,76 @@ export default function SettingsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleDialogClose(false)}>
               ปิด
             </Button>
             <Button
               onClick={handleAdjustConfirm}
               disabled={!adjustAmount || parseFloat(adjustAmount) <= 0 || !adjustDescription.trim() || savingHistory}
-              className={adjustType === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              className={getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
             >
               {savingHistory ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : adjustType === 'add' ? (
+              ) : getEffectiveAction() === 'add' ? (
                 <Plus className="h-4 w-4 mr-1" />
               ) : (
                 <Minus className="h-4 w-4 mr-1" />
               )}
               บันทึกรายการ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog แก้ไขค่า % */}
+      <Dialog open={percentDialogOpen} onOpenChange={setPercentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-slate-700">
+              <span className="flex items-center gap-2">
+                <Pencil className="h-5 w-5" />
+                แก้ไข {percentFieldName}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="percentValue" className="text-sm font-medium">
+                กรอกค่าเปอร์เซ็นต์ (%)
+              </Label>
+              <Input
+                id="percentValue"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                autoFocus
+                value={percentValue}
+                onChange={(e) => setPercentValue(e.target.value)}
+                placeholder="เช่น 13.5"
+                className="text-lg font-medium"
+              />
+              <p className="text-xs text-slate-500">
+                ค่านี้จะถูกใช้ในการคำนวณรายงาน
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPercentDialogOpen(false)}>
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={handlePercentSave}
+              disabled={!percentValue || parseFloat(percentValue) < 0 || savingPercent}
+              style={{ backgroundColor: buildingColor }}
+              className="hover:opacity-90"
+            >
+              {savingPercent ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Pencil className="h-4 w-4 mr-1" />
+              )}
+              บันทึก
             </Button>
           </DialogFooter>
         </DialogContent>
