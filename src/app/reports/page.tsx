@@ -151,6 +151,13 @@ export default function ReportsPage() {
     fetch(`/api/summary?${params}`)
       .then((res) => res.json())
       .then((data) => {
+        // ตรวจสอบว่ามี error หรือไม่
+        if (data.error) {
+          console.error('API Error:', data.error)
+          setSummaryData(null)
+          setAllSummaryData(null)
+          return
+        }
         if (selectedBuilding !== 'all') {
           setSummaryData(data)
           setAllSummaryData(null)
@@ -1870,123 +1877,128 @@ export default function ReportsPage() {
     )
 
     return (
-      <div className="grid gap-4 md:grid-cols-2 mb-4">
+      <div className="grid gap-2 sm:gap-4 md:grid-cols-2 mb-4">
         {/* รายรับ */}
         <div className="overflow-hidden rounded-lg border border-[#84A59D]/30">
-          <div className="bg-[#84A59D] px-4 py-2">
-            <h4 className="font-bold text-white">รายรับ</h4>
+          <div className="bg-[#84A59D] px-2 sm:px-4 py-1.5 sm:py-2">
+            <h4 className="font-bold text-white text-sm sm:text-base">รายรับ</h4>
           </div>
 
           {/* กลุ่ม 1: รายได้ค่าเช่า */}
-          <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
+          <div className="bg-[#84A59D]/10 px-2 sm:px-4 py-1.5 sm:py-2 border-b border-[#84A59D]/20">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</span>
-              <span className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalRentalIncome)}</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#3d5650]">รายได้ค่าเช่า</span>
+              <span className="text-xs sm:text-sm font-bold text-[#3d5650]">{formatNumber(totalRentalIncome)}</span>
             </div>
           </div>
-          <table className="w-full">
-            <tbody>
-              {rentalIncomeEntries.map(([name, value], index) => (
-                <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                  <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                      <span>{name}</span>
-                    </div>
-                  </td>
-                  <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody>
+                {rentalIncomeEntries.map(([name, value], index) => (
+                  <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">{index + 1}</td>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <CategoryIcon name={name} className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
+                        <span className="line-clamp-1">{name}</span>
+                      </div>
+                    </td>
+                    <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm whitespace-nowrap ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* กลุ่ม 2: รายได้อื่นๆ */}
-          <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
+          <div className="bg-[#F6BD60]/10 px-2 sm:px-4 py-1.5 sm:py-2 border-y border-[#F6BD60]/20">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-[#D4A24C]">รายได้อื่นๆ</span>
-              <span className="text-sm font-bold text-[#D4A24C]">{formatNumber(totalOtherIncome)}</span>
+              <span className="text-xs sm:text-sm font-semibold text-[#8a6420]">รายได้อื่นๆ</span>
+              <span className="text-xs sm:text-sm font-bold text-[#8a6420]">{formatNumber(totalOtherIncome)}</span>
             </div>
           </div>
-          <table className="w-full">
-            <tbody>
-              {otherIncomeEntries.map(([name, value], index) => (
-                <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
-                  <td className="px-4 py-2 text-sm w-[40px]">{index + 1}</td>
-                  <td className="px-4 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                      <span>{name}</span>
-                    </div>
-                  </td>
-                  <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody>
+                {otherIncomeEntries.map(([name, value], index) => (
+                  <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">{index + 1}</td>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <CategoryIcon name={name} className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
+                        <span className="line-clamp-1">{name}</span>
+                      </div>
+                    </td>
+                    <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm whitespace-nowrap ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
             {/* Footer รวมรายได้ */}
-          <div className="bg-[#84A59D]/20 px-4 py-2">
+          <div className="bg-[#84A59D]/20 px-2 sm:px-4 py-1.5 sm:py-2">
             <div className="flex justify-between">
-              <span className="font-bold text-[#84A59D]">รวมรายได้</span>
-              <span className="font-bold text-[#84A59D]">{formatNumber(data.totalIncome)}</span>
+              <span className="font-bold text-[#3d5650] text-xs sm:text-sm">รวมรายได้</span>
+              <span className="font-bold text-[#3d5650] text-xs sm:text-sm">{formatNumber(data.totalIncome)}</span>
             </div>
           </div>
         </div>
 
         {/* รายจ่าย */}
         <div className="overflow-hidden rounded-lg border border-[#F28482]/30">
-          <div className="bg-[#F28482] px-4 py-2">
-            <h4 className="font-bold text-white">รายจ่าย</h4>
+          <div className="bg-[#F28482] px-2 sm:px-4 py-1.5 sm:py-2">
+            <h4 className="font-bold text-white text-sm sm:text-base">รายจ่าย</h4>
           </div>
-          <table className="w-full">
-            <tbody>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody>
               {/* 1. ค่าเช่าอาคาร */}
               <tr className="bg-[#F6BD60]/10">
-                <td className="px-4 py-2 text-sm w-[40px]">1</td>
-                <td className="px-4 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CategoryIcon name="ค่าเช่าอาคาร" className="h-4 w-4 flex-shrink-0" />
+                <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">1</td>
+                <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <CategoryIcon name="ค่าเช่าอาคาร" className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
                     <div>
-                      <span className="text-[#D4A24C] font-medium">ค่าเช่าอาคาร</span>
-                      <p className="text-xs text-slate-400">(ดึงจากหน้าตั้งค่าอาคาร)</p>
+                      <span className="text-[#D4A24C] font-medium line-clamp-1">ค่าเช่าอาคาร</span>
+                      <p className="text-[10px] sm:text-xs text-slate-400 hidden sm:block">(ดึงจากหน้าตั้งค่าอาคาร)</p>
                     </div>
                   </div>
                 </td>
-                <td className={`px-4 py-2 text-right text-sm font-medium ${rentEntry[1] === 0 ? 'text-slate-300' : 'text-[#D4A24C]'}`}>{formatNumber(rentEntry[1])}</td>
+                <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm font-medium whitespace-nowrap ${rentEntry[1] === 0 ? 'text-slate-300' : 'text-[#D4A24C]'}`}>{formatNumber(rentEntry[1])}</td>
               </tr>
               {/* 2. เงินเดือนพนักงาน */}
               <tr className="bg-[#84A59D]/10">
-                <td className="px-4 py-2 text-sm w-[40px]">2</td>
-                <td className="px-4 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CategoryIcon name="เงินเดือนพนักงาน" className="h-4 w-4 flex-shrink-0" />
+                <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">2</td>
+                <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <CategoryIcon name="เงินเดือนพนักงาน" className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
                     <div>
-                      <span className="text-[#84A59D] font-medium">เงินเดือนพนักงาน</span>
-                      <p className="text-xs text-[#84A59D]">(คำนวณจากหน้าเงินเดือนพนักงาน)</p>
+                      <span className="text-[#84A59D] font-medium line-clamp-1">เงินเดือนพนักงาน</span>
+                      <p className="text-[10px] sm:text-xs text-[#84A59D] hidden sm:block">(คำนวณจากหน้าเงินเดือนพนักงาน)</p>
                     </div>
                   </div>
                 </td>
-                <td className={`px-4 py-2 text-right text-sm font-medium ${salaryEntry[1] === 0 ? 'text-slate-300' : 'text-[#84A59D]'}`}>{formatNumber(salaryEntry[1])}</td>
+                <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm font-medium whitespace-nowrap ${salaryEntry[1] === 0 ? 'text-slate-300' : 'text-[#84A59D]'}`}>{formatNumber(salaryEntry[1])}</td>
               </tr>
               {/* 3. ค่าใช้จ่ายส่วนกลาง */}
               {globalExpenseConfig.map((expense, index) => {
                 const baseIndex = 2 + index + 1
                 return (
                   <tr key={expense.name} className={expense.bgClass}>
-                    <td className="px-4 py-2 text-sm w-[40px]">{baseIndex}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CategoryIcon name={expense.name} className="h-4 w-4 flex-shrink-0" />
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">{baseIndex}</td>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <CategoryIcon name={expense.name} className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
                         <div>
-                          <span className={`font-medium ${expense.value === 0 ? 'text-slate-400' : expense.textClass}`}>{expense.name}</span>
-                          <p className={`text-xs ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>
+                          <span className={`font-medium line-clamp-1 ${expense.value === 0 ? 'text-slate-400' : expense.textClass}`}>{expense.name}</span>
+                          <p className={`text-[10px] sm:text-xs hidden sm:block ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>
                             (ดึงจากหน้าตั้งค่า: {formatNumber(expense.totalValue)} / {expense.divisor} อาคาร)
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className={`px-4 py-2 text-right text-sm font-medium ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>{formatNumber(expense.value)}</td>
+                    <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm font-medium whitespace-nowrap ${expense.value === 0 ? 'text-slate-300' : expense.textClass}`}>{formatNumber(expense.value)}</td>
                   </tr>
                 )
               })}
@@ -1995,24 +2007,25 @@ export default function ReportsPage() {
                 const baseIndex = 2 + globalExpenseConfig.length + index + 1
                 return (
                   <tr key={name} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F28482]/5'}>
-                    <td className="px-4 py-2 text-sm w-[40px]">{baseIndex}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CategoryIcon name={name} className="h-4 w-4 flex-shrink-0" />
-                        <span>{name}</span>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm w-[30px] sm:w-[40px]">{baseIndex}</td>
+                    <td className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <CategoryIcon name={name} className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 hidden sm:block" />
+                        <span className="line-clamp-1">{name}</span>
                       </div>
                     </td>
-                    <td className={`px-4 py-2 text-right text-sm ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
+                    <td className={`px-2 sm:px-4 py-1 sm:py-2 text-right text-xs sm:text-sm whitespace-nowrap ${value === 0 ? 'text-slate-300' : ''}`}>{formatNumber(value)}</td>
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
           {/* Footer รวมค่าใช้จ่าย */}
-          <div className="bg-[#F28482]/20 px-4 py-2">
+          <div className="bg-[#F28482]/20 px-2 sm:px-4 py-1.5 sm:py-2">
             <div className="flex justify-between">
-              <span className="font-bold text-[#F28482]">รวมค่าใช้จ่าย</span>
-              <span className="font-bold text-[#F28482]">{formatNumber(data.totalExpense)}</span>
+              <span className="font-bold text-[#a84442] text-xs sm:text-sm">รวมค่าใช้จ่าย</span>
+              <span className="font-bold text-[#a84442] text-xs sm:text-sm">{formatNumber(data.totalExpense)}</span>
             </div>
           </div>
         </div>
@@ -2022,13 +2035,13 @@ export default function ReportsPage() {
 
   // Render Summary Table
   const renderSummaryTable = (data: Summary, showTitle: boolean = true, buildingIndex: number = 0) => (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       {showTitle && (
         <div
-          className="px-4 py-2 text-white print:bg-gray-700 rounded-t-lg"
+          className="px-2 sm:px-4 py-1.5 sm:py-2 text-white print:bg-gray-700 rounded-t-lg"
           style={{ backgroundColor: data.buildingId ? getBuildingColor(data.buildingId) : getBuildingColorByIndex(buildingIndex) }}
         >
-          <h3 className="font-bold">{data.buildingName}</h3>
+          <h3 className="font-bold text-sm sm:text-base">{data.buildingName}</h3>
         </div>
       )}
 
@@ -2037,59 +2050,60 @@ export default function ReportsPage() {
 
       {/* ตารางสรุปผลประกอบการ - อ้างอิงตาม Dashboard */}
       <div className="overflow-hidden rounded-lg border border-[#E8DED5] print:border-gray-300">
-        <div className="bg-[#84A59D] px-4 py-2">
-          <h4 className="font-bold text-white">สรุปผลประกอบการ</h4>
+        <div className="bg-[#84A59D] px-2 sm:px-4 py-1.5 sm:py-2">
+          <h4 className="font-bold text-white text-sm sm:text-base">สรุปผลประกอบการ</h4>
         </div>
-        <table className="w-full">
-          <tbody>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <tbody>
             {/* กลุ่มที่ 1: รายได้-รายจ่าย-กำไร */}
             <tr className="bg-[#84A59D]/10 print:bg-gray-100">
-              <td className="px-4 py-3 font-medium">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-[#84A59D]" />
-                  <span>รวมรายได้</span>
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-[#3d5650] hidden sm:block" />
+                  <span className="text-[#3d5650]">รวมรายได้</span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-bold text-[#84A59D] print:text-gray-800">
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 text-right font-bold text-[#3d5650] print:text-gray-800 text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.totalIncome)}
               </td>
             </tr>
             <tr className="bg-[#F28482]/10 print:bg-gray-50">
-              <td className="px-4 py-3 font-medium">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-[#F28482]" />
-                  <span>รวมค่าใช้จ่าย</span>
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-[#a84442] hidden sm:block" />
+                  <span className="text-[#a84442]">รวมค่าใช้จ่าย</span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-bold text-[#F28482] print:text-gray-800">
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 text-right font-bold text-[#a84442] print:text-gray-800 text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.totalExpense)}
               </td>
             </tr>
             <tr className="bg-[#5B9BD5]/10 print:bg-gray-100">
-              <td className="px-4 py-3 font-medium">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-[#5B9BD5]" />
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calculator className="h-3 w-3 sm:h-4 sm:w-4 text-[#2d5a7a] hidden sm:block" />
                   <div>
-                    <span>Gross Profit</span>
-                    <p className="text-[10px] text-slate-400 font-normal">= รวมรายได้ - รวมค่าใช้จ่าย</p>
+                    <span className="text-[#2d5a7a]">Gross Profit</span>
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-normal hidden sm:block">= รวมรายได้ - รวมค่าใช้จ่าย</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-bold text-[#5B9BD5] print:text-gray-800">
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 text-right font-bold text-[#2d5a7a] print:text-gray-800 text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.grossProfit)}
               </td>
             </tr>
             <tr className="bg-[#F6BD60]/20 print:bg-gray-200">
-              <td className="px-4 py-3 font-bold">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-[#D4A24C]" />
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 font-bold text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-[#8a6420] hidden sm:block" />
                   <div>
-                    <span>Net Profit (Owner)</span>
-                    <p className="text-[10px] text-slate-400 font-normal">= Gross Profit - Management Fee - VAT - Little Hotelier</p>
+                    <span className="text-[#8a6420]">Net Profit</span>
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-normal hidden sm:block">= Gross - Fee - VAT - LH</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3 text-right font-bold text-[#D4A24C] print:text-gray-800">
+              <td className="px-2 sm:px-4 py-1.5 sm:py-3 text-right font-bold text-[#8a6420] print:text-gray-800 text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.netProfit)}
               </td>
             </tr>
@@ -2101,85 +2115,86 @@ export default function ReportsPage() {
 
             {/* กลุ่มที่ 2: รายละเอียดเพิ่มเติม */}
             <tr className="bg-white">
-              <td className="px-4 py-2 font-medium">
-                <div className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4 text-[#D4A24C]" />
+              <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Receipt className="h-3 w-3 sm:h-4 sm:w-4 text-[#8a6420] hidden sm:block" />
                   <div>
-                    <span>Management Fee ({data.managementFeePercent}%)</span>
-                    <p className="text-[10px] text-slate-400 font-normal">= รายได้ค่าเช่า × {data.managementFeePercent}%</p>
+                    <span className="line-clamp-1 text-[#8a6420]">Mgt Fee ({data.managementFeePercent}%)</span>
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-normal hidden sm:block">= รายได้ค่าเช่า × {data.managementFeePercent}%</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-2 text-right text-[#D4A24C]">
+              <td className="px-2 sm:px-4 py-1 sm:py-2 text-right text-[#8a6420] text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.managementFee)}
               </td>
             </tr>
             <tr className="bg-[#F6BD60]/5">
-              <td className="px-4 py-2 font-medium">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#D4A24C]" />
+              <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-[#8a6420] hidden sm:block" />
                   <div>
-                    <span>Amount to be Paid (รวม VAT {data.vatPercent}%)</span>
-                    <p className="text-[10px] text-slate-400 font-normal">= Management Fee + VAT {data.vatPercent}%</p>
+                    <span className="line-clamp-1 text-[#8a6420]">Amount Paid (+VAT)</span>
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-normal hidden sm:block">= Fee + VAT {data.vatPercent}%</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-2 text-right font-bold text-[#D4A24C]">
+              <td className="px-2 sm:px-4 py-1 sm:py-2 text-right font-bold text-[#8a6420] text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.amountToBePaid)}
               </td>
             </tr>
             <tr className="bg-white">
-              <td className="px-4 py-2 font-medium">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#F28482]" />
-                  <span>ค่าเช่าอาคาร/เดือน</span>
+              <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-[#a84442] hidden sm:block" />
+                  <span className="text-[#a84442]">ค่าเช่าอาคาร/เดือน</span>
                 </div>
               </td>
-              <td className="px-4 py-2 text-right text-[#d96f6d]">
+              <td className="px-2 sm:px-4 py-1 sm:py-2 text-right text-[#a84442] text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.monthlyRent)}
               </td>
             </tr>
             <tr className="bg-[#84A59D]/5">
-              <td className="px-4 py-2 font-medium">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-[#84A59D]" />
-                  <span>เงินเดือนพนักงาน/เดือน</span>
+              <td className="px-2 sm:px-4 py-1 sm:py-2 font-medium text-xs sm:text-sm">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Wallet className="h-3 w-3 sm:h-4 sm:w-4 text-[#3d5650] hidden sm:block" />
+                  <span className="text-[#3d5650]">เงินเดือน/เดือน</span>
                 </div>
               </td>
-              <td className="px-4 py-2 text-right text-[#84A59D]">
+              <td className="px-2 sm:px-4 py-1 sm:py-2 text-right text-[#3d5650] text-xs sm:text-sm whitespace-nowrap">
                 {formatNumber(data.expenseByCategory?.['เงินเดือนพนักงาน'] || 0)}
               </td>
             </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header - ซ่อนตอนพิมพ์ */}
       <div className="print:hidden">
-        <h1 className="text-2xl font-bold text-[#333]">ดาวน์โหลดรายงาน</h1>
-        <p className="text-[#666]">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#333]">ดาวน์โหลดรายงาน</h1>
+        <p className="text-sm sm:text-base text-[#666]">
           ส่งออกรายงานรายรับ-รายจ่าย
         </p>
       </div>
 
       {/* Filters - ซ่อนตอนพิมพ์ */}
       <Card className="border-0 shadow-md print:hidden">
-        <CardHeader className="bg-[#84A59D] text-white rounded-t-xl">
-          <CardTitle>เลือกช่วงเวลา</CardTitle>
-          <CardDescription className="text-white/80">
+        <CardHeader className="bg-[#84A59D] text-white rounded-t-xl px-4 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="text-base sm:text-lg">เลือกช่วงเวลา</CardTitle>
+          <CardDescription className="text-white/80 text-xs sm:text-sm">
             กำหนดอาคารและช่วงเวลาที่ต้องการดาวน์โหลด
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#333]">อาคาร</label>
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+            <div className="space-y-1 sm:space-y-2 w-full sm:w-auto">
+              <label className="text-xs sm:text-sm font-medium text-[#333]">อาคาร</label>
               <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
-                <SelectTrigger className="w-[280px] bg-white">
+                <SelectTrigger className="w-full sm:w-[280px] bg-white">
                   <SelectValue placeholder="เลือกอาคาร" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2204,36 +2219,38 @@ export default function ReportsPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#333]">เดือน</label>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[150px] bg-white">
-                  <SelectValue placeholder="เดือน" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="flex gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2 flex-1 sm:flex-none">
+                <label className="text-xs sm:text-sm font-medium text-[#333]">เดือน</label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full sm:w-[130px] bg-white">
+                    <SelectValue placeholder="เดือน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m) => (
+                      <SelectItem key={m.value} value={String(m.value)}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-[#333]">ปี</label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[120px] bg-white">
-                  <SelectValue placeholder="ปี" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1 sm:space-y-2 w-[90px] sm:w-auto">
+                <label className="text-xs sm:text-sm font-medium text-[#333]">ปี</label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full sm:w-[100px] bg-white">
+                    <SelectValue placeholder="ปี" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -2272,34 +2289,36 @@ export default function ReportsPage() {
 
           {/* สรุปรวม */}
           <Card className="border-0 shadow-md bg-[#84A59D]/10 print:shadow-none print:border print:border-gray-300">
-            <CardHeader>
-              <CardTitle>สรุปรวมทุกอาคาร</CardTitle>
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-base sm:text-lg">สรุปรวมทุกอาคาร</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-2 sm:p-6">
               {renderSummaryTable(allSummaryData.total, false)}
             </CardContent>
           </Card>
 
           {/* ปุ่มดาวน์โหลดทั้งหมด - ซ่อนตอนพิมพ์ */}
-          <div className="flex flex-wrap justify-end gap-3 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3 print:hidden">
             <Button
               onClick={handlePrintAll}
               variant="outline"
-              className="border-gray-400 text-gray-600 hover:bg-gray-100"
+              size="sm"
+              className="border-gray-400 text-gray-600 hover:bg-gray-100 text-xs sm:text-sm"
             >
-              <Printer className="mr-2 h-4 w-4" />
+              <Printer className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               พิมพ์
             </Button>
             <Button
               onClick={handleExportAllPDF}
               disabled={exportingPDF}
               variant="outline"
-              className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10"
+              size="sm"
+              className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10 text-xs sm:text-sm"
             >
               {exportingPDF ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
               ) : (
-                <FileText className="mr-2 h-4 w-4" />
+                <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               )}
               ดาวน์โหลด PDF
             </Button>
@@ -2308,37 +2327,39 @@ export default function ReportsPage() {
       ) : summaryData ? (
         // แสดงอาคารเดียว
         <Card className="border-0 shadow-md print:shadow-none print:border print:border-gray-300">
-          <CardHeader className="print:hidden">
-            <CardTitle>
+          <CardHeader className="print:hidden px-4 py-3 sm:px-6 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">
               รายงาน: {selectedBuildingName}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               {getMonthName(parseInt(selectedMonth))} {selectedYear}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6">
             {renderSummaryTable(summaryData, false)}
 
             {/* ปุ่มดาวน์โหลด - ซ่อนตอนพิมพ์ */}
-            <div className="flex flex-wrap justify-end gap-3 pt-4 print:hidden">
+            <div className="flex flex-wrap justify-end gap-2 sm:gap-3 pt-4 print:hidden">
               <Button
                 onClick={() => handlePrint(summaryData, selectedBuildingName)}
                 variant="outline"
-                className="border-gray-400 text-gray-600 hover:bg-gray-100"
+                size="sm"
+                className="border-gray-400 text-gray-600 hover:bg-gray-100 text-xs sm:text-sm"
               >
-                <Printer className="mr-2 h-4 w-4" />
+                <Printer className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 พิมพ์
               </Button>
               <Button
                 onClick={() => handleExportPDF(summaryData, selectedBuildingName)}
                 disabled={exportingPDF}
                 variant="outline"
-                className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10"
+                size="sm"
+                className="border-[#F28482] text-[#F28482] hover:bg-[#F28482]/10 text-xs sm:text-sm"
               >
                 {exportingPDF ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                 ) : (
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 )}
                 ดาวน์โหลด PDF
               </Button>
@@ -2347,9 +2368,9 @@ export default function ReportsPage() {
         </Card>
       ) : (
         <Card className="border-0 shadow-md print:hidden">
-          <CardContent className="py-12 text-center">
-            <FileDown className="mx-auto h-12 w-12 text-[#84A59D]/50" />
-            <p className="mt-4 text-[#666]">ไม่พบข้อมูลสำหรับช่วงเวลาที่เลือก</p>
+          <CardContent className="py-8 sm:py-12 text-center">
+            <FileDown className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-[#84A59D]/50" />
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-[#666]">ไม่พบข้อมูลสำหรับช่วงเวลาที่เลือก</p>
           </CardContent>
         </Card>
       )}
