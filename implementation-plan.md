@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.0 |
+| **Version** | 1.8.4 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -194,7 +194,50 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.0 (Current - December 2025)
+### v1.8.4 (Current - January 2026)
+- **Responsive Design สำหรับหน้า Settings:**
+  - ปรับขนาดปุ่มให้เล็กลงบนมือถือ: `h-7 w-7 sm:h-9 sm:w-9`
+  - ปรับขนาดไอคอนในปุ่ม: `h-3 w-3 sm:h-4 sm:w-4`
+  - ปรับ padding ของการ์ด: `p-3 sm:p-4`
+  - ปรับไอคอนหัวการ์ด: `h-6 w-6 sm:h-8 sm:w-8`
+  - ปรับช่องแสดงผลค่าใช้จ่าย: `px-2 sm:px-3 py-1.5 sm:py-2`, `text-sm sm:text-base`
+  - ปรับ CardHeader ของ info tab: responsive padding และ text size
+  - รองรับการแสดงผลบนหน้าจอ 6 นิ้วโดยไม่ต้อง scroll แนวนอน
+
+### v1.8.3 (January 2026)
+- **Responsive Design สำหรับหน้า Reports:**
+  - ปรับขนาด Tables รายรับรายจ่าย ให้เล็กลงบนมือถือ
+  - ปรับขนาด Table สรุปผลประกอบการ ให้เล็กลงบนมือถือ
+  - ลด padding: `px-2 py-1` บนมือถือ → `px-4 py-2` บน sm:
+  - ลดขนาดตัวอักษร: `text-xs` บนมือถือ → `text-sm` บน sm:
+  - ซ่อน icons บนมือถือ: `hidden sm:block`
+  - ซ่อน subtitles/descriptions บนมือถือ
+  - ย่อข้อความให้สั้นลงบนมือถือ (เช่น "Net Profit" แทน "Net Profit (Owner)")
+  - เพิ่ม `line-clamp-1` และ `whitespace-nowrap` ป้องกันข้อความล้น
+- **ปรับสีตัวอักษรให้เข้มขึ้น (อ่านง่ายบนพื้นหลังสี):**
+  - รายได้ (เขียว): `#84A59D` → `#3d5650`
+  - รายจ่าย (แดง): `#F28482` → `#a84442`
+  - Gross Profit (น้ำเงิน): `#5B9BD5` → `#2d5a7a`
+  - Net Profit/เหลือง: `#D4A24C` → `#8a6420`
+  - Subtitle: `text-slate-400` → `text-slate-500`
+
+### v1.8.2 (January 2026)
+- **Responsive Design ทั้งระบบ:**
+  - หน้า Settings: TabsList wrap ได้บนมือถือ (`flex-wrap h-auto gap-1`)
+  - หน้า Transactions: Tables scroll แนวนอนได้ (`overflow-x-auto`)
+  - หน้า Reports: Tables scroll แนวนอนได้ (`overflow-x-auto`)
+
+### v1.8.1 (December 2025)
+- **ยืนยันค่าใช้จ่ายส่วนกลางแสดงแยกเดือนถูกต้อง:**
+  - หน้า Settings: มี selector เดือน/ปี - โหลดข้อมูลตามเดือนที่เลือก
+  - หน้า Reports/PDF: ใช้ข้อมูลจาก Summary API ที่ดึงตาม ExpenseHistory
+  - ทดสอบ: ธ.ค. 2025 มีข้อมูล 18 รายการ, พ.ย. 2025 มี 0 รายการ
+- **ยืนยัน PDF แสดง Social Security ถูกต้อง:**
+  - แสดงในตาราง "ค่าใช้จ่ายรวมอาคาร"
+  - สีชมพู (#E91E63) พร้อมไอคอน HeartPulse
+  - หาร 5 อาคาร (เช่น 2,750 ÷ 5 = 550 บาท/อาคาร)
+
+### v1.8.0 (December 2025)
 - **ระบบเงินสมทบประกันสังคม (Social Security):**
   - เพิ่ม SocialSecurityContribution model
   - API `/api/social-security` สำหรับจัดการข้อมูล
@@ -460,3 +503,5 @@ npx vercel --prod        # Deploy
 - รหัสผ่านเข้ารหัสด้วย bcrypt
 - API มีการตรวจสอบสิทธิ์ (Auth)
 - Production URL: https://aswreport.vercel.app
+- **ค่าใช้จ่ายส่วนกลางแยกตามเดือน:** ข้อมูลเก็บใน ExpenseHistory แยกตาม month/year - ไม่ใช่ค่าคงที่ใน GlobalSettings
+- **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year
