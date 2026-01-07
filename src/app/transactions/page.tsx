@@ -685,7 +685,7 @@ export default function TransactionsPage() {
                 <p className="text-xl font-bold text-white">{formatNumber(totalIncome)}</p>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               {/* กลุ่ม 1: รายได้ค่าเช่า */}
               <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
                 <div className="flex justify-between items-center">
@@ -696,51 +696,51 @@ export default function TransactionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">#</TableHead>
+                    <TableHead className="w-8 md:w-[50px]">#</TableHead>
                     <TableHead>รายการ</TableHead>
-                    <TableHead className="w-[220px] text-right">จำนวนเงิน</TableHead>
+                    <TableHead className="text-right">จำนวนเงิน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rentalIncomeCategories.map((category, index) => (
                     <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+                      <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
                           <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm">{category.name}</span>
+                          <span className="text-xs md:text-sm">{category.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center gap-1">
+                      <TableCell className="text-right px-2 md:px-4">
+                        <div className="flex items-center justify-end gap-0.5 md:gap-1">
                           <div
-                            className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                            className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                           >
                             {formatNumber(transactionData[category.id] || 0)}
                           </div>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                             onClick={() => openAdjustDialog('edit', category.id, category.name)}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                             onClick={() => openAdjustDialog('add', category.id, category.name)}
                           >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                             onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                           >
-                            <Minus className="h-4 w-4" />
+                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -762,43 +762,43 @@ export default function TransactionsPage() {
                     <TableBody>
                       {otherIncomeCategories.map((category, index) => (
                         <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#F6BD60]/5'}>
-                          <TableCell className="font-medium w-[50px]">{index + 1}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">{index + 1}</TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                              <span className="text-sm">{category.name}</span>
+                              <span className="text-xs md:text-sm">{category.name}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right w-[250px]">
-                            <div className="flex items-center gap-1">
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-0.5 md:gap-1">
                               <div
-                                className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                                className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                               >
                                 {formatNumber(transactionData[category.id] || 0)}
                               </div>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                                 onClick={() => openAdjustDialog('edit', category.id, category.name)}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                                 onClick={() => openAdjustDialog('add', category.id, category.name)}
                               >
-                                <Plus className="h-4 w-4" />
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                               >
-                                <Minus className="h-4 w-4" />
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -819,41 +819,41 @@ export default function TransactionsPage() {
               <Table>
                 <TableBody>
                   <TableRow className="bg-emerald-50/50">
-                    <TableCell className="font-medium w-[50px]">1</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                    <TableCell className="px-2 md:px-4">
+                      <div className="flex items-center gap-1 md:gap-2">
                         <CategoryIcon name="รถรับส่งสนามบิน" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium text-emerald-600">ค่าเช่า รถรับส่งสนามบิน</span>
+                        <span className="text-xs md:text-sm font-medium text-emerald-600">ค่าเช่า รถรับส่งสนามบิน</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right w-[250px]">
-                      <div className="flex items-center gap-1">
-                        <div className="text-right flex-1 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-md text-sm font-medium min-w-[80px] text-emerald-600">
+                    <TableCell className="text-right px-2 md:px-4">
+                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-emerald-50 border border-emerald-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-emerald-600">
                           {formatNumber(airportShuttleRentIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -871,41 +871,41 @@ export default function TransactionsPage() {
               <Table>
                 <TableBody>
                   <TableRow className="bg-purple-50/50">
-                    <TableCell className="font-medium w-[50px]">1</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                    <TableCell className="px-2 md:px-4">
+                      <div className="flex items-center gap-1 md:gap-2">
                         <CategoryIcon name="Thai Bus" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium text-purple-600">Thai Bus Tour</span>
+                        <span className="text-xs md:text-sm font-medium text-purple-600">Thai Bus Tour</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right w-[250px]">
-                      <div className="flex items-center gap-1">
-                        <div className="text-right flex-1 px-3 py-2 bg-purple-50 border border-purple-200 rounded-md text-sm font-medium min-w-[80px] text-purple-600">
+                    <TableCell className="text-right px-2 md:px-4">
+                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-purple-50 border border-purple-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-purple-600">
                           {formatNumber(thaiBusTourIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -923,41 +923,41 @@ export default function TransactionsPage() {
               <Table>
                 <TableBody>
                   <TableRow className="bg-orange-50/50">
-                    <TableCell className="font-medium w-[50px]">1</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                    <TableCell className="px-2 md:px-4">
+                      <div className="flex items-center gap-1 md:gap-2">
                         <CategoryIcon name="Co Van" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium text-orange-600">Co Van Kessel</span>
+                        <span className="text-xs md:text-sm font-medium text-orange-600">Co Van Kessel</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right w-[250px]">
-                      <div className="flex items-center gap-1">
-                        <div className="text-right flex-1 px-3 py-2 bg-orange-50 border border-orange-200 rounded-md text-sm font-medium min-w-[80px] text-orange-600">
+                    <TableCell className="text-right px-2 md:px-4">
+                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-orange-50 border border-orange-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-orange-600">
                           {formatNumber(coVanKesselIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -980,29 +980,29 @@ export default function TransactionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">#</TableHead>
+                    <TableHead className="w-8 md:w-[50px]">#</TableHead>
                     <TableHead>รายการ</TableHead>
-                    <TableHead className="w-[220px] text-right">จำนวนเงิน</TableHead>
+                    <TableHead className="text-right">จำนวนเงิน</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {/* อันดับ 1: ค่าเช่าอาคาร - ดึงจาก Settings */}
                   {monthlyRent > 0 && (
                     <TableRow className="bg-[#F6BD60]/10">
-                      <TableCell className="font-medium">1</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+                      <TableCell className="font-medium px-2 md:px-4">1</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
                           <CategoryIcon name="ค่าเช่าอาคาร" className="h-4 w-4 flex-shrink-0" />
                           <div>
-                            <span className="text-sm font-medium text-[#D4A24C]">ค่าเช่าอาคาร</span>
-                            <p className="text-xs text-slate-400">
+                            <span className="text-xs md:text-sm font-medium text-[#D4A24C]">ค่าเช่าอาคาร</span>
+                            <p className="text-[10px] md:text-xs text-slate-400 hidden md:block">
                               (ดึงจากหน้าตั้งค่าอาคาร)
                             </p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <p className="font-medium text-[#D4A24C]">
+                      <TableCell className="text-right px-2 md:px-4">
+                        <p className="font-medium text-xs md:text-sm text-[#D4A24C]">
                           {formatNumber(monthlyRent)}
                         </p>
                       </TableCell>
@@ -1011,20 +1011,20 @@ export default function TransactionsPage() {
                   {/* เงินเดือนพนักงาน */}
                   {salaryCategory && salarySummary && (
                     <TableRow className="bg-[#84A59D]/10">
-                      <TableCell className="font-medium">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
+                      <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
                           <CategoryIcon name={salaryCategory.name} className="h-4 w-4 flex-shrink-0" />
                           <div>
-                            <span className="text-sm font-medium text-[#84A59D]">{salaryCategory.name}</span>
-                            <p className="text-xs text-[#84A59D]">
-                              (คำนวณจากหน้าเงินเดือนพนักงาน: {formatNumber(salarySummary.totalSalary)} / {salarySummary.buildingCount} อาคาร)
+                            <span className="text-xs md:text-sm font-medium text-[#84A59D]">{salaryCategory.name}</span>
+                            <p className="text-[10px] md:text-xs text-[#84A59D] hidden md:block">
+                              ({formatNumber(salarySummary.totalSalary)} / {salarySummary.buildingCount} อาคาร)
                             </p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <p className="font-medium text-[#84A59D]">
+                      <TableCell className="text-right px-2 md:px-4">
+                        <p className="font-medium text-xs md:text-sm text-[#84A59D]">
                           {formatNumber(salarySummary.salaryPerBuilding)}
                         </p>
                       </TableCell>
@@ -1036,352 +1036,352 @@ export default function TransactionsPage() {
                       {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
                       {maxCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#9B59B6]/10">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ค่าดูแล MAX" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-[#9B59B6]">ค่าดูแล MAX</span>
-                                <p className="text-xs text-[#9B59B6]">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.maxCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-[#9B59B6]">ค่าดูแล MAX</span>
+                                <p className="text-[10px] md:text-xs text-[#9B59B6] hidden md:block">
+                                  ({formatNumber(globalSettings.maxCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-[#9B59B6]">{formatNumber(maxCareExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-[#9B59B6]">{formatNumber(maxCareExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าดูแลจราจร - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
                       {trafficCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#E74C3C]/10">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ค่าดูแลจราจร" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-[#E74C3C]">ค่าดูแลจราจร</span>
-                                <p className="text-xs text-[#E74C3C]">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.trafficCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-[#E74C3C]">ค่าดูแลจราจร</span>
+                                <p className="text-[10px] md:text-xs text-[#E74C3C] hidden md:block">
+                                  ({formatNumber(globalSettings.trafficCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-[#E74C3C]">{formatNumber(trafficCareExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-[#E74C3C]">{formatNumber(trafficCareExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
                       {shippingExpensePerBuilding > 0 && (
                         <TableRow className="bg-orange-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ค่าขนส่งสินค้า" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-orange-600">ค่าขนส่งสินค้า</span>
-                                <p className="text-xs text-orange-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.shippingExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-orange-600">ค่าขนส่งสินค้า</span>
+                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
+                                  ({formatNumber(globalSettings.shippingExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-orange-600">{formatNumber(shippingExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(shippingExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่า Amenity - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-pink-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="Amenity" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-pink-500">ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)</span>
-                                <p className="text-xs text-pink-400">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.amenityExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-pink-500">Amenity</span>
+                                <p className="text-[10px] md:text-xs text-pink-400 hidden md:block">
+                                  ({formatNumber(globalSettings.amenityExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-pink-500">{formatNumber(amenityExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-pink-500">{formatNumber(amenityExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าเช่าเครื่องกรองน้ำ Coway - แสดงเสมอ (หลัง Amenity) */}
                       <TableRow className="bg-cyan-100/50">
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium px-2 md:px-4">
                           {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                            (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                            (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
                             <CategoryIcon name="กรองน้ำ" className="h-4 w-4 flex-shrink-0" />
                             <div>
-                              <span className="text-sm font-medium text-cyan-600">ค่าเช่าเครื่องกรองน้ำ Coway</span>
-                              <p className="text-xs text-cyan-500">
+                              <span className="text-xs md:text-sm font-medium text-cyan-600">กรองน้ำ Coway</span>
+                              <p className="text-[10px] md:text-xs text-cyan-500 hidden md:block">
                                 (ดึงจากหน้าตั้งค่าอาคาร)
                               </p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <p className="font-medium text-cyan-600">{formatNumber(cowayWaterFilterExpense)}</p>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <p className="font-medium text-xs md:text-sm text-cyan-600">{formatNumber(cowayWaterFilterExpense)}</p>
                         </TableCell>
                       </TableRow>
                       {/* ค่าน้ำเปล่า - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-sky-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="น้ำเปล่า" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-cyan-500">ค่าน้ำเปล่า</span>
-                                <p className="text-xs text-cyan-400">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.waterBottleExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-cyan-500">ค่าน้ำเปล่า</span>
+                                <p className="text-[10px] md:text-xs text-cyan-400 hidden md:block">
+                                  ({formatNumber(globalSettings.waterBottleExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-cyan-500">{formatNumber(waterBottleExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-cyan-500">{formatNumber(waterBottleExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าขนมคุ้กกี้ - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-amber-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="คุ้กกี้" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-amber-500">ค่าขนมคุ้กกี้</span>
-                                <p className="text-xs text-amber-400">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.cookieExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-amber-500">ค่าขนมคุ้กกี้</span>
+                                <p className="text-[10px] md:text-xs text-amber-400 hidden md:block">
+                                  ({formatNumber(globalSettings.cookieExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-amber-500">{formatNumber(cookieExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-amber-500">{formatNumber(cookieExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-amber-200/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="กาแฟ" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-amber-700">ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท</span>
-                                <p className="text-xs text-amber-600">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.coffeeExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-amber-700">กาแฟ น้ำตาล คอฟฟี่เมท</span>
+                                <p className="text-[10px] md:text-xs text-amber-600 hidden md:block">
+                                  ({formatNumber(globalSettings.coffeeExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-amber-700">{formatNumber(coffeeExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-amber-700">{formatNumber(coffeeExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าน้ำมันรถมอเตอร์ไซค์ - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-gray-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="น้ำมัน" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-gray-600">ค่าน้ำมันรถมอเตอร์ไซค์</span>
-                                <p className="text-xs text-gray-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.fuelExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-gray-600">ค่าน้ำมันมอไซค์</span>
+                                <p className="text-[10px] md:text-xs text-gray-500 hidden md:block">
+                                  ({formatNumber(globalSettings.fuelExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-gray-600">{formatNumber(fuelExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-gray-600">{formatNumber(fuelExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าเช่าที่จอดรถมอเตอร์ไซค์ - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-slate-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ที่จอดรถ" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-slate-600">ค่าเช่าที่จอดรถมอเตอร์ไซค์</span>
-                                <p className="text-xs text-slate-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.parkingExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-slate-600">ค่าที่จอดรถมอไซค์</span>
+                                <p className="text-[10px] md:text-xs text-slate-500 hidden md:block">
+                                  ({formatNumber(globalSettings.parkingExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-slate-600">{formatNumber(parkingExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-slate-600">{formatNumber(parkingExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าซ่อมบำรุงรถมอเตอร์ไซค์ - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-orange-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ซ่อมบำรุงรถ" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-orange-600">ค่าซ่อมบำรุงรถมอเตอร์ไซค์</span>
-                                <p className="text-xs text-orange-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.motorcycleMaintenanceExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-orange-600">ซ่อมบำรุงมอไซค์</span>
+                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
+                                  ({formatNumber(globalSettings.motorcycleMaintenanceExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-orange-600">{formatNumber(motorcycleMaintenanceExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(motorcycleMaintenanceExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าเดินทางแม่บ้าน - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-violet-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="เดินทางแม่บ้าน" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-violet-600">ค่าเดินทางแม่บ้าน</span>
-                                <p className="text-xs text-violet-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.maidTravelExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-violet-600">เดินทางแม่บ้าน</span>
+                                <p className="text-[10px] md:text-xs text-violet-500 hidden md:block">
+                                  ({formatNumber(globalSettings.maidTravelExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-violet-600">{formatNumber(maidTravelExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-violet-600">{formatNumber(maidTravelExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าอุปกรณ์ทำความสะอาด - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-teal-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-teal-600">ค่าอุปกรณ์ทำความสะอาด</span>
-                                <p className="text-xs text-teal-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.cleaningSupplyExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-teal-600">อุปกรณ์ทำความสะอาด</span>
+                                <p className="text-[10px] md:text-xs text-teal-500 hidden md:block">
+                                  ({formatNumber(globalSettings.cleaningSupplyExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-teal-600">{formatNumber(cleaningSupplyExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-teal-600">{formatNumber(cleaningSupplyExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* ค่าอาหาร - แสดงเสมอ */}
                       {globalSettings && (
                         <TableRow className="bg-orange-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="อาหาร" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-orange-600">ค่าอาหาร</span>
-                                <p className="text-xs text-orange-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(globalSettings.foodExpense)} / {globalSettings.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-orange-600">ค่าอาหาร</span>
+                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
+                                  ({formatNumber(globalSettings.foodExpense)} / {globalSettings.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-orange-600">{formatNumber(foodExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(foodExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
                       {/* เงินสมทบประกันสังคม - แสดงเสมอ */}
                       {socialSecurityData && (
                         <TableRow className="bg-pink-100/50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
                              (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
                              (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
                               <CategoryIcon name="ประกันสังคม" className="h-4 w-4 flex-shrink-0" />
                               <div>
-                                <span className="text-sm font-medium text-pink-600">เงินสมทบประกันสังคม</span>
-                                <p className="text-xs text-pink-500">
-                                  (ดึงจากหน้าตั้งค่า: {formatNumber(socialSecurityData.totalAmount)} / {socialSecurityData.buildingCount} อาคาร)
+                                <span className="text-xs md:text-sm font-medium text-pink-600">ประกันสังคม</span>
+                                <p className="text-[10px] md:text-xs text-pink-500 hidden md:block">
+                                  ({formatNumber(socialSecurityData.totalAmount)} / {socialSecurityData.buildingCount} อาคาร)
                                 </p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <p className="font-medium text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1398,43 +1398,43 @@ export default function TransactionsPage() {
                         key={category.id}
                         className={index % 2 === 0 ? 'bg-white' : 'bg-[#F28482]/5'}
                       >
-                        <TableCell className="font-medium">{baseIndex + index + 1}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell className="font-medium px-2 md:px-4">{baseIndex + index + 1}</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
                             <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-sm">{category.name}</span>
+                            <span className="text-xs md:text-sm">{category.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center gap-1">
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-0.5 md:gap-1">
                             <div
-                              className="text-right flex-1 px-3 py-2 bg-gray-50 border rounded-md text-sm font-medium min-w-[80px]"
+                              className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                             >
                               {formatNumber(transactionData[category.id] || 0)}
                             </div>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                               onClick={() => openAdjustDialog('edit', category.id, category.name)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                               onClick={() => openAdjustDialog('add', category.id, category.name)}
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                               onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                             >
-                              <Minus className="h-4 w-4" />
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>
                           </div>
                         </TableCell>
