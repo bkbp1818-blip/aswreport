@@ -38,6 +38,28 @@ export async function GET(request: NextRequest) {
       buildings.map((b) => calculateBuildingSummary(b.id, monthInt, yearInt))
     )
 
+    // รวม incomeByChannel จากทุกอาคาร
+    const totalIncomeByChannel: Record<string, number> = {}
+    for (const s of summaries) {
+      for (const [key, value] of Object.entries(s.incomeByChannel)) {
+        if (!totalIncomeByChannel[key]) {
+          totalIncomeByChannel[key] = 0
+        }
+        totalIncomeByChannel[key] += value as number
+      }
+    }
+
+    // รวม expenseByCategory จากทุกอาคาร
+    const totalExpenseByCategory: Record<string, number> = {}
+    for (const s of summaries) {
+      for (const [key, value] of Object.entries(s.expenseByCategory)) {
+        if (!totalExpenseByCategory[key]) {
+          totalExpenseByCategory[key] = 0
+        }
+        totalExpenseByCategory[key] += value as number
+      }
+    }
+
     // คำนวณยอดรวมทั้งหมด
     const totalSummary = {
       buildingId: null,
@@ -45,7 +67,9 @@ export async function GET(request: NextRequest) {
       totalIncome: summaries.reduce((sum, s) => sum + s.totalIncome, 0),
       totalExpense: summaries.reduce((sum, s) => sum + s.totalExpense, 0),
       grossProfit: summaries.reduce((sum, s) => sum + s.grossProfit, 0),
+      managementFeePercent: 13.5, // ค่าเริ่มต้นสำหรับแสดงผลรวม
       managementFee: summaries.reduce((sum, s) => sum + s.managementFee, 0),
+      vatPercent: 7, // ค่าเริ่มต้นสำหรับแสดงผลรวม
       vat: summaries.reduce((sum, s) => sum + s.vat, 0),
       littleHotelierExpense: summaries.reduce(
         (sum, s) => sum + s.littleHotelierExpense,
@@ -70,8 +94,8 @@ export async function GET(request: NextRequest) {
       socialSecurityExpense: summaries.reduce((sum, s) => sum + s.socialSecurityExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
-      incomeByChannel: {},
-      expenseByCategory: {},
+      incomeByChannel: totalIncomeByChannel,
+      expenseByCategory: totalExpenseByCategory,
     }
 
     return NextResponse.json({

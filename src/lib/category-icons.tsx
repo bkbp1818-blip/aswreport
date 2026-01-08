@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   TrafficCone,
   HeartPulse,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -51,6 +52,7 @@ const iconColors: Record<string, string> = {
   'ค่าทัวร์': 'text-green-500',
   'Thai Bus Food Tour': 'text-amber-600',
   'Co Van Kessel': 'text-teal-600',
+  'ค่าปรับของใช้เสียหาย': 'text-red-500',
   // รายจ่าย
   'ค่าไฟฟ้า': 'text-yellow-500',
   'ค่าน้ำประปา': 'text-blue-400',
@@ -130,6 +132,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('co van kessel')) {
     return { Icon: Map, color: iconColors['Co Van Kessel'] }
+  }
+  if (lowerName.includes('ปรับ') || lowerName.includes('เสียหาย')) {
+    return { Icon: AlertTriangle, color: iconColors['ค่าปรับของใช้เสียหาย'] }
   }
 
   // รายจ่าย
