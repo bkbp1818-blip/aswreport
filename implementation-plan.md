@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.4 |
+| **Version** | 1.8.5 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -194,7 +194,15 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.4 (Current - January 2026)
+### v1.8.5 (Current - January 2026)
+- **เพิ่ม Category รายได้ใหม่:**
+  - ค่าปรับของใช้เสียหาย (Damage Penalty) - สำหรับบันทึกเงินค่าปรับที่ได้รับจากลูกค้าเมื่อทำของเสียหาย
+- **UI Updates:**
+  - เพิ่ม AlertTriangle icon สีแดง สำหรับ category ค่าปรับของใช้เสียหาย
+- **Bug Fix:**
+  - แก้ไข Summary API ให้รวม incomeByChannel และ expenseByCategory สำหรับ "ทุกอาคาร" view
+
+### v1.8.4 (January 2026)
 - **Responsive Design สำหรับหน้า Settings:**
   - ปรับขนาดปุ่มให้เล็กลงบนมือถือ: `h-7 w-7 sm:h-9 sm:w-9`
   - ปรับขนาดไอคอนในปุ่ม: `h-3 w-3 sm:h-4 sm:w-4`
