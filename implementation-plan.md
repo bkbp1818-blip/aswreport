@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.5 |
+| **Version** | 1.8.6 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -194,7 +194,18 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.5 (Current - January 2026)
+### v1.8.6 (Current - January 2026)
+- **Responsive Dialog สำหรับหน้า Settings และ Transactions:**
+  - Dialog popup เมื่อกดปุ่ม edit/+/- พอดีกับหน้าจอมือถือ 6 นิ้ว
+  - ใช้ `w-[95vw]` เพื่อให้ Dialog กว้างเต็มหน้าจอบนมือถือ
+  - ลดขนาด font เป็น `9px`, `10px`, `11px` สำหรับมือถือ
+  - ลดความสูงตารางจาก `180px` เป็น `120px` บนมือถือ
+  - ลดความสูงปุ่มและ input เป็น `h-7` บนมือถือ
+  - ลด padding ทั่วทั้ง Dialog: `p-3 sm:p-6`
+  - ปรับ DialogFooter เป็น `flex-col-reverse sm:flex-row` สำหรับมือถือ
+  - ปรับ Select triggers ให้เล็กลง: `h-7 sm:h-10`
+
+### v1.8.5 (January 2026)
 - **เพิ่ม Category รายได้ใหม่:**
   - ค่าปรับของใช้เสียหาย (Damage Penalty) - สำหรับบันทึกเงินค่าปรับที่ได้รับจากลูกค้าเมื่อทำของเสียหาย
 - **UI Updates:**
