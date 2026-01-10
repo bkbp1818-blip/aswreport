@@ -1450,9 +1450,9 @@ export default function TransactionsPage() {
 
       {/* Dialog เพิ่ม/ลดยอด พร้อมประวัติ */}
       <Dialog open={adjustDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto p-3 sm:p-6">
           <DialogHeader>
-            <DialogTitle className={`text-sm sm:text-base ${
+            <DialogTitle className={`text-xs sm:text-base ${
               adjustType === 'edit'
                 ? 'text-blue-600'
                 : adjustType === 'add'
@@ -1460,8 +1460,8 @@ export default function TransactionsPage() {
                   : 'text-red-600'
             }`}>
               {adjustType === 'edit' ? (
-                <span className="flex items-center gap-1.5 sm:gap-2">
-                  <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="flex items-center gap-1 sm:gap-2">
+                  <Pencil className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                   แก้ไข: {adjustCategoryName}
                 </span>
               ) : adjustType === 'add' ? (
@@ -1472,16 +1472,16 @@ export default function TransactionsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+          <div className="space-y-2 sm:space-y-4 py-1 sm:py-4">
             {/* เลือกเดือน/ปี */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center p-2 sm:p-0 bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-xs sm:text-sm text-gray-500 w-auto sm:w-16">เดือน/ปี:</span>
+            <div className="flex flex-col sm:flex-row gap-1.5 sm:items-center p-1.5 sm:p-0 bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-[10px] sm:text-sm text-gray-500 w-auto sm:w-16">เดือน/ปี:</span>
                 <Select
                   value={adjustMonth}
                   onValueChange={(val) => handleAdjustMonthYearChange(val, adjustYear)}
                 >
-                  <SelectTrigger className="w-[90px] sm:w-[120px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="w-[80px] sm:w-[120px] h-7 sm:h-10 text-[11px] sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1496,7 +1496,7 @@ export default function TransactionsPage() {
                   value={adjustYear}
                   onValueChange={(val) => handleAdjustMonthYearChange(adjustMonth, val)}
                 >
-                  <SelectTrigger className="w-[65px] sm:w-[90px] h-8 sm:h-10 text-xs sm:text-sm">
+                  <SelectTrigger className="w-[55px] sm:w-[90px] h-7 sm:h-10 text-[11px] sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1509,13 +1509,13 @@ export default function TransactionsPage() {
                 </Select>
               </div>
               <div className="sm:ml-auto text-right">
-                <span className="text-[10px] sm:text-sm text-gray-500">ยอดรวม: </span>
-                <span className="font-bold text-sm sm:text-lg">{formatNumber(historyTotal)} บาท</span>
+                <span className="text-[9px] sm:text-sm text-gray-500">ยอดรวม: </span>
+                <span className="font-bold text-xs sm:text-lg">{formatNumber(historyTotal)} บาท</span>
               </div>
             </div>
 
             {/* ตารางประวัติ */}
-            <div className="border rounded-lg max-h-[180px] sm:max-h-[200px] overflow-y-auto overflow-x-auto">
+            <div className="border rounded-lg max-h-[120px] sm:max-h-[200px] overflow-y-auto overflow-x-auto">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -1528,37 +1528,37 @@ export default function TransactionsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[60px] sm:w-[100px] px-2 sm:px-4">วันที่</TableHead>
-                      <TableHead className="px-2 sm:px-4">รายละเอียด</TableHead>
-                      <TableHead className="text-right w-[70px] sm:w-[100px] px-2 sm:px-4">จำนวน</TableHead>
-                      <TableHead className="w-[40px] sm:w-[50px] px-1 sm:px-4"></TableHead>
+                      <TableHead className="w-[50px] sm:w-[100px] px-1 sm:px-4 text-[9px] sm:text-xs">วันที่</TableHead>
+                      <TableHead className="px-1 sm:px-4 text-[9px] sm:text-xs">รายละเอียด</TableHead>
+                      <TableHead className="text-right w-[60px] sm:w-[100px] px-1 sm:px-4 text-[9px] sm:text-xs">จำนวน</TableHead>
+                      <TableHead className="w-[30px] sm:w-[50px] px-0.5 sm:px-4"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {expenseHistory.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="text-[10px] sm:text-xs text-gray-500 px-2 sm:px-4">
+                        <TableCell className="text-[9px] sm:text-xs text-gray-500 px-1 sm:px-4 py-1 sm:py-2">
                           {new Date(item.createdAt).toLocaleDateString('th-TH', {
                             day: 'numeric',
                             month: 'short',
                           })}
                         </TableCell>
-                        <TableCell className="text-xs sm:text-sm px-2 sm:px-4 max-w-[100px] sm:max-w-none truncate">{item.description}</TableCell>
-                        <TableCell className={`text-right font-medium text-xs sm:text-sm px-2 sm:px-4 ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
+                        <TableCell className="text-[10px] sm:text-sm px-1 sm:px-4 py-1 sm:py-2 max-w-[80px] sm:max-w-none truncate">{item.description}</TableCell>
+                        <TableCell className={`text-right font-medium text-[10px] sm:text-sm px-1 sm:px-4 py-1 sm:py-2 ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
                           {item.actionType === 'ADD' ? '+' : '-'}{formatNumber(Number(item.amount))}
                         </TableCell>
-                        <TableCell className="px-1 sm:px-4">
+                        <TableCell className="px-0.5 sm:px-4 py-1 sm:py-2">
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 sm:h-7 sm:w-7 text-gray-400 hover:text-red-600"
+                            className="h-5 w-5 sm:h-7 sm:w-7 text-gray-400 hover:text-red-600"
                             onClick={() => handleDeleteHistory(item.id)}
                             disabled={deletingId === item.id}
                           >
                             {deletingId === item.id ? (
-                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                              <Loader2 className="h-2.5 w-2.5 sm:h-4 sm:w-4 animate-spin" />
                             ) : (
-                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <Trash2 className="h-2.5 w-2.5 sm:h-4 sm:w-4" />
                             )}
                           </Button>
                         </TableCell>
@@ -1570,9 +1570,9 @@ export default function TransactionsPage() {
             </div>
 
             {/* Form เพิ่มรายการใหม่ */}
-            <div className="border-t pt-2 sm:pt-4 space-y-2 sm:space-y-3">
+            <div className="border-t pt-1.5 sm:pt-4 space-y-1.5 sm:space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs sm:text-sm font-medium text-gray-700">
+                <p className="text-[10px] sm:text-sm font-medium text-gray-700">
                   {adjustType === 'edit'
                     ? 'เพิ่ม/ลดรายการ'
                     : adjustType === 'add'
@@ -1585,19 +1585,19 @@ export default function TransactionsPage() {
                     <Button
                       size="sm"
                       variant={adjustAction === 'add' ? 'default' : 'outline'}
-                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                      className={`h-6 sm:h-8 text-[10px] sm:text-sm px-1.5 sm:px-3 ${adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                       onClick={() => setAdjustAction('add')}
                     >
-                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
+                      <Plus className="h-2.5 w-2.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       เพิ่ม
                     </Button>
                     <Button
                       size="sm"
                       variant={adjustAction === 'subtract' ? 'default' : 'outline'}
-                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                      className={`h-6 sm:h-8 text-[10px] sm:text-sm px-1.5 sm:px-3 ${adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}`}
                       onClick={() => setAdjustAction('subtract')}
                     >
-                      <Minus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
+                      <Minus className="h-2.5 w-2.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       ลด
                     </Button>
                   </div>
@@ -1608,7 +1608,7 @@ export default function TransactionsPage() {
                 <Input
                   value={adjustDescription}
                   onChange={(e) => setAdjustDescription(e.target.value)}
-                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
+                  className="mt-0.5 h-7 sm:h-10 text-[11px] sm:text-sm"
                   placeholder="เช่น ค่าซ่อมแอร์, ค่าฉีดปลวก..."
                 />
               </div>
@@ -1618,14 +1618,14 @@ export default function TransactionsPage() {
                   type="number"
                   value={adjustAmount}
                   onChange={(e) => setAdjustAmount(e.target.value)}
-                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm text-right"
+                  className="mt-0.5 h-7 sm:h-10 text-[11px] sm:text-sm text-right"
                   placeholder="0"
                 />
               </div>
               {adjustAmount && parseFloat(adjustAmount) > 0 && (
-                <div className="flex justify-between items-center bg-gray-50 p-2 sm:p-3 rounded-lg">
-                  <span className="text-xs sm:text-sm">ยอดใหม่หลังบันทึก:</span>
-                  <span className={`text-sm sm:text-lg font-bold ${getEffectiveAction() === 'add' ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="flex justify-between items-center bg-gray-50 p-1.5 sm:p-3 rounded-lg">
+                  <span className="text-[10px] sm:text-sm">ยอดใหม่หลังบันทึก:</span>
+                  <span className={`text-[11px] sm:text-lg font-bold ${getEffectiveAction() === 'add' ? 'text-green-600' : 'text-red-600'}`}>
                     {formatNumber(getNewAmount())} บาท
                   </span>
                 </div>
@@ -1633,17 +1633,17 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => handleDialogClose(false)} className="w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm">
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-1.5 sm:gap-2">
+            <Button variant="outline" onClick={() => handleDialogClose(false)} className="w-full sm:w-auto h-7 sm:h-10 text-[11px] sm:text-sm">
               ปิด
             </Button>
             <Button
               onClick={handleAdjustConfirm}
               disabled={savingHistory || !adjustDescription.trim() || !adjustAmount}
-              className={`w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm ${getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+              className={`w-full sm:w-auto h-7 sm:h-10 text-[11px] sm:text-sm ${getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
               {savingHistory ? (
-                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                <Loader2 className="h-2.5 w-2.5 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
               ) : null}
               บันทึก
             </Button>
