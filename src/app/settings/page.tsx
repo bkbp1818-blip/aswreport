@@ -685,7 +685,7 @@ export default function SettingsPage() {
                     <Label className="text-[#D4A24C] font-semibold text-xs sm:text-sm">
                       Management Fee (%)
                     </Label>
-                    <div className="flex items-center gap-0.5 sm:gap-1">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#F6BD60]/5 border border-[#F6BD60]/30 rounded-md text-right font-medium text-sm sm:text-base">
                         {formatNumber(settings?.managementFeePercent || 0)}%
                       </div>
@@ -693,7 +693,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-[#D4A24C] hover:bg-[#F6BD60]/20 hover:text-[#D4A24C]"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#D4A24C] hover:bg-[#F6BD60]/20 hover:text-[#D4A24C]"
                         onClick={() => openPercentDialog('managementFeePercent', 'Management Fee', settings?.managementFeePercent || 0)}
                       >
                         <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -709,7 +709,7 @@ export default function SettingsPage() {
                     <Label className="text-[#84A59D] font-semibold text-xs sm:text-sm">
                       VAT (%)
                     </Label>
-                    <div className="flex items-center gap-0.5 sm:gap-1">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#84A59D]/5 border border-[#84A59D]/30 rounded-md text-right font-medium text-sm sm:text-base">
                         {formatNumber(settings?.vatPercent || 0)}%
                       </div>
@@ -717,7 +717,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-[#84A59D] hover:bg-[#84A59D]/20 hover:text-[#84A59D]"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#84A59D] hover:bg-[#84A59D]/20 hover:text-[#84A59D]"
                         onClick={() => openPercentDialog('vatPercent', 'VAT', settings?.vatPercent || 0)}
                       >
                         <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -731,7 +731,7 @@ export default function SettingsPage() {
                     <Label className="text-[#F28482] font-semibold text-xs sm:text-sm">
                       ค่าเช่าอาคาร/เดือน (บาท)
                     </Label>
-                    <div className="flex items-center gap-0.5 sm:gap-1">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#F28482]/5 border border-[#F28482]/30 rounded-md text-right font-medium text-sm sm:text-base">
                         {formatNumber(settingsTotals.monthlyRent || 0)}
                       </div>
@@ -739,7 +739,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                         onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
                       >
                         <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -748,7 +748,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                         onClick={() => openAdjustDialog('add', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
                       >
                         <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -757,7 +757,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                         onClick={() => openAdjustDialog('subtract', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
                       >
                         <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -773,7 +773,7 @@ export default function SettingsPage() {
                     <Label className="text-blue-500 font-semibold text-xs sm:text-sm">
                       กรองน้ำ Coway (บาท/เดือน)
                     </Label>
-                    <div className="flex items-center gap-0.5 sm:gap-1">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 border border-blue-200 rounded-md text-right font-medium text-sm sm:text-base">
                         {formatNumber(settingsTotals.cowayWaterFilterExpense || 0)}
                       </div>
@@ -781,7 +781,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                         onClick={() => openAdjustDialog('edit', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
                       >
                         <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -790,7 +790,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                         onClick={() => openAdjustDialog('add', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
                       >
                         <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -799,7 +799,7 @@ export default function SettingsPage() {
                         size="icon"
                         variant="ghost"
                         type="button"
-                        className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                         onClick={() => openAdjustDialog('subtract', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
                       >
                         <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -871,13 +871,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-[#9B59B6] font-semibold text-sm">ค่าดูแล MAX</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#9B59B6]/5 border border-[#9B59B6]/30 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.maxCareExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
@@ -893,13 +893,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-[#E74C3C] font-semibold text-sm">ค่าดูแลจราจร</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#E74C3C]/5 border border-[#E74C3C]/30 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.trafficCareExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
@@ -915,13 +915,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-orange-600 font-semibold text-sm">ค่าขนส่งสินค้า</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-orange-50 border border-orange-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.shippingExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 3 อาคาร</span>
@@ -937,13 +937,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-pink-500 font-semibold text-sm">ค่า Amenity</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-pink-50 border border-pink-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.amenityExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'amenityExpense', 'ค่า Amenity', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'amenityExpense', 'ค่า Amenity', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'amenityExpense', 'ค่า Amenity', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'amenityExpense', 'ค่า Amenity', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'amenityExpense', 'ค่า Amenity', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'amenityExpense', 'ค่า Amenity', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -959,13 +959,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-cyan-500 font-semibold text-sm">ค่าน้ำเปล่า</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-cyan-50 border border-cyan-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.waterBottleExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -981,13 +981,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-amber-600 font-semibold text-sm">ค่าขนมคุ้กกี้</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 border border-amber-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.cookieExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1003,13 +1003,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-amber-700 font-semibold text-sm">ค่ากาแฟซอง</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 border border-amber-300 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.coffeeExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1025,13 +1025,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-gray-600 font-semibold text-sm">ค่าน้ำมันรถ</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 border border-gray-300 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.fuelExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1047,13 +1047,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-slate-600 font-semibold text-sm">ค่าที่จอดรถ</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-300 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.parkingExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1069,13 +1069,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-rose-600 font-semibold text-sm">ค่าซ่อมบำรุงรถ</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-rose-50 border border-rose-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.motorcycleMaintenanceExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1091,13 +1091,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-violet-600 font-semibold text-sm">ค่าเดินทางแม่บ้าน</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-violet-50 border border-violet-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.maidTravelExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1113,13 +1113,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-teal-600 font-semibold text-sm">ค่าอุปกรณ์ทำความสะอาด</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-teal-50 border border-teal-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.cleaningSupplyExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1135,13 +1135,13 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-orange-500 font-semibold text-sm">ค่าอาหาร</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-orange-50 border border-orange-200 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(globalTotals?.totals?.foodExpense || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'foodExpense', 'ค่าอาหาร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'foodExpense', 'ค่าอาหาร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'foodExpense', 'ค่าอาหาร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'foodExpense', 'ค่าอาหาร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
@@ -1157,11 +1157,11 @@ export default function SettingsPage() {
                     </div>
                     <Label className="text-[#E91E63] font-semibold text-sm">เงินสมทบประกันสังคม</Label>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#E91E63]/5 border border-[#E91E63]/20 rounded-md text-right font-medium text-sm sm:text-base">
                       {formatNumber(socialSecurityData?.totalAmount || 0)}
                     </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 text-[#E91E63] hover:bg-[#E91E63]/10" onClick={() => setSocialSecurityDialogOpen(true)}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#E91E63] hover:bg-[#E91E63]/10" onClick={() => setSocialSecurityDialogOpen(true)}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">หาร 5 อาคาร</span>
@@ -1271,8 +1271,8 @@ export default function SettingsPage() {
 
       {/* Dialog เงินสมทบประกันสังคม */}
       <Dialog open={socialSecurityDialogOpen} onOpenChange={setSocialSecurityDialogOpen}>
-        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="bg-gradient-to-r from-[#E91E63] to-[#C2185B] -mx-6 -mt-6 px-6 py-4 rounded-t-lg">
+        <DialogContent className="w-[95vw] max-w-[550px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="bg-gradient-to-r from-[#E91E63] to-[#C2185B] -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg">
             <DialogTitle className="flex items-center gap-2 text-white">
               <HeartPulse className="h-5 w-5" />
               เงินสมทบประกันสังคม (นายจ้าง)
@@ -1398,8 +1398,8 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSocialSecurityDialogOpen(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setSocialSecurityDialogOpen(false)} className="w-full sm:w-auto">
               ปิด
             </Button>
           </DialogFooter>
@@ -1484,43 +1484,43 @@ export default function SettingsPage() {
 
       {/* Dialog เพิ่ม/ลดยอด */}
       <Dialog open={adjustDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className={
+            <DialogTitle className={`text-sm sm:text-base ${
               adjustType === 'edit'
                 ? 'text-blue-600'
                 : adjustType === 'add'
                   ? 'text-green-600'
                   : 'text-red-600'
-            }>
+            }`}>
               {adjustType === 'edit' ? (
-                <span className="flex items-center gap-2">
-                  <Pencil className="h-5 w-5" />
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
                   แก้ไข: {adjustFieldName}
                 </span>
               ) : adjustType === 'add' ? (
-                <span className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                   เพิ่มยอด {adjustFieldName}
                 </span>
               ) : (
-                <span className="flex items-center gap-2">
-                  <Minus className="h-5 w-5" />
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                   ลดยอด {adjustFieldName}
                 </span>
               )}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
             {/* เลือกเดือน/ปี */}
-            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-              <Calendar className="h-5 w-5 text-slate-500" />
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 hidden sm:block" />
                 <Select
                   value={adjustMonth.toString()}
                   onValueChange={(value) => handleMonthYearChange(parseInt(value), adjustYear)}
                 >
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-[95px] sm:w-[120px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1546,7 +1546,7 @@ export default function SettingsPage() {
                   value={adjustYear.toString()}
                   onValueChange={(value) => handleMonthYearChange(adjustMonth, parseInt(value))}
                 >
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="w-[70px] sm:w-[100px] h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1556,50 +1556,50 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="ml-auto text-right">
-                <div className="text-xs text-slate-500">ยอดรวมเดือนนี้</div>
-                <div className="text-xl font-bold text-slate-700">{formatNumber(historyTotal)} บาท</div>
+              <div className="sm:ml-auto text-right">
+                <div className="text-[10px] sm:text-xs text-slate-500">ยอดรวมเดือนนี้</div>
+                <div className="text-sm sm:text-xl font-bold text-slate-700">{formatNumber(historyTotal)} บาท</div>
               </div>
             </div>
 
             {/* ประวัติรายการ */}
             <div className="border rounded-lg">
-              <div className="bg-slate-100 px-3 py-2 font-semibold text-sm text-slate-600 border-b">
+              <div className="bg-slate-100 px-2 sm:px-3 py-1.5 sm:py-2 font-semibold text-xs sm:text-sm text-slate-600 border-b">
                 ประวัติรายการ ({expenseHistory.length} รายการ)
               </div>
-              <div className="max-h-[200px] overflow-y-auto">
+              <div className="max-h-[150px] sm:max-h-[200px] overflow-y-auto">
                 {loadingHistory ? (
-                  <div className="p-4 text-center text-slate-500">
-                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                    <span className="text-sm">กำลังโหลด...</span>
+                  <div className="p-3 sm:p-4 text-center text-slate-500">
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mx-auto" />
+                    <span className="text-xs sm:text-sm">กำลังโหลด...</span>
                   </div>
                 ) : expenseHistory.length === 0 ? (
-                  <div className="p-4 text-center text-slate-400 text-sm">
+                  <div className="p-3 sm:p-4 text-center text-slate-400 text-xs sm:text-sm">
                     ยังไม่มีรายการในเดือนนี้
                   </div>
                 ) : (
                   <div className="divide-y">
                     {expenseHistory.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50">
+                      <div key={item.id} className="flex items-center justify-between px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-slate-50">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${item.actionType === 'ADD' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className={`text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded ${item.actionType === 'ADD' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               {item.actionType === 'ADD' ? '+' : '-'}
                             </span>
-                            <span className="font-medium text-sm truncate">{item.description}</span>
+                            <span className="font-medium text-xs sm:text-sm truncate">{item.description}</span>
                           </div>
-                          <div className="text-xs text-slate-400 mt-0.5">
+                          <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5">
                             {new Date(item.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className={`font-semibold text-xs sm:text-sm ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
                             {item.actionType === 'ADD' ? '+' : '-'}{formatNumber(Number(item.amount))}
                           </span>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            className="h-6 w-6 sm:h-7 sm:w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
                             onClick={() => handleDeleteHistory(item.id)}
                             disabled={deletingId === item.id}
                           >
@@ -1618,21 +1618,21 @@ export default function SettingsPage() {
             </div>
 
             {/* Form กรอกรายการใหม่ */}
-            <div className={`border-2 rounded-lg p-4 ${
+            <div className={`border-2 rounded-lg p-2.5 sm:p-4 ${
               adjustType === 'edit'
                 ? 'border-blue-200 bg-blue-50/50'
                 : adjustType === 'add'
                   ? 'border-green-200 bg-green-50/50'
                   : 'border-red-200 bg-red-50/50'
             }`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-semibold flex items-center gap-2">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2">
                   {adjustType === 'edit' ? (
-                    <><Pencil className="h-4 w-4 text-blue-600" /> เพิ่ม/ลดรายการ</>
+                    <><Pencil className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" /> เพิ่ม/ลดรายการ</>
                   ) : adjustType === 'add' ? (
-                    <><Plus className="h-4 w-4 text-green-600" /> เพิ่มรายการใหม่</>
+                    <><Plus className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" /> เพิ่มรายการใหม่</>
                   ) : (
-                    <><Minus className="h-4 w-4 text-red-600" /> ลดรายการ</>
+                    <><Minus className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" /> ลดรายการ</>
                   )}
                 </div>
                 {/* ตัวเลือก add/subtract สำหรับ edit mode */}
@@ -1641,41 +1641,41 @@ export default function SettingsPage() {
                     <Button
                       size="sm"
                       variant={adjustAction === 'add' ? 'default' : 'outline'}
-                      className={adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                       onClick={() => setAdjustAction('add')}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       เพิ่ม
                     </Button>
                     <Button
                       size="sm"
                       variant={adjustAction === 'subtract' ? 'default' : 'outline'}
-                      className={adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}
+                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}`}
                       onClick={() => setAdjustAction('subtract')}
                     >
-                      <Minus className="h-4 w-4 mr-1" />
+                      <Minus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       ลด
                     </Button>
                   </div>
                 )}
               </div>
-              <div className="grid gap-3">
+              <div className="grid gap-2 sm:gap-3">
                 <div>
-                  <Label htmlFor="adjustDescription" className="text-xs">รายละเอียด *</Label>
+                  <Label htmlFor="adjustDescription" className="text-[10px] sm:text-xs">รายละเอียด *</Label>
                   <Input
                     id="adjustDescription"
                     autoFocus
                     value={adjustDescription}
                     onChange={(e) => setAdjustDescription(e.target.value)}
                     placeholder="เช่น ค่าฉีดปลวก, ค่าซ่อมแอร์"
-                    className={`mt-1 ${!adjustDescription.trim() && adjustAmount ? 'border-red-300 focus:border-red-500' : ''}`}
+                    className={`mt-1 h-8 sm:h-10 text-xs sm:text-sm ${!adjustDescription.trim() && adjustAmount ? 'border-red-300 focus:border-red-500' : ''}`}
                   />
                   {!adjustDescription.trim() && adjustAmount && (
-                    <p className="text-xs text-red-500 mt-1">กรุณากรอกรายละเอียด</p>
+                    <p className="text-[10px] sm:text-xs text-red-500 mt-1">กรุณากรอกรายละเอียด</p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="adjustAmount" className="text-xs">จำนวนเงิน (บาท) *</Label>
+                  <Label htmlFor="adjustAmount" className="text-[10px] sm:text-xs">จำนวนเงิน (บาท) *</Label>
                   <Input
                     id="adjustAmount"
                     type="number"
@@ -1684,38 +1684,38 @@ export default function SettingsPage() {
                     value={adjustAmount}
                     onChange={(e) => setAdjustAmount(e.target.value)}
                     placeholder="0"
-                    className={`mt-1 ${adjustDescription.trim() && (!adjustAmount || parseFloat(adjustAmount) <= 0) ? 'border-red-300 focus:border-red-500' : ''}`}
+                    className={`mt-1 h-8 sm:h-10 text-xs sm:text-sm ${adjustDescription.trim() && (!adjustAmount || parseFloat(adjustAmount) <= 0) ? 'border-red-300 focus:border-red-500' : ''}`}
                   />
                   {adjustDescription.trim() && (!adjustAmount || parseFloat(adjustAmount) <= 0) && (
-                    <p className="text-xs text-red-500 mt-1">กรุณากรอกจำนวนเงินที่มากกว่า 0</p>
+                    <p className="text-[10px] sm:text-xs text-red-500 mt-1">กรุณากรอกจำนวนเงินที่มากกว่า 0</p>
                   )}
                 </div>
               </div>
 
               {/* Preview ยอดใหม่ */}
               {adjustAmount && parseFloat(adjustAmount) > 0 && (
-                <div className="mt-3 pt-3 border-t border-dashed flex justify-between items-center">
-                  <span className="text-sm text-slate-600">ยอดรวมหลังบันทึก</span>
-                  <span className="text-lg font-bold text-slate-800">{formatNumber(getNewAmount())} บาท</span>
+                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-dashed flex justify-between items-center">
+                  <span className="text-xs sm:text-sm text-slate-600">ยอดรวมหลังบันทึก</span>
+                  <span className="text-sm sm:text-lg font-bold text-slate-800">{formatNumber(getNewAmount())} บาท</span>
                 </div>
               )}
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => handleDialogClose(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => handleDialogClose(false)} className="w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm">
               ปิด
             </Button>
             <Button
               onClick={handleAdjustConfirm}
               disabled={!adjustAmount || parseFloat(adjustAmount) <= 0 || !adjustDescription.trim() || savingHistory}
-              className={getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              className={`w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm ${getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
               {savingHistory ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 animate-spin" />
               ) : getEffectiveAction() === 'add' ? (
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               ) : (
-                <Minus className="h-4 w-4 mr-1" />
+                <Minus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               )}
               บันทึกรายการ
             </Button>
@@ -1725,7 +1725,7 @@ export default function SettingsPage() {
 
       {/* Dialog แก้ไขค่า % */}
       <Dialog open={percentDialogOpen} onOpenChange={setPercentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-md p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-slate-700">
               <span className="flex items-center gap-2">
@@ -1756,15 +1756,15 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPercentDialogOpen(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setPercentDialogOpen(false)} className="w-full sm:w-auto">
               ยกเลิก
             </Button>
             <Button
               onClick={handlePercentSave}
               disabled={!percentValue || parseFloat(percentValue) < 0 || savingPercent}
               style={{ backgroundColor: buildingColor }}
-              className="hover:opacity-90"
+              className="w-full sm:w-auto hover:opacity-90"
             >
               {savingPercent ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />

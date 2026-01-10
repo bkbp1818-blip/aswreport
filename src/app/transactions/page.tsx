@@ -712,7 +712,7 @@ export default function TransactionsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right px-2 md:px-4">
-                        <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
                           <div
                             className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                           >
@@ -721,7 +721,7 @@ export default function TransactionsPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                             onClick={() => openAdjustDialog('edit', category.id, category.name)}
                           >
                             <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -729,7 +729,7 @@ export default function TransactionsPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                             onClick={() => openAdjustDialog('add', category.id, category.name)}
                           >
                             <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -737,7 +737,7 @@ export default function TransactionsPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                             onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                           >
                             <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -770,7 +770,7 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                            <div className="flex items-center justify-end gap-1 md:gap-1.5">
                               <div
                                 className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                               >
@@ -779,7 +779,7 @@ export default function TransactionsPage() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                                 onClick={() => openAdjustDialog('edit', category.id, category.name)}
                               >
                                 <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -787,7 +787,7 @@ export default function TransactionsPage() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                                 onClick={() => openAdjustDialog('add', category.id, category.name)}
                               >
                                 <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -795,7 +795,7 @@ export default function TransactionsPage() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                                 onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                               >
                                 <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -827,14 +827,14 @@ export default function TransactionsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
                         <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-emerald-50 border border-emerald-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-emerald-600">
                           {formatNumber(airportShuttleRentIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
                           <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -842,7 +842,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
                           <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -850,7 +850,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
                         >
                           <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -879,14 +879,14 @@ export default function TransactionsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
                         <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-purple-50 border border-purple-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-purple-600">
                           {formatNumber(thaiBusTourIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
                           <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -894,7 +894,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
                           <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -902,7 +902,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'thaiBusTourIncome', 'Thai Bus Tour')}
                         >
                           <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -931,14 +931,14 @@ export default function TransactionsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
                         <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-orange-50 border border-orange-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-orange-600">
                           {formatNumber(coVanKesselIncome)}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                           onClick={() => openAdjustDialog('edit', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
                           <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -946,7 +946,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                           onClick={() => openAdjustDialog('add', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
                           <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -954,7 +954,7 @@ export default function TransactionsPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                           onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
                         >
                           <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -1406,7 +1406,7 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right px-2 md:px-4">
-                          <div className="flex items-center justify-end gap-0.5 md:gap-1">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
                             <div
                               className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
                             >
@@ -1415,7 +1415,7 @@ export default function TransactionsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
                               onClick={() => openAdjustDialog('edit', category.id, category.name)}
                             >
                               <Pencil className="h-3 w-3 md:h-4 md:w-4" />
@@ -1423,7 +1423,7 @@ export default function TransactionsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
                               onClick={() => openAdjustDialog('add', category.id, category.name)}
                             >
                               <Plus className="h-3 w-3 md:h-4 md:w-4" />
@@ -1431,7 +1431,7 @@ export default function TransactionsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                               onClick={() => openAdjustDialog('subtract', category.id, category.name)}
                             >
                               <Minus className="h-3 w-3 md:h-4 md:w-4" />
@@ -1450,18 +1450,18 @@ export default function TransactionsPage() {
 
       {/* Dialog เพิ่ม/ลดยอด พร้อมประวัติ */}
       <Dialog open={adjustDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className={
+            <DialogTitle className={`text-sm sm:text-base ${
               adjustType === 'edit'
                 ? 'text-blue-600'
                 : adjustType === 'add'
                   ? 'text-green-600'
                   : 'text-red-600'
-            }>
+            }`}>
               {adjustType === 'edit' ? (
-                <span className="flex items-center gap-2">
-                  <Pencil className="h-5 w-5" />
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
                   แก้ไข: {adjustCategoryName}
                 </span>
               ) : adjustType === 'add' ? (
@@ -1472,48 +1472,50 @@ export default function TransactionsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
             {/* เลือกเดือน/ปี */}
-            <div className="flex gap-2 items-center">
-              <span className="text-sm text-gray-500 w-16">เดือน/ปี:</span>
-              <Select
-                value={adjustMonth}
-                onValueChange={(val) => handleAdjustMonthYearChange(val, adjustYear)}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={adjustYear}
-                onValueChange={(val) => handleAdjustMonthYearChange(adjustMonth, val)}
-              >
-                <SelectTrigger className="w-[90px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="ml-auto text-right">
-                <span className="text-sm text-gray-500">ยอดรวม: </span>
-                <span className="font-bold text-lg">{formatNumber(historyTotal)} บาท</span>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center p-2 sm:p-0 bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 w-auto sm:w-16">เดือน/ปี:</span>
+                <Select
+                  value={adjustMonth}
+                  onValueChange={(val) => handleAdjustMonthYearChange(val, adjustYear)}
+                >
+                  <SelectTrigger className="w-[90px] sm:w-[120px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m) => (
+                      <SelectItem key={m.value} value={String(m.value)}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={adjustYear}
+                  onValueChange={(val) => handleAdjustMonthYearChange(adjustMonth, val)}
+                >
+                  <SelectTrigger className="w-[65px] sm:w-[90px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:ml-auto text-right">
+                <span className="text-[10px] sm:text-sm text-gray-500">ยอดรวม: </span>
+                <span className="font-bold text-sm sm:text-lg">{formatNumber(historyTotal)} บาท</span>
               </div>
             </div>
 
             {/* ตารางประวัติ */}
-            <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+            <div className="border rounded-lg max-h-[180px] sm:max-h-[200px] overflow-y-auto overflow-x-auto">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -1526,37 +1528,37 @@ export default function TransactionsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">วันที่</TableHead>
-                      <TableHead>รายละเอียด</TableHead>
-                      <TableHead className="text-right w-[100px]">จำนวน</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-[60px] sm:w-[100px] px-2 sm:px-4">วันที่</TableHead>
+                      <TableHead className="px-2 sm:px-4">รายละเอียด</TableHead>
+                      <TableHead className="text-right w-[70px] sm:w-[100px] px-2 sm:px-4">จำนวน</TableHead>
+                      <TableHead className="w-[40px] sm:w-[50px] px-1 sm:px-4"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {expenseHistory.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="text-xs text-gray-500">
+                        <TableCell className="text-[10px] sm:text-xs text-gray-500 px-2 sm:px-4">
                           {new Date(item.createdAt).toLocaleDateString('th-TH', {
                             day: 'numeric',
                             month: 'short',
                           })}
                         </TableCell>
-                        <TableCell className="text-sm">{item.description}</TableCell>
-                        <TableCell className={`text-right font-medium ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
+                        <TableCell className="text-xs sm:text-sm px-2 sm:px-4 max-w-[100px] sm:max-w-none truncate">{item.description}</TableCell>
+                        <TableCell className={`text-right font-medium text-xs sm:text-sm px-2 sm:px-4 ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
                           {item.actionType === 'ADD' ? '+' : '-'}{formatNumber(Number(item.amount))}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-1 sm:px-4">
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-7 w-7 text-gray-400 hover:text-red-600"
+                            className="h-6 w-6 sm:h-7 sm:w-7 text-gray-400 hover:text-red-600"
                             onClick={() => handleDeleteHistory(item.id)}
                             disabled={deletingId === item.id}
                           >
                             {deletingId === item.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                             ) : (
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                             )}
                           </Button>
                         </TableCell>
@@ -1568,9 +1570,9 @@ export default function TransactionsPage() {
             </div>
 
             {/* Form เพิ่มรายการใหม่ */}
-            <div className="border-t pt-4 space-y-3">
+            <div className="border-t pt-2 sm:pt-4 space-y-2 sm:space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-xs sm:text-sm font-medium text-gray-700">
                   {adjustType === 'edit'
                     ? 'เพิ่ม/ลดรายการ'
                     : adjustType === 'add'
@@ -1583,47 +1585,47 @@ export default function TransactionsPage() {
                     <Button
                       size="sm"
                       variant={adjustAction === 'add' ? 'default' : 'outline'}
-                      className={adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'add' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                       onClick={() => setAdjustAction('add')}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       เพิ่ม
                     </Button>
                     <Button
                       size="sm"
                       variant={adjustAction === 'subtract' ? 'default' : 'outline'}
-                      className={adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}
+                      className={`h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 ${adjustAction === 'subtract' ? 'bg-red-600 hover:bg-red-700' : ''}`}
                       onClick={() => setAdjustAction('subtract')}
                     >
-                      <Minus className="h-4 w-4 mr-1" />
+                      <Minus className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                       ลด
                     </Button>
                   </div>
                 )}
               </div>
               <div>
-                <label className="text-sm text-gray-500">รายละเอียด *</label>
+                <label className="text-[10px] sm:text-sm text-gray-500">รายละเอียด *</label>
                 <Input
                   value={adjustDescription}
                   onChange={(e) => setAdjustDescription(e.target.value)}
-                  className="mt-1"
+                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm"
                   placeholder="เช่น ค่าซ่อมแอร์, ค่าฉีดปลวก..."
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-500">จำนวนเงิน *</label>
+                <label className="text-[10px] sm:text-sm text-gray-500">จำนวนเงิน *</label>
                 <Input
                   type="number"
                   value={adjustAmount}
                   onChange={(e) => setAdjustAmount(e.target.value)}
-                  className="mt-1 text-right"
+                  className="mt-1 h-8 sm:h-10 text-xs sm:text-sm text-right"
                   placeholder="0"
                 />
               </div>
               {adjustAmount && parseFloat(adjustAmount) > 0 && (
-                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                  <span className="text-sm">ยอดใหม่หลังบันทึก:</span>
-                  <span className={`text-lg font-bold ${getEffectiveAction() === 'add' ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="flex justify-between items-center bg-gray-50 p-2 sm:p-3 rounded-lg">
+                  <span className="text-xs sm:text-sm">ยอดใหม่หลังบันทึก:</span>
+                  <span className={`text-sm sm:text-lg font-bold ${getEffectiveAction() === 'add' ? 'text-green-600' : 'text-red-600'}`}>
                     {formatNumber(getNewAmount())} บาท
                   </span>
                 </div>
@@ -1631,17 +1633,17 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogClose(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => handleDialogClose(false)} className="w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm">
               ปิด
             </Button>
             <Button
               onClick={handleAdjustConfirm}
               disabled={savingHistory || !adjustDescription.trim() || !adjustAmount}
-              className={getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              className={`w-full sm:w-auto h-8 sm:h-10 text-xs sm:text-sm ${getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
               {savingHistory ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
               ) : null}
               บันทึก
             </Button>
