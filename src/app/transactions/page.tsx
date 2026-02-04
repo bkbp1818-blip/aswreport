@@ -304,6 +304,20 @@ export default function TransactionsPage() {
   const rentalIncomeCategories = incomeCategories.filter((c) => c.name.includes('ค่าเช่า'))
   const otherIncomeCategories = incomeCategories.filter((c) => !c.name.includes('ค่าเช่า'))
 
+  // กลุ่ม Direct Booking sub-items
+  const directBookingSubNames = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer']
+  const directBookingSubCategories = rentalIncomeCategories.filter((c) => directBookingSubNames.includes(c.name))
+
+  // กรองออกจากรายการค่าเช่าปกติ (ลบ Direct Booking standalone + 3 sub-items)
+  const normalRentalCategories = rentalIncomeCategories.filter(
+    (c) => !directBookingSubNames.includes(c.name) && c.name !== 'ค่าเช่าจาก Direct Booking'
+  )
+
+  // Subtotal ของ Direct Booking (รวมข้อมูลเก่า + 3 sub-items)
+  const directBookingCategory = rentalIncomeCategories.find((c) => c.name === 'ค่าเช่าจาก Direct Booking')
+  const directBookingSubtotal = directBookingSubCategories.reduce((sum, c) => sum + (transactionData[c.id] || 0), 0)
+    + (directBookingCategory ? (transactionData[directBookingCategory.id] || 0) : 0)
+
   // หา categoryId ของเงินเดือนพนักงาน
   const salaryCategory = categories.find((c) => c.name === 'เงินเดือนพนักงาน')
   const salaryCategoryId = salaryCategory?.id
@@ -702,9 +716,73 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rentalIncomeCategories.map((category, index) => (
+                  {/* Direct Booking Group Header */}
+                  <TableRow className="bg-[#1d3557]/10">
+                    <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                    <TableCell className="px-2 md:px-4">
+                      <div className="flex items-center gap-1 md:gap-2">
+                        <CategoryIcon name="ค่าเช่าจาก Direct Booking" className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-xs md:text-sm font-semibold text-[#1d3557]">Direct Booking</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right px-2 md:px-4">
+                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-[#1d3557]/10 border border-[#1d3557]/20 rounded-md text-xs md:text-sm font-bold text-[#1d3557] min-w-[60px] md:min-w-[80px]">
+                          {formatNumber(directBookingSubtotal)}
+                        </div>
+                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {/* Direct Booking Sub-items (PayPal, Credit Card, Bank Transfer) */}
+                  {directBookingSubCategories.map((category, index) => (
                     <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
                       <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2 pl-4 md:pl-6">
+                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-xs md:text-sm">{category.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-2 md:px-4">
+                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                          <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
+                            {formatNumber(transactionData[category.id] || 0)}
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                            onClick={() => openAdjustDialog('edit', category.id, category.name)}
+                          >
+                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                            onClick={() => openAdjustDialog('add', category.id, category.name)}
+                          >
+                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                            onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                          >
+                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {/* OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) */}
+                  {normalRentalCategories.map((category, index) => (
+                    <TableRow key={category.id} className={(directBookingSubCategories.length + index) % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
+                      <TableCell className="font-medium px-2 md:px-4">{directBookingSubCategories.length + index + 1}</TableCell>
                       <TableCell className="px-2 md:px-4">
                         <div className="flex items-center gap-1 md:gap-2">
                           <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
@@ -713,9 +791,7 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="text-right px-2 md:px-4">
                         <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                          <div
-                            className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]"
-                          >
+                          <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
                             {formatNumber(transactionData[category.id] || 0)}
                           </div>
                           <Button

@@ -383,6 +383,19 @@ async function calculateBuildingSummary(
     incomeByChannel['Co Van Kessel'] = coVanKesselIncome
   }
 
+  // รวม PayPal, Credit Card, Bank Transfer เข้า Direct Booking (สำหรับ Pie Chart)
+  const paymentSubChannels = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer']
+  let directBookingTotal = incomeByChannel['ค่าเช่าจาก Direct Booking'] || 0
+  for (const ch of paymentSubChannels) {
+    if (incomeByChannel[ch]) {
+      directBookingTotal += incomeByChannel[ch]
+      delete incomeByChannel[ch]
+    }
+  }
+  if (directBookingTotal > 0) {
+    incomeByChannel['ค่าเช่าจาก Direct Booking'] = directBookingTotal
+  }
+
   // แยกรายจ่ายตามหมวดหมู่
   const expenseByCategory: Record<string, number> = {}
   expenseTransactions.forEach((t) => {
