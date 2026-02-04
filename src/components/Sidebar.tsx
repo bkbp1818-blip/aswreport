@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Receipt,
   Settings,
-  FileDown,
   Building2,
   Menu,
   X,
@@ -48,7 +47,6 @@ const allNavigation = [
   { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true },
   { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true },
   { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false },
-  { name: 'ดาวน์โหลดรายงาน', href: '/reports', icon: FileDown, partnerOnly: true },
 ]
 
 export function Sidebar() {
