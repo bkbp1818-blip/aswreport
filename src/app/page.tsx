@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { BUILDING_COLORS_ARRAY, getBuildingColor } from '@/lib/building-colors'
-import { generateYears } from '@/lib/calculations'
+import { generateYears, getAvailableMonths, DATA_START_MONTH, DATA_START_YEAR } from '@/lib/calculations'
 import {
   BarChart,
   Bar,
@@ -280,8 +280,15 @@ export default function DashboardPage() {
       setSelectedYear(String(now.getFullYear()))
     } else if (timeMode === 'previous') {
       const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      setSelectedMonth(String(prevMonth.getMonth() + 1))
-      setSelectedYear(String(prevMonth.getFullYear()))
+      let prevM = prevMonth.getMonth() + 1
+      let prevY = prevMonth.getFullYear()
+      // ไม่ให้ย้อนไปก่อน กพ. 2026
+      if (prevY < DATA_START_YEAR || (prevY === DATA_START_YEAR && prevM < DATA_START_MONTH)) {
+        prevM = DATA_START_MONTH
+        prevY = DATA_START_YEAR
+      }
+      setSelectedMonth(String(prevM))
+      setSelectedYear(String(prevY))
     }
     // 'custom' - ใช้ค่าที่ผู้ใช้เลือกเอง
   }, [timeMode])
@@ -492,7 +499,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="เดือน" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MONTHS.map((m) => (
+                    {getAvailableMonths(selectedYear).map((m) => (
                       <SelectItem key={m.value} value={String(m.value)}>
                         {m.label}
                       </SelectItem>
@@ -723,7 +730,7 @@ export default function DashboardPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {MONTHS.map((m) => (
+                          {getAvailableMonths(customStartYear).map((m) => (
                             <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -744,7 +751,7 @@ export default function DashboardPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {MONTHS.map((m) => (
+                          {getAvailableMonths(customEndYear).map((m) => (
                             <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                           ))}
                         </SelectContent>

@@ -49,7 +49,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { getBuildingColor } from '@/lib/building-colors'
-import { generateYears } from '@/lib/calculations'
+import { generateYears, getAvailableMonths } from '@/lib/calculations'
 
 interface Building {
   id: number
@@ -656,7 +656,7 @@ export default function SettingsPage() {
                         <SelectValue placeholder="เดือน" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MONTHS.map((m) => (
+                        {getAvailableMonths(buildingSelectedYear).map((m) => (
                           <SelectItem key={m.value} value={String(m.value)}>
                             {m.label}
                           </SelectItem>
@@ -815,7 +815,7 @@ export default function SettingsPage() {
                       <SelectValue placeholder="เดือน" />
                     </SelectTrigger>
                     <SelectContent>
-                      {MONTHS.map((m) => (
+                      {getAvailableMonths(globalSelectedYear).map((m) => (
                         <SelectItem key={m.value} value={String(m.value)}>
                           {m.label}
                         </SelectItem>
@@ -1500,21 +1500,8 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[
-                      { value: '1', label: 'มกราคม' },
-                      { value: '2', label: 'กุมภาพันธ์' },
-                      { value: '3', label: 'มีนาคม' },
-                      { value: '4', label: 'เมษายน' },
-                      { value: '5', label: 'พฤษภาคม' },
-                      { value: '6', label: 'มิถุนายน' },
-                      { value: '7', label: 'กรกฎาคม' },
-                      { value: '8', label: 'สิงหาคม' },
-                      { value: '9', label: 'กันยายน' },
-                      { value: '10', label: 'ตุลาคม' },
-                      { value: '11', label: 'พฤศจิกายน' },
-                      { value: '12', label: 'ธันวาคม' },
-                    ].map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    {getAvailableMonths(adjustYear).map((m) => (
+                      <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

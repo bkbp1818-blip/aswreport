@@ -1,4 +1,5 @@
 // ฟังก์ชันคำนวณสูตรต่างๆ
+import { MONTHS } from '@/lib/utils'
 
 export interface FinancialSummary {
   totalIncome: number
@@ -53,6 +54,19 @@ export function calculateFinancialSummary(
     netProfit,
     amountToBePaid,
   }
+}
+
+// จุดเริ่มต้นข้อมูล: กุมภาพันธ์ 2026
+export const DATA_START_MONTH = 2
+export const DATA_START_YEAR = 2026
+
+// กรองเดือนที่แสดงตามปีที่เลือก (ปี 2026 แสดงตั้งแต่ กพ. เป็นต้นไป)
+export function getAvailableMonths(selectedYear: string | number): { value: number; label: string }[] {
+  const year = typeof selectedYear === 'string' ? parseInt(selectedYear) : selectedYear
+  if (year === DATA_START_YEAR) {
+    return MONTHS.filter((m) => m.value >= DATA_START_MONTH)
+  }
+  return MONTHS
 }
 
 // สร้างปีสำหรับ dropdown

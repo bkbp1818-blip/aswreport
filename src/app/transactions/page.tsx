@@ -21,7 +21,7 @@ import {
   TableFooter,
 } from '@/components/ui/table'
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
-import { generateYears } from '@/lib/calculations'
+import { generateYears, getAvailableMonths } from '@/lib/calculations'
 import { CategoryIcon } from '@/lib/category-icons'
 import { Loader2, Plus, Minus, Trash2, Pencil } from 'lucide-react'
 import {
@@ -647,7 +647,7 @@ export default function TransactionsPage() {
                 <SelectValue placeholder="เดือน" />
               </SelectTrigger>
               <SelectContent>
-                {MONTHS.map((m) => (
+                {getAvailableMonths(selectedYear).map((m) => (
                   <SelectItem key={m.value} value={String(m.value)}>
                     {m.label}
                   </SelectItem>
@@ -1561,7 +1561,7 @@ export default function TransactionsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MONTHS.map((m) => (
+                    {getAvailableMonths(adjustYear).map((m) => (
                       <SelectItem key={m.value} value={String(m.value)}>
                         {m.label}
                       </SelectItem>
