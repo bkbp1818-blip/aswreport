@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.6 |
+| **Version** | 1.8.7 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -194,7 +194,20 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.6 (Current - January 2026)
+### v1.8.7 (Current - February 2026)
+- **รวม PayPal / Credit Card / Bank Transfer เป็นรายการย่อยของ Direct Booking:**
+  - หน้ากรอกข้อมูล: แสดงกลุ่ม "Direct Booking" พร้อม subtotal + 3 รายการย่อย (PayPal, Credit Card, Bank Transfer) ย่อหน้าเข้าไป
+  - Dashboard Pie Chart: รวม 3 ช่องทางเป็น "Direct Booking" ชิ้นเดียว (API `incomeByChannel` merge อัตโนมัติ)
+  - OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) แสดงปกติ
+  - ไม่มี database migration — ใช้ categories เดิมที่มีอยู่ใน DB
+- **จำกัดการแสดงข้อมูลตั้งแต่ กุมภาพันธ์ 2026 เป็นต้นไป:**
+  - ลบปี 2025 และก่อนหน้าออกจาก dropdown ปี (startYear = 2026)
+  - เมื่อเลือกปี 2026 จะแสดงเฉพาะเดือน กพ.-ธค. (ไม่มี มค.)
+  - เพิ่ม `getAvailableMonths()` helper function ใน `calculations.ts`
+  - ใช้งานใน Dashboard, Transactions, Settings (รวม dialogs ทุกจุด)
+  - Dashboard "เดือนที่แล้ว" จะไม่ย้อนไปก่อน กพ. 2026
+
+### v1.8.6 (January 2026)
 - **Responsive Dialog สำหรับหน้า Settings และ Transactions:**
   - Dialog popup เมื่อกดปุ่ม edit/+/- พอดีกับหน้าจอมือถือ 6 นิ้ว
   - ใช้ `w-[95vw]` เพื่อให้ Dialog กว้างเต็มหน้าจอบนมือถือ
