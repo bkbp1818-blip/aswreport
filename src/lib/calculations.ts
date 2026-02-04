@@ -56,7 +56,7 @@ export function calculateFinancialSummary(
 }
 
 // สร้างปีสำหรับ dropdown
-export function generateYears(startYear: number = 2020, futureYears: number = 5): number[] {
+export function generateYears(startYear: number = 2026, futureYears: number = 5): number[] {
   const currentYear = new Date().getFullYear()
   const endYear = currentYear + futureYears
   const years: number[] = []
