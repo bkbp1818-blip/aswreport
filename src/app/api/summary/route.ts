@@ -67,8 +67,6 @@ export async function GET(request: NextRequest) {
       totalIncome: summaries.reduce((sum, s) => sum + s.totalIncome, 0),
       totalExpense: summaries.reduce((sum, s) => sum + s.totalExpense, 0),
       grossProfit: summaries.reduce((sum, s) => sum + s.grossProfit, 0),
-      managementFeePercent: 13.5, // ค่าเริ่มต้นสำหรับแสดงผลรวม
-      managementFee: summaries.reduce((sum, s) => sum + s.managementFee, 0),
       vatPercent: 7, // ค่าเริ่มต้นสำหรับแสดงผลรวม
       vat: summaries.reduce((sum, s) => sum + s.vat, 0),
       littleHotelierExpense: summaries.reduce(
@@ -433,25 +431,20 @@ async function calculateBuildingSummary(
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
-  const managementFeePercent = settings
-    ? Number(settings.managementFeePercent)
-    : 13.5
   const vatPercent = settings ? Number(settings.vatPercent) : 7
   const monthlyRent = settings ? Number(settings.monthlyRent) : 0
   const littleHotelierExpense = settings
     ? Number(settings.littleHotelierExpense)
     : 0
 
-  // อาคาร Funn D (FUNNS81, FUNNLP) ไม่คำนวณ Management Fee และ VAT
-  const isExemptBuilding = ['FUNNS81', 'FUNNLP'].includes(building.code)
-
-  // Management Fee คำนวณจากรายได้ค่าเช่าเท่านั้น (ไม่รวมค่าอาหาร, รับส่งสนามบิน, ทัวร์, Thai bus, Co van)
-  const managementFee = isExemptBuilding ? 0 : rentalIncome * (managementFeePercent / 100)
-  const vat = isExemptBuilding ? 0 : managementFee * (vatPercent / 100)
-  // monthlyRent รวมอยู่ใน totalExpense แล้ว (ถูกหักใน grossProfit) จึงไม่ต้องหักอีก
-  // Net Profit หัก VAT ด้วย เพราะ VAT เป็นรายจ่ายที่ต้องจ่ายจริง
-  const netProfit = grossProfit - managementFee - littleHotelierExpense - vat
-  const amountToBePaid = managementFee + vat
+  // Management Fee ถูกลบออกแล้ว — ตั้งเป็น 0
+  const managementFee = 0
+  // VAT คำนวณจาก Management Fee ซึ่งเป็น 0 — จึงเป็น 0
+  const vat = 0
+  // Net Profit = Gross Profit - Little Hotelier
+  const netProfit = grossProfit - littleHotelierExpense
+  // Amount to be paid = 0 (ไม่มี Management Fee แล้ว)
+  const amountToBePaid = 0
 
   return {
     buildingId,
@@ -462,8 +455,6 @@ async function calculateBuildingSummary(
     totalIncome,
     totalExpense,
     grossProfit,
-    managementFeePercent,
-    managementFee,
     vatPercent,
     vat,
     littleHotelierExpense,

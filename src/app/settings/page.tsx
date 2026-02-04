@@ -680,30 +680,6 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:gap-6">
-                  {/* Management Fee */}
-                  <div className="space-y-2 rounded-lg border border-[#F6BD60]/30 bg-white p-3 sm:p-4 shadow-sm">
-                    <Label className="text-[#D4A24C] font-semibold text-xs sm:text-sm">
-                      Management Fee (%)
-                    </Label>
-                    <div className="flex items-center gap-1 sm:gap-1.5">
-                      <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#F6BD60]/5 border border-[#F6BD60]/30 rounded-md text-right font-medium text-sm sm:text-base">
-                        {formatNumber(settings?.managementFeePercent || 0)}%
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#D4A24C] hover:bg-[#F6BD60]/20 hover:text-[#D4A24C]"
-                        onClick={() => openPercentDialog('managementFeePercent', 'Management Fee', settings?.managementFeePercent || 0)}
-                      >
-                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] sm:text-xs text-[#666]">
-                      เปอร์เซ็นต์ค่าบริหารจัดการ (Roombix)
-                    </p>
-                  </div>
-
                   {/* VAT */}
                   <div className="space-y-2 rounded-lg border border-[#84A59D]/30 bg-white p-3 sm:p-4 shadow-sm">
                     <Label className="text-[#84A59D] font-semibold text-xs sm:text-sm">
