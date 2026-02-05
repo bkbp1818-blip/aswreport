@@ -10,6 +10,8 @@ const expenseFields = [
   'waterBottleExpense',
   'cookieExpense',
   'coffeeExpense',
+  'sugarExpense',
+  'coffeeMateExpense',
   'fuelExpense',
   'parkingExpense',
   'motorcycleMaintenanceExpense',

@@ -82,6 +82,8 @@ export async function GET(request: NextRequest) {
       waterBottleExpense: summaries.reduce((sum, s) => sum + s.waterBottleExpense, 0),
       cookieExpense: summaries.reduce((sum, s) => sum + s.cookieExpense, 0),
       coffeeExpense: summaries.reduce((sum, s) => sum + s.coffeeExpense, 0),
+      sugarExpense: summaries.reduce((sum, s) => sum + s.sugarExpense, 0),
+      coffeeMateExpense: summaries.reduce((sum, s) => sum + s.coffeeMateExpense, 0),
       fuelExpense: summaries.reduce((sum, s) => sum + s.fuelExpense, 0),
       parkingExpense: summaries.reduce((sum, s) => sum + s.parkingExpense, 0),
       motorcycleMaintenanceExpense: summaries.reduce((sum, s) => sum + s.motorcycleMaintenanceExpense, 0),
@@ -249,6 +251,8 @@ async function calculateBuildingSummary(
     'waterBottleExpense',
     'cookieExpense',
     'coffeeExpense',
+    'sugarExpense',
+    'coffeeMateExpense',
     'fuelExpense',
     'parkingExpense',
     'motorcycleMaintenanceExpense',
@@ -309,6 +313,12 @@ async function calculateBuildingSummary(
   const coffeeExpensePerBuilding = buildingCount > 0
     ? globalExpenseTotals.coffeeExpense / buildingCount
     : 0
+  const sugarExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.sugarExpense / buildingCount
+    : 0
+  const coffeeMateExpensePerBuilding = buildingCount > 0
+    ? globalExpenseTotals.coffeeMateExpense / buildingCount
+    : 0
   const fuelExpensePerBuilding = buildingCount > 0
     ? globalExpenseTotals.fuelExpense / buildingCount
     : 0
@@ -334,7 +344,8 @@ async function calculateBuildingSummary(
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
-    cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
+    cookieExpensePerBuilding + coffeeExpensePerBuilding + sugarExpensePerBuilding + coffeeMateExpensePerBuilding +
+    fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
     cleaningSupplyExpensePerBuilding + foodExpensePerBuilding
 
@@ -432,7 +443,9 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)'] = amenityExpensePerBuilding
   expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
   expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
-  expenseByCategory['ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่ากาแฟซอง'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่าน้ำตาลซอง'] = sugarExpensePerBuilding
+  expenseByCategory['ค่าคอฟฟี่เมท'] = coffeeMateExpensePerBuilding
   expenseByCategory['ค่าน้ำมันรถมอเตอร์ไซค์'] = fuelExpensePerBuilding
   expenseByCategory['ค่าเช่าที่จอดรถมอเตอร์ไซค์'] = parkingExpensePerBuilding
   expenseByCategory['ค่าซ่อมบำรุงรถมอเตอร์ไซค์'] = motorcycleMaintenanceExpensePerBuilding
@@ -480,6 +493,8 @@ async function calculateBuildingSummary(
     waterBottleExpense: waterBottleExpensePerBuilding,
     cookieExpense: cookieExpensePerBuilding,
     coffeeExpense: coffeeExpensePerBuilding,
+    sugarExpense: sugarExpensePerBuilding,
+    coffeeMateExpense: coffeeMateExpensePerBuilding,
     fuelExpense: fuelExpensePerBuilding,
     parkingExpense: parkingExpensePerBuilding,
     motorcycleMaintenanceExpense: motorcycleMaintenanceExpensePerBuilding,

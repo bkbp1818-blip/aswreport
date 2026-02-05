@@ -78,7 +78,9 @@ model GlobalSettings {
   amenityExpense               Decimal  @default(0) @db.Decimal(15, 2) // ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)
   waterBottleExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำเปล่า
   cookieExpense                Decimal  @default(0) @db.Decimal(15, 2) // ค่าขนมคุ้กกี้
-  coffeeExpense                Decimal  @default(0) @db.Decimal(15, 2) // ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท
+  coffeeExpense                Decimal  @default(0) @db.Decimal(15, 2) // ค่ากาแฟซอง
+  sugarExpense                 Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำตาลซอง
+  coffeeMateExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่าคอฟฟี่เมท
   fuelExpense                  Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำมันรถมอเตอร์ไซค์
   parkingExpense               Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าที่จอดรถมอเตอร์ไซค์
   motorcycleMaintenanceExpense Decimal  @default(0) @db.Decimal(15, 2) // ค่าซ่อมบำรุงรถมอเตอร์ไซค์

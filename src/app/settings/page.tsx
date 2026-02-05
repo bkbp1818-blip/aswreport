@@ -79,6 +79,8 @@ interface GlobalSettings {
   waterBottleExpense: number
   cookieExpense: number
   coffeeExpense: number
+  sugarExpense: number
+  coffeeMateExpense: number
   fuelExpense: number
   parkingExpense: number
   motorcycleMaintenanceExpense: number
@@ -993,6 +995,50 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {/* ค่าน้ำตาลซอง */}
+                <div className="space-y-3 rounded-xl border border-amber-800/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-amber-800/10">
+                      <Coffee className="h-4 w-4 text-amber-800" />
+                    </div>
+                    <Label className="text-amber-800 font-semibold text-sm">ค่าน้ำตาลซอง</Label>
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 border border-amber-300 rounded-md text-right font-medium text-sm sm:text-base">
+                      {formatNumber(globalTotals?.totals?.sugarExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'sugarExpense', 'ค่าน้ำตาลซอง', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'sugarExpense', 'ค่าน้ำตาลซอง', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'sugarExpense', 'ค่าน้ำตาลซอง', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-800">{formatNumber(globalTotals?.totalsPerBuilding?.sugarExpensePerBuilding || 0)} บาท/อาคาร</span>
+                  </div>
+                </div>
+
+                {/* ค่าคอฟฟี่เมท */}
+                <div className="space-y-3 rounded-xl border border-amber-900/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-amber-900/10">
+                      <Coffee className="h-4 w-4 text-amber-900" />
+                    </div>
+                    <Label className="text-amber-900 font-semibold text-sm">ค่าคอฟฟี่เมท</Label>
+                  </div>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 border border-amber-300 rounded-md text-right font-medium text-sm sm:text-base">
+                      {formatNumber(globalTotals?.totals?.coffeeMateExpense || 0)}
+                    </div>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'coffeeMateExpense', 'ค่าคอฟฟี่เมท', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'coffeeMateExpense', 'ค่าคอฟฟี่เมท', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeMateExpense', 'ค่าคอฟฟี่เมท', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
+                    <span className="font-semibold text-amber-900">{formatNumber(globalTotals?.totalsPerBuilding?.coffeeMateExpensePerBuilding || 0)} บาท/อาคาร</span>
+                  </div>
+                </div>
+
                 {/* ค่าน้ำมันรถมอเตอร์ไซค์ */}
                 <div className="space-y-3 rounded-xl border border-gray-500/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2">
@@ -1193,6 +1239,16 @@ export default function SettingsPage() {
                       <Coffee className="h-4 w-4 text-amber-700 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่ากาแฟซอง</span>
                       <span className="font-semibold text-amber-700">{formatNumber(globalTotals.totalsPerBuilding?.coffeeExpensePerBuilding || 0)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-800/10 text-sm">
+                      <Coffee className="h-4 w-4 text-amber-800 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าน้ำตาลซอง</span>
+                      <span className="font-semibold text-amber-800">{formatNumber(globalTotals.totalsPerBuilding?.sugarExpensePerBuilding || 0)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-900/10 text-sm">
+                      <Coffee className="h-4 w-4 text-amber-900 flex-shrink-0" />
+                      <span className="text-slate-600 flex-1">ค่าคอฟฟี่เมท</span>
+                      <span className="font-semibold text-amber-900">{formatNumber(globalTotals.totalsPerBuilding?.coffeeMateExpensePerBuilding || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-500/10 text-sm">
                       <Fuel className="h-4 w-4 text-gray-600 flex-shrink-0" />
