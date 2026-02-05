@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatNumber, MONTHS } from '@/lib/utils'
+import { useAccess } from '@/contexts/AccessContext'
 import { getBuildingColor } from '@/lib/building-colors'
 import { generateYears, getAvailableMonths } from '@/lib/calculations'
 
@@ -130,6 +131,7 @@ interface SocialSecurityData {
 }
 
 export default function SettingsPage() {
+  const { isViewer } = useAccess()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -704,47 +706,49 @@ export default function SettingsPage() {
                     <p className="text-[10px] sm:text-xs text-[#666]">ภาษีมูลค่าเพิ่ม</p>
                   </div>
 
-                  {/* Monthly Rent */}
-                  <div className="space-y-2 rounded-lg border border-[#F28482]/30 bg-white p-3 sm:p-4 shadow-sm">
-                    <Label className="text-[#F28482] font-semibold text-xs sm:text-sm">
-                      ค่าเช่าอาคาร/เดือน (บาท)
-                    </Label>
-                    <div className="flex items-center gap-1 sm:gap-1.5">
-                      <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#F28482]/5 border border-[#F28482]/30 rounded-md text-right font-medium text-sm sm:text-base">
-                        {formatNumber(settingsTotals.monthlyRent || 0)}
+                  {/* Monthly Rent - ซ่อนสำหรับ viewer */}
+                  {!isViewer && (
+                    <div className="space-y-2 rounded-lg border border-[#F28482]/30 bg-white p-3 sm:p-4 shadow-sm">
+                      <Label className="text-[#F28482] font-semibold text-xs sm:text-sm">
+                        ค่าเช่าอาคาร/เดือน (บาท)
+                      </Label>
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#F28482]/5 border border-[#F28482]/30 rounded-md text-right font-medium text-sm sm:text-base">
+                          {formatNumber(settingsTotals.monthlyRent || 0)}
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          type="button"
+                          className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                          onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                        >
+                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          type="button"
+                          className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                          onClick={() => openAdjustDialog('add', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                        >
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          type="button"
+                          className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                          onClick={() => openAdjustDialog('subtract', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                        >
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                        onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
-                      >
-                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                        onClick={() => openAdjustDialog('add', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
-                      >
-                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                        onClick={() => openAdjustDialog('subtract', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
-                      >
-                        <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
+                      <p className="text-[10px] sm:text-xs text-[#666]">
+                        ค่าเช่าอาคารรายเดือน
+                      </p>
                     </div>
-                    <p className="text-[10px] sm:text-xs text-[#666]">
-                      ค่าเช่าอาคารรายเดือน
-                    </p>
-                  </div>
+                  )}
 
                   {/* Coway Water Filter */}
                   <div className="space-y-2 rounded-lg border border-blue-400/30 bg-white p-3 sm:p-4 shadow-sm">

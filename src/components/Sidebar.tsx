@@ -42,18 +42,18 @@ const formatDateTime = (date: Date) => {
 }
 
 const allNavigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, partnerOnly: true },
-  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false },
-  { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true },
-  { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true },
-  { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, partnerOnly: true, viewerHidden: true },
+  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false, viewerHidden: false },
+  { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true, viewerHidden: true },
+  { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true, viewerHidden: true },
+  { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false, viewerHidden: false },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
-  const { role, user, isPartner, logout } = useAccess()
+  const { role, user, isPartner, isViewer, logout } = useAccess()
 
   const toggleMenu = () => setIsOpen(!isOpen)
   const closeMenu = () => setIsOpen(false)
@@ -73,6 +73,7 @@ export function Sidebar() {
   // กรอง navigation ตาม role
   const navigation = allNavigation.filter(item => {
     if (isPartner) return true // Partner เห็นทุกเมนู
+    if (isViewer) return !item.viewerHidden // Viewer เห็นเฉพาะเมนูที่ไม่ถูกซ่อน
     return !item.partnerOnly // Staff เห็นเฉพาะเมนูที่ไม่ใช่ partnerOnly
   })
 
@@ -168,7 +169,7 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <div className={cn(
               "h-2 w-2 rounded-full",
-              isPartner ? "bg-[#F6BD60]" : "bg-[#F28482]"
+              isPartner ? "bg-[#F6BD60]" : isViewer ? "bg-[#A8DADC]" : "bg-[#F28482]"
             )} />
             <div className="flex flex-col">
               {user && (
@@ -177,7 +178,7 @@ export function Sidebar() {
                 </span>
               )}
               <span className="text-[10px] text-white/60">
-                {isPartner ? 'หุ้นส่วน' : 'พนักงาน'}
+                {isPartner ? 'หุ้นส่วน' : isViewer ? 'ผู้ดู' : 'พนักงาน'}
               </span>
             </div>
           </div>

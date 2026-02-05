@@ -3,13 +3,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-export type Role = 'partner' | 'staff' | null
+export type Role = 'partner' | 'staff' | 'viewer' | null
 
 export interface User {
   id: number
   username: string
   name: string
-  role: 'PARTNER' | 'STAFF'
+  role: 'PARTNER' | 'STAFF' | 'VIEWER'
 }
 
 interface AccessContextType {
@@ -23,6 +23,7 @@ interface AccessContextType {
   isLoading: boolean
   isPartner: boolean
   isStaff: boolean
+  isViewer: boolean
 }
 
 const AccessContext = createContext<AccessContextType | undefined>(undefined)
@@ -64,7 +65,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         const parsedUser = JSON.parse(decodeURIComponent(savedUser))
         setUserState(parsedUser)
         // ดึง role จาก user data โดยตรง
-        const roleFromUser: Role = parsedUser.role === 'PARTNER' ? 'partner' : 'staff'
+        const roleFromUser: Role = parsedUser.role === 'PARTNER' ? 'partner' : parsedUser.role === 'VIEWER' ? 'viewer' : 'staff'
         setRoleState(roleFromUser)
       } catch (e) {
         console.error('Error parsing user cookie:', e)
@@ -102,6 +103,16 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         router.replace('/transactions')
       }
     }
+
+    // ถ้าเป็น viewer และพยายามเข้าหน้าที่ห้าม → redirect ไป transactions
+    if (role === 'viewer') {
+      const blockedPaths = ['/', '/users', '/employees']
+      const isBlocked = blockedPaths.some(path => pathname === path)
+
+      if (isBlocked) {
+        router.replace('/transactions')
+      }
+    }
   }, [role, pathname, isLoading, router])
 
   const setRole = (newRole: Role) => {
@@ -121,7 +132,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }
 
   const login = (userData: User) => {
-    const roleValue: Role = userData.role === 'PARTNER' ? 'partner' : 'staff'
+    const roleValue: Role = userData.role === 'PARTNER' ? 'partner' : userData.role === 'VIEWER' ? 'viewer' : 'staff'
     setRole(roleValue)
     setUser(userData)
   }
@@ -148,6 +159,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isLoading,
     isPartner: role === 'partner',
     isStaff: role === 'staff',
+    isViewer: role === 'viewer',
   }
 
   return (
