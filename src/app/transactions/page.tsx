@@ -32,6 +32,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { getBuildingColor } from '@/lib/building-colors'
+import { useAccess } from '@/contexts/AccessContext'
 
 interface Building {
   id: number
@@ -120,6 +121,7 @@ interface ExpenseHistoryItem {
 }
 
 export default function TransactionsPage() {
+  const { isViewer } = useAccess()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
@@ -1062,8 +1064,8 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* อันดับ 1: ค่าเช่าอาคาร - ดึงจาก Settings */}
-                  {monthlyRent > 0 && (
+                  {/* อันดับ 1: ค่าเช่าอาคาร - ดึงจาก Settings (ซ่อนสำหรับ VIEWER) */}
+                  {!isViewer && monthlyRent > 0 && (
                     <TableRow className="bg-[#F6BD60]/10">
                       <TableCell className="font-medium px-2 md:px-4">1</TableCell>
                       <TableCell className="px-2 md:px-4">
@@ -1084,8 +1086,8 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* เงินเดือนพนักงาน */}
-                  {salaryCategory && salarySummary && (
+                  {/* เงินเดือนพนักงาน (ซ่อนสำหรับ VIEWER) */}
+                  {!isViewer && salaryCategory && salarySummary && (
                     <TableRow className="bg-[#84A59D]/10">
                       <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
                       <TableCell className="px-2 md:px-4">
@@ -1113,7 +1115,7 @@ export default function TransactionsPage() {
                       {maxCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#9B59B6]/10">
                           <TableCell className="font-medium px-2 md:px-4">
-                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + 1}
+                            {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + 1}
                           </TableCell>
                           <TableCell className="px-2 md:px-4">
                             <div className="flex items-center gap-1 md:gap-2">
@@ -1135,7 +1137,7 @@ export default function TransactionsPage() {
                       {trafficCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#E74C3C]/10">
                           <TableCell className="font-medium px-2 md:px-4">
-                            {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
+                            {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
                           </TableCell>
                           <TableCell className="px-2 md:px-4">
                             <div className="flex items-center gap-1 md:gap-2">
