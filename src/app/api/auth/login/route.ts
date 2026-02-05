@@ -17,12 +17,13 @@ export async function POST(request: NextRequest) {
 
     // ค้นหา user ตาม username และ role (ไม่รวม password)
     // VIEWER สามารถ login จากหน้า STAFF ได้
-    const allowedRoles = role === 'STAFF' ? ['STAFF', 'VIEWER'] : [role]
     const user = await prisma.user.findFirst({
       where: {
         username: username,
-        role: { in: allowedRoles },
         isActive: true,
+        OR: role === 'STAFF'
+          ? [{ role: 'STAFF' }, { role: 'VIEWER' }]
+          : [{ role: role }],
       },
     })
 
