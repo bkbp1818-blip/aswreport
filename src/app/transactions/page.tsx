@@ -551,12 +551,17 @@ export default function TransactionsPage() {
 
     setSavingHistory(true)
     const effectiveAction = getEffectiveAction()
+
+    // ตรวจสอบว่าเป็น settings field (เช่น cowayWaterFilterExpense) หรือไม่
+    const isSettingsField = currentCategoryId === 'cowayWaterFilterExpense'
+    const targetType = isSettingsField ? 'SETTINGS' : 'TRANSACTION'
+
     try {
       const res = await fetch('/api/expense-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetType: 'TRANSACTION',
+          targetType,
           targetId: selectedBuilding,
           fieldName: String(currentCategoryId),
           fieldLabel: adjustCategoryName,
@@ -574,13 +579,19 @@ export default function TransactionsPage() {
         setHistoryTotal(data.total || 0)
         // อัปเดตยอดใน state ถ้าเดือน/ปีตรงกับที่เลือกในหน้าหลัก
         if (requestMonth === currentSelectedMonth && requestYear === currentSelectedYear) {
-          // ตรวจสอบว่าเป็น special income field หรือไม่
+          // ตรวจสอบว่าเป็น special income field หรือ settings field หรือไม่
           if (currentCategoryId === 'airportShuttleRentIncome') {
             setAirportShuttleRentIncome(data.total || 0)
           } else if (currentCategoryId === 'thaiBusTourIncome') {
             setThaiBusTourIncome(data.total || 0)
           } else if (currentCategoryId === 'coVanKesselIncome') {
             setCoVanKesselIncome(data.total || 0)
+          } else if (currentCategoryId === 'cowayWaterFilterExpense') {
+            // อัปเดต buildingSettings สำหรับ Coway
+            setBuildingSettings(prev => prev ? {
+              ...prev,
+              cowayWaterFilterExpense: data.total || 0
+            } : null)
           } else {
             setTransactionData((prev) => ({
               ...prev,
@@ -1213,7 +1224,7 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* ค่าเช่าเครื่องกรองน้ำ Coway - แสดงเสมอ (หลัง Amenity) */}
+                      {/* ค่าเช่าเครื่องกรองน้ำ Coway - แสดงเสมอ พร้อมปุ่มแก้ไข */}
                       <TableRow className="bg-cyan-100/50">
                         <TableCell className="font-medium px-2 md:px-4">
                           {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1226,13 +1237,39 @@ export default function TransactionsPage() {
                             <div>
                               <span className="text-xs md:text-sm font-medium text-cyan-600">กรองน้ำ Coway</span>
                               <p className="text-[10px] md:text-xs text-cyan-500 hidden md:block">
-                                (ดึงจากหน้าตั้งค่าอาคาร)
+                                (บาท/เดือน)
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right px-2 md:px-4">
-                          <p className="font-medium text-xs md:text-sm text-cyan-600">{formatNumber(cowayWaterFilterExpense)}</p>
+                          <div className="flex items-center justify-end gap-1">
+                            <p className="font-medium text-xs md:text-sm text-cyan-600">{formatNumber(cowayWaterFilterExpense)}</p>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', 'cowayWaterFilterExpense', 'กรองน้ำ Coway')}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', 'cowayWaterFilterExpense', 'กรองน้ำ Coway')}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', 'cowayWaterFilterExpense', 'กรองน้ำ Coway')}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                       {/* ค่าน้ำเปล่า - แสดงเสมอ */}

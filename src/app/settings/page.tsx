@@ -650,7 +650,7 @@ export default function SettingsPage() {
                 className="space-y-4 sm:space-y-6 p-3 sm:p-6 transition-colors duration-300"
                 style={{ background: `linear-gradient(to bottom, ${buildingColor}10, white)` }}
               >
-                {/* Selector เดือน/ปี สำหรับค่าเช่าอาคารและค่า Coway */}
+                {/* Selector เดือน/ปี สำหรับค่าเช่าอาคาร */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: `${buildingColor}15` }}>
                   <Calendar className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: buildingColor }} />
                   <span className="text-xs sm:text-sm font-medium" style={{ color: buildingColor }}>เดือน/ปี:</span>
@@ -749,48 +749,6 @@ export default function SettingsPage() {
                       </p>
                     </div>
                   )}
-
-                  {/* Coway Water Filter */}
-                  <div className="space-y-2 rounded-lg border border-blue-400/30 bg-white p-3 sm:p-4 shadow-sm">
-                    <Label className="text-blue-500 font-semibold text-xs sm:text-sm">
-                      กรองน้ำ Coway (บาท/เดือน)
-                    </Label>
-                    <div className="flex items-center gap-1 sm:gap-1.5">
-                      <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-50 border border-blue-200 rounded-md text-right font-medium text-sm sm:text-base">
-                        {formatNumber(settingsTotals.cowayWaterFilterExpense || 0)}
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                        onClick={() => openAdjustDialog('edit', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
-                      >
-                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                        onClick={() => openAdjustDialog('add', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
-                      >
-                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        type="button"
-                        className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                        onClick={() => openAdjustDialog('subtract', 'cowayWaterFilterExpense', 'ค่าเช่าเครื่องกรองน้ำ Coway', 'building')}
-                      >
-                        <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] sm:text-xs text-[#666]">
-                      ค่าเช่าเครื่องกรองน้ำ Coway สำหรับอาคารนี้
-                    </p>
-                  </div>
 
                 </div>
               </CardContent>
