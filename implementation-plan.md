@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.7 |
+| **Version** | 1.8.8 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -57,6 +57,18 @@
 | staff1 | 1234 | พนักงาน 1 |
 | staff2 | 1234 | พนักงาน 2 |
 
+### ผู้ดู (VIEWER) - เห็นทุกอย่างยกเว้น Dashboard, เงินเดือน, จัดการผู้ใช้, ค่าเช่าอาคาร, ประกันสังคม ✨ NEW
+
+| Username | Password | ชื่อ |
+|----------|----------|------|
+| Jmng | jmng | เจม |
+
+**หมายเหตุ VIEWER:**
+- Login ผ่านหน้า `/access/staff` (ไม่ใช่หน้า partner)
+- ไม่เห็น: Dashboard, เงินเดือนพนักงาน, จัดการผู้ใช้
+- หน้า Settings: ไม่เห็นค่าเช่าอาคาร
+- หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA/อื่นๆ (เห็นแค่ Direct Booking)
+
 ---
 
 ## Pages & Features
@@ -76,10 +88,12 @@
   - ดูประวัติ/ลบรายการได้
 - แสดงค่าใช้จ่ายส่วนกลางจาก GlobalSettings
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
-- **รายได้พิเศษ (Special Income):** ✨ NEW
+- **กรองน้ำ Coway** - กรอกได้โดยตรงในหน้านี้ (ย้ายมาจากหน้า Settings) ✨ MOVED
+- **รายได้พิเศษ (Special Income):**
   - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
   - Thai Bus Tour (สีม่วง purple)
   - Co Van Kessel (สีส้ม orange)
+- **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA/อื่นๆ (เห็นแค่ Direct Booking) ✨ NEW
 
 ### 3. เงินเดือนพนักงาน (`/employees`)
 - เพิ่ม/แก้ไข/ลบพนักงาน
@@ -93,11 +107,12 @@
 - เปิด/ปิด บัญชี
 
 ### 5. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
-- **ทั้ง Partner และ Staff เข้าถึงได้**
-- **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น** ✨ UPDATED
+- **ทั้ง Partner, Staff, และ Viewer เข้าถึงได้** (Viewer ไม่เห็นค่าเช่าอาคาร)
+- **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น**
 - **Tab ตั้งค่าอาคาร:**
   - **Management Fee % / VAT %** - กดปุ่มแก้ไข (ดินสอ) → กรอกค่า % ใหม่ → บันทึกไป Settings table
-  - **ค่าเช่าอาคาร / ค่า Coway** - กดปุ่ม +/- → กรอกรายละเอียด+จำนวนเงิน → บันทึกผ่าน ExpenseHistory (สะสมตามเดือน)
+  - **ค่าเช่าอาคาร** - กดปุ่ม +/- → กรอกรายละเอียด+จำนวนเงิน → บันทึกผ่าน ExpenseHistory (สะสมตามเดือน)
+  - ~~ค่า Coway~~ - **ย้ายไปหน้า Transactions แล้ว** ✨ MOVED
 - **Tab ค่าใช้จ่ายส่วนกลาง:**
   - ค่าดูแล MAX (หาร 3 อาคาร: NANA, CT, YW)
   - ค่าดูแลจราจร (หาร 3 อาคาร)
@@ -194,7 +209,20 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.7 (Current - February 2026)
+### v1.8.8 (Current - February 2026)
+- **เพิ่ม VIEWER role สำหรับผู้ดูแบบจำกัดสิทธิ์:**
+  - สร้าง user "Jmng" (password: jmng) เป็น VIEWER
+  - Login ผ่านหน้า `/access/staff`
+  - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, จัดการผู้ใช้
+  - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
+  - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม
+  - หน้า Transactions: รายได้เห็นแค่ Direct Booking (ซ่อน OTA อื่นๆ, รายได้อื่น, รถรับส่ง, Thai Bus Tour, Co Van Kessel)
+- **ย้ายกรองน้ำ Coway จากหน้า Settings ไปหน้า Transactions:**
+  - เพิ่มปุ่มแก้ไข/เพิ่ม/ลดในหน้า Transactions
+  - ลบส่วน Coway ออกจากหน้า Settings
+  - ทุก user (รวม VIEWER) สามารถแก้ไขได้
+
+### v1.8.7 (February 2026)
 - **รวม PayPal / Credit Card / Bank Transfer เป็นรายการย่อยของ Direct Booking:**
   - หน้ากรอกข้อมูล: แสดงกลุ่ม "Direct Booking" พร้อม subtotal + 3 รายการย่อย (PayPal, Credit Card, Bank Transfer) ย่อหน้าเข้าไป
   - Dashboard Pie Chart: รวม 3 ช่องทางเป็น "Direct Booking" ชิ้นเดียว (API `incomeByChannel` merge อัตโนมัติ)
@@ -483,7 +511,7 @@ npx vercel --prod        # Deploy
 | username | String | ชื่อผู้ใช้ |
 | password | String | รหัสผ่าน (hashed) |
 | name | String | ชื่อแสดง |
-| role | Enum | PARTNER / STAFF |
+| role | Enum | PARTNER / STAFF / VIEWER ✨ |
 | isActive | Boolean | สถานะ |
 
 ### ExpenseHistory
