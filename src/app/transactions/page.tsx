@@ -781,8 +781,8 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) */}
-                  {normalRentalCategories.map((category, index) => (
+                  {/* OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) - ซ่อนสำหรับ VIEWER */}
+                  {!isViewer && normalRentalCategories.map((category, index) => (
                     <TableRow key={category.id} className={(directBookingSubCategories.length + index) % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
                       <TableCell className="font-medium px-2 md:px-4">{directBookingSubCategories.length + index + 1}</TableCell>
                       <TableCell className="px-2 md:px-4">
@@ -827,8 +827,8 @@ export default function TransactionsPage() {
                 </TableBody>
               </Table>
 
-              {/* กลุ่ม 2: รายได้อื่นๆ */}
-              {otherIncomeCategories.length > 0 && (
+              {/* กลุ่ม 2: รายได้อื่นๆ - ซ่อนสำหรับ VIEWER */}
+              {!isViewer && otherIncomeCategories.length > 0 && (
                 <>
                   <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
                     <div className="flex justify-between items-center">
@@ -887,161 +887,173 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 3: รายได้ค่าเช่า รถรับส่งสนามบิน */}
-              <div className="bg-emerald-500/10 px-4 py-2 border-y border-emerald-500/20">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-emerald-600">รายได้ค่าเช่า รถรับส่งสนามบิน</p>
-                  <p className="text-sm font-bold text-emerald-600">{formatNumber(airportShuttleRentIncome)}</p>
-                </div>
-              </div>
-              <Table>
-                <TableBody>
-                  <TableRow className="bg-emerald-50/50">
-                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                    <TableCell className="px-2 md:px-4">
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <CategoryIcon name="รถรับส่งสนามบิน" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-xs md:text-sm font-medium text-emerald-600">ค่าเช่า รถรับส่งสนามบิน</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-emerald-50 border border-emerald-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-emerald-600">
-                          {formatNumber(airportShuttleRentIncome)}
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                          onClick={() => openAdjustDialog('edit', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                        >
-                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                          onClick={() => openAdjustDialog('add', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                        >
-                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                          onClick={() => openAdjustDialog('subtract', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                        >
-                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {/* กลุ่ม 3: รายได้ค่าเช่า รถรับส่งสนามบิน - ซ่อนสำหรับ VIEWER */}
+              {!isViewer && (
+                <>
+                  <div className="bg-emerald-500/10 px-4 py-2 border-y border-emerald-500/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-emerald-600">รายได้ค่าเช่า รถรับส่งสนามบิน</p>
+                      <p className="text-sm font-bold text-emerald-600">{formatNumber(airportShuttleRentIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      <TableRow className="bg-emerald-50/50">
+                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <CategoryIcon name="รถรับส่งสนามบิน" className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm font-medium text-emerald-600">ค่าเช่า รถรับส่งสนามบิน</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-emerald-50 border border-emerald-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-emerald-600">
+                              {formatNumber(airportShuttleRentIncome)}
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              )}
 
-              {/* กลุ่ม 4: รายได้ Thai Bus Tour */}
-              <div className="bg-purple-500/10 px-4 py-2 border-y border-purple-500/20">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-purple-600">รายได้ Thai Bus Tour</p>
-                  <p className="text-sm font-bold text-purple-600">{formatNumber(thaiBusTourIncome)}</p>
-                </div>
-              </div>
-              <Table>
-                <TableBody>
-                  <TableRow className="bg-purple-50/50">
-                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                    <TableCell className="px-2 md:px-4">
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <CategoryIcon name="Thai Bus" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-xs md:text-sm font-medium text-purple-600">Thai Bus Tour</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-purple-50 border border-purple-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-purple-600">
-                          {formatNumber(thaiBusTourIncome)}
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                          onClick={() => openAdjustDialog('edit', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                        >
-                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                          onClick={() => openAdjustDialog('add', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                        >
-                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                          onClick={() => openAdjustDialog('subtract', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                        >
-                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {/* กลุ่ม 4: รายได้ Thai Bus Tour - ซ่อนสำหรับ VIEWER */}
+              {!isViewer && (
+                <>
+                  <div className="bg-purple-500/10 px-4 py-2 border-y border-purple-500/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-purple-600">รายได้ Thai Bus Tour</p>
+                      <p className="text-sm font-bold text-purple-600">{formatNumber(thaiBusTourIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      <TableRow className="bg-purple-50/50">
+                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <CategoryIcon name="Thai Bus" className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm font-medium text-purple-600">Thai Bus Tour</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-purple-50 border border-purple-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-purple-600">
+                              {formatNumber(thaiBusTourIncome)}
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', 'thaiBusTourIncome', 'Thai Bus Tour')}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', 'thaiBusTourIncome', 'Thai Bus Tour')}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', 'thaiBusTourIncome', 'Thai Bus Tour')}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              )}
 
-              {/* กลุ่ม 5: รายได้ Co Van Kessel */}
-              <div className="bg-orange-500/10 px-4 py-2 border-y border-orange-500/20">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-orange-600">รายได้ Co Van Kessel</p>
-                  <p className="text-sm font-bold text-orange-600">{formatNumber(coVanKesselIncome)}</p>
-                </div>
-              </div>
-              <Table>
-                <TableBody>
-                  <TableRow className="bg-orange-50/50">
-                    <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                    <TableCell className="px-2 md:px-4">
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <CategoryIcon name="Co Van" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-xs md:text-sm font-medium text-orange-600">Co Van Kessel</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-orange-50 border border-orange-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-orange-600">
-                          {formatNumber(coVanKesselIncome)}
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                          onClick={() => openAdjustDialog('edit', 'coVanKesselIncome', 'Co Van Kessel')}
-                        >
-                          <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                          onClick={() => openAdjustDialog('add', 'coVanKesselIncome', 'Co Van Kessel')}
-                        >
-                          <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                          onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
-                        >
-                          <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {/* กลุ่ม 5: รายได้ Co Van Kessel - ซ่อนสำหรับ VIEWER */}
+              {!isViewer && (
+                <>
+                  <div className="bg-orange-500/10 px-4 py-2 border-y border-orange-500/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-orange-600">รายได้ Co Van Kessel</p>
+                      <p className="text-sm font-bold text-orange-600">{formatNumber(coVanKesselIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      <TableRow className="bg-orange-50/50">
+                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <CategoryIcon name="Co Van" className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm font-medium text-orange-600">Co Van Kessel</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-orange-50 border border-orange-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-orange-600">
+                              {formatNumber(coVanKesselIncome)}
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', 'coVanKesselIncome', 'Co Van Kessel')}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', 'coVanKesselIncome', 'Co Van Kessel')}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              )}
             </CardContent>
           </Card>
 
