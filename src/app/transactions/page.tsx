@@ -1451,8 +1451,8 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* เงินสมทบประกันสังคม - แสดงเสมอ */}
-                      {socialSecurityData && (
+                      {/* เงินสมทบประกันสังคม - ซ่อนสำหรับ Viewer */}
+                      {!isViewer && socialSecurityData && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
