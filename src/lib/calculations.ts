@@ -68,8 +68,8 @@ export function getAvailableMonths(
 ): { value: number; label: string }[] {
   const year = typeof selectedYear === 'string' ? parseInt(selectedYear) : selectedYear
 
-  // FD building สามารถเลือกตั้งแต่เดือนมกราคม 2026 ได้
-  if (buildingCode === 'FD') {
+  // Funn D buildings (FUNNLP, FUNNS81) สามารถเลือกตั้งแต่เดือนมกราคม 2026 ได้
+  if (buildingCode?.startsWith('FUNN')) {
     return MONTHS
   }
 
