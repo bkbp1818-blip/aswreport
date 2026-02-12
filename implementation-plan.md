@@ -222,6 +222,10 @@ npx vercel --prod        # Deploy
   - Thai Bus Tour
   - Co Van Kessel
 - **VIEWER ยังคงไม่เห็น:** OTA channels (AirBNB, Booking, Agoda ฯลฯ), ค่าเช่าอาคาร, เงินเดือน, ประกันสังคม
+- **เพิ่ม "รายจ่ายหน้างาน Cash" เป็นรายการรายจ่ายใหม่:**
+  - อยู่ตำแหน่งบนสุดของตารางรายจ่าย (order: 0)
+  - icon DollarSign สีชมพูโคราล (#F28482)
+  - ทุกอาคาร ทุก user กรอกได้
 
 ### v1.8.9 (February 2026)
 - **เพิ่มเดือนมกราคม 2026 สำหรับ Funn D ทั้ง 2 อาคาร:**
