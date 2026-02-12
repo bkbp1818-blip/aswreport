@@ -23,7 +23,17 @@ import {
 import { formatNumber, MONTHS, getMonthName } from '@/lib/utils'
 import { generateYears, getAvailableMonths } from '@/lib/calculations'
 import { CategoryIcon } from '@/lib/category-icons'
-import { Loader2, Plus, Minus, Trash2, Pencil } from 'lucide-react'
+import { Loader2, Plus, Minus, Trash2, Pencil, TrendingUp, TrendingDown } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts'
 import {
   Dialog,
   DialogContent,
@@ -706,6 +716,70 @@ export default function TransactionsPage() {
           <p className="text-[#666]">กำลังโหลดข้อมูล...</p>
         </div>
       ) : (
+        <>
+        {/* สรุปกำไร/ขาดทุน + กราฟแท่ง */}
+        {(() => {
+          const profit = totalIncome - totalExpense
+          const isProfit = profit >= 0
+          const barData = [
+            { name: 'รายรับ', amount: totalIncome, color: '#5B8A7D' },
+            { name: 'รายจ่าย', amount: totalExpense, color: '#E8837B' },
+            { name: isProfit ? 'กำไร' : 'ขาดทุน', amount: Math.abs(profit), color: isProfit ? '#D4A24C' : '#E74C3C' },
+          ]
+          return (
+            <Card className="border-0 shadow-md overflow-hidden mb-4 md:mb-6">
+              <CardHeader className={`${isProfit ? 'bg-gradient-to-r from-[#D4A24C] to-[#c49540]' : 'bg-gradient-to-r from-[#E74C3C] to-[#c0392b]'} text-white py-3 md:py-4`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isProfit ? <TrendingUp className="h-5 w-5 md:h-6 md:w-6" /> : <TrendingDown className="h-5 w-5 md:h-6 md:w-6" />}
+                    <CardTitle className="text-white text-base md:text-lg">{isProfit ? 'กำไร' : 'ขาดทุน'}</CardTitle>
+                  </div>
+                  <p className={`text-xl md:text-2xl font-bold text-white`}>
+                    {isProfit ? '+' : '-'}{formatNumber(Math.abs(profit))}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 md:p-6">
+                {/* สรุปตัวเลข 3 ช่อง */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4">
+                  <div className="text-center p-2 md:p-3 bg-[#84A59D]/10 rounded-lg">
+                    <p className="text-[10px] md:text-xs text-[#5a7d75] mb-1">รวมรายรับ</p>
+                    <p className="text-sm md:text-lg font-bold text-[#5B8A7D]">{formatNumber(totalIncome)}</p>
+                  </div>
+                  <div className="text-center p-2 md:p-3 bg-[#F28482]/10 rounded-lg">
+                    <p className="text-[10px] md:text-xs text-[#d96f6d] mb-1">รวมรายจ่าย</p>
+                    <p className="text-sm md:text-lg font-bold text-[#E8837B]">{formatNumber(totalExpense)}</p>
+                  </div>
+                  <div className={`text-center p-2 md:p-3 rounded-lg ${isProfit ? 'bg-[#D4A24C]/10' : 'bg-[#E74C3C]/10'}`}>
+                    <p className={`text-[10px] md:text-xs mb-1 ${isProfit ? 'text-[#c49540]' : 'text-[#c0392b]'}`}>{isProfit ? 'กำไร' : 'ขาดทุน'}</p>
+                    <p className={`text-sm md:text-lg font-bold ${isProfit ? 'text-[#D4A24C]' : 'text-[#E74C3C]'}`}>{isProfit ? '+' : '-'}{formatNumber(Math.abs(profit))}</p>
+                  </div>
+                </div>
+                {/* กราฟแท่ง */}
+                <div className="h-[180px] md:h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`
+                        return value
+                      }} />
+                      <Tooltip formatter={(value: number) => [formatNumber(value) + ' บาท', '']} />
+                      <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={60}>
+                        {barData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })()}
+
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {/* รายรับ */}
           <Card className="border-0 shadow-md overflow-hidden">
@@ -1620,6 +1694,7 @@ export default function TransactionsPage() {
             </CardContent>
           </Card>
         </div>
+        </>
       )}
 
       {/* Dialog เพิ่ม/ลดยอด พร้อมประวัติ */}
