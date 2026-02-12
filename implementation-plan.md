@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.9 |
+| **Version** | 1.9.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -57,7 +57,7 @@
 | staff1 | 1234 | พนักงาน 1 |
 | staff2 | 1234 | พนักงาน 2 |
 
-### ผู้ดู (VIEWER) - เห็นทุกอย่างยกเว้น Dashboard, เงินเดือน, จัดการผู้ใช้, ค่าเช่าอาคาร, ประกันสังคม ✨ NEW
+### ผู้ดู (VIEWER) - เห็นทุกอย่างยกเว้น Dashboard, เงินเดือน, จัดการผู้ใช้, ค่าเช่าอาคาร, ประกันสังคม, OTA channels ✨ UPDATED
 
 | Username | Password | ชื่อ |
 |----------|----------|------|
@@ -67,7 +67,8 @@
 - Login ผ่านหน้า `/access/staff` (ไม่ใช่หน้า partner)
 - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, จัดการผู้ใช้
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
-- หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA/อื่นๆ (เห็นแค่ Direct Booking)
+- หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ)
+- หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel
 
 ---
 
@@ -93,7 +94,7 @@
   - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
   - Thai Bus Tour (สีม่วง purple)
   - Co Van Kessel (สีส้ม orange)
-- **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA/อื่นๆ (เห็นแค่ Direct Booking) ✨ NEW
+- **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (เห็น Direct Booking+Cash, รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus, Co Van Kessel) ✨ UPDATED
 
 ### 3. เงินเดือนพนักงาน (`/employees`)
 - เพิ่ม/แก้ไข/ลบพนักงาน
@@ -209,7 +210,20 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.9 (Current - February 2026)
+### v1.9.0 (Current - February 2026)
+- **เพิ่ม "ค่าเช่า Cash" เป็นรายการรายรับใหม่:**
+  - อยู่ในกลุ่ม Direct Booking sub-items (ทุกอาคาร ทุก user เห็น)
+  - เพิ่ม icon DollarSign สีเขียว (#2E7D32)
+  - Dashboard Pie Chart: รวมเข้า Direct Booking อัตโนมัติ
+  - เพิ่มสี Cash ใน BRAND_COLORS ของ Dashboard
+- **เปิดรายได้เพิ่มเติมให้ VIEWER (Jmng) เห็น:**
+  - รายได้บริการต่างๆ (ค่าอาหาร, ค่าทัวร์ ฯลฯ)
+  - ค่าเช่า รถรับส่งสนามบิน
+  - Thai Bus Tour
+  - Co Van Kessel
+- **VIEWER ยังคงไม่เห็น:** OTA channels (AirBNB, Booking, Agoda ฯลฯ), ค่าเช่าอาคาร, เงินเดือน, ประกันสังคม
+
+### v1.8.9 (February 2026)
 - **เพิ่มเดือนมกราคม 2026 สำหรับ Funn D ทั้ง 2 อาคาร:**
   - หน้ากรอกข้อมูล (`/transactions`): เลือกเดือน มค. ได้เมื่อเลือกอาคาร Funn D (FUNNLP, FUNNS81)
   - หน้าจัดการค่าใช้จ่ายส่วนกลาง (`/settings`): แท็บตั้งค่าอาคาร เลือกเดือน มค. ได้เมื่อเลือก Funn D
@@ -225,7 +239,7 @@ npx vercel --prod        # Deploy
   - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, จัดการผู้ใช้
   - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
   - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม
-  - หน้า Transactions: รายได้เห็นแค่ Direct Booking (ซ่อน OTA อื่นๆ, รายได้อื่น, รถรับส่ง, Thai Bus Tour, Co Van Kessel)
+  - หน้า Transactions: รายได้เห็นแค่ Direct Booking (ซ่อน OTA อื่นๆ, รายได้อื่น, รถรับส่ง, Thai Bus Tour, Co Van Kessel) — *ต่อมาเปิดเพิ่มใน v1.9.0*
 - **ย้ายกรองน้ำ Coway จากหน้า Settings ไปหน้า Transactions:**
   - เพิ่มปุ่มแก้ไข/เพิ่ม/ลดในหน้า Transactions
   - ลบส่วน Coway ออกจากหน้า Settings
