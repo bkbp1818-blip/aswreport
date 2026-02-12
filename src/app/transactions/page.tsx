@@ -717,8 +717,8 @@ export default function TransactionsPage() {
         </div>
       ) : (
         <>
-        {/* สรุปกำไร/ขาดทุน + กราฟแท่ง */}
-        {(() => {
+        {/* สรุปกำไร/ขาดทุน + กราฟแท่ง (ซ่อนสำหรับ VIEWER) */}
+        {!isViewer && (() => {
           const profit = totalIncome - totalExpense
           const isProfit = profit >= 0
           const barData = [
