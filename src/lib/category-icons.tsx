@@ -77,6 +77,7 @@ const iconColors: Record<string, string> = {
   'ค่าดูแล MAX': 'text-[#9B59B6]',
   'ค่าดูแลจราจร': 'text-[#E74C3C]',
   'ประกันสังคม': 'text-[#E91E63]',
+  'รายจ่ายหน้างาน': 'text-[#F28482]',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -142,6 +143,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
 
   // รายจ่าย
+  if (lowerName.includes('หน้างาน')) {
+    return { Icon: DollarSign, color: iconColors['รายจ่ายหน้างาน'] }
+  }
   if (lowerName.includes('ไฟฟ้า')) {
     return { Icon: Zap, color: iconColors['ค่าไฟฟ้า'] }
   }

@@ -56,6 +56,7 @@ async function main() {
 
   // สร้างหมวดหมู่รายจ่าย
   const expenseCategories = [
+    'รายจ่ายหน้างาน Cash',
     'Little Hotelier Expense',
     'ค่า Fee จาก PayPal',
     'ค่าไฟฟ้า',
