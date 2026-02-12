@@ -348,9 +348,12 @@ export default function TransactionsPage() {
     'ค่าอุปกรณ์ทำความสะอาด',
   ]
 
+  // รายจ่ายหน้างาน Cash - แสดงบนสุดของตารางรายจ่าย
+  const cashExpenseCategory = expenseCategories.find((c) => c.name === 'รายจ่ายหน้างาน Cash')
+
   // แยกรายจ่ายเป็น 2 กลุ่ม: เงินเดือนพนักงาน และ รายจ่ายอื่นๆ (ไม่รวมรายการที่จัดการใน GlobalSettings แล้ว)
   const otherExpenseCategories = expenseCategories.filter(
-    (c) => c.id !== salaryCategoryId && !globalSettingsCategoryNames.includes(c.name)
+    (c) => c.id !== salaryCategoryId && !globalSettingsCategoryNames.includes(c.name) && c.name !== 'รายจ่ายหน้างาน Cash'
   )
 
   // ฟังก์ชันดึงค่าแสดงผลสำหรับแต่ละ category
@@ -423,7 +426,8 @@ export default function TransactionsPage() {
     (sum, c) => sum + (transactionData[c.id] || 0),
     0
   )
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense
+  const cashExpenseAmount = cashExpenseCategory ? (transactionData[cashExpenseCategory.id] || 0) : 0
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount
 
   // ดึงประวัติค่าใช้จ่าย
   const fetchExpenseHistory = async (categoryId: number | string | null, month: string, year: string) => {
@@ -1087,7 +1091,50 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* อันดับ 1: ค่าเช่าอาคาร - ดึงจาก Settings (ซ่อนสำหรับ VIEWER) */}
+                  {/* อันดับ 1: รายจ่ายหน้างาน Cash - แสดงบนสุด */}
+                  {cashExpenseCategory && (
+                    <TableRow className="bg-[#F28482]/10">
+                      <TableCell className="font-medium px-2 md:px-4">1</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <CategoryIcon name={cashExpenseCategory.name} className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-xs md:text-sm font-medium text-[#F28482]">{cashExpenseCategory.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-2 md:px-4">
+                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                          <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-red-50 border border-red-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-[#F28482]">
+                            {formatNumber(transactionData[cashExpenseCategory.id] || 0)}
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                            onClick={() => openAdjustDialog('edit', cashExpenseCategory.id, cashExpenseCategory.name)}
+                          >
+                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                            onClick={() => openAdjustDialog('add', cashExpenseCategory.id, cashExpenseCategory.name)}
+                          >
+                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                            onClick={() => openAdjustDialog('subtract', cashExpenseCategory.id, cashExpenseCategory.name)}
+                          >
+                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {/* ค่าเช่าอาคาร - ดึงจาก Settings (ซ่อนสำหรับ VIEWER) */}
                   {!isViewer && monthlyRent > 0 && (
                     <TableRow className="bg-[#F6BD60]/10">
                       <TableCell className="font-medium px-2 md:px-4">1</TableCell>
