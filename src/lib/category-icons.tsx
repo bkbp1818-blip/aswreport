@@ -47,6 +47,7 @@ const iconColors: Record<string, string> = {
   'PayPal': 'text-[#003087]',             // PayPal Blue
   'Credit Card': 'text-[#1A1F71]',        // Visa Blue
   'Bank Transfer': 'text-[#00A651]',      // Bank Green
+  'Cash': 'text-[#2E7D32]',               // Cash Green
   'ค่าอาหาร': 'text-orange-500',
   'รับส่งสนามบิน': 'text-cyan-500',
   'ค่าทัวร์': 'text-green-500',
@@ -115,6 +116,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('bank transfer')) {
     return { Icon: DollarSign, color: iconColors['Bank Transfer'] }
+  }
+  if (lowerName.includes('cash')) {
+    return { Icon: DollarSign, color: iconColors['Cash'] }
   }
 
   // รายได้ Upsell

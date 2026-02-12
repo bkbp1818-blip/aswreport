@@ -307,7 +307,7 @@ export default function TransactionsPage() {
   const otherIncomeCategories = incomeCategories.filter((c) => !c.name.includes('ค่าเช่า'))
 
   // กลุ่ม Direct Booking sub-items
-  const directBookingSubNames = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer']
+  const directBookingSubNames = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer', 'ค่าเช่า Cash']
   const directBookingSubCategories = rentalIncomeCategories.filter((c) => directBookingSubNames.includes(c.name))
 
   // กรองออกจากรายการค่าเช่าปกติ (ลบ Direct Booking standalone + 3 sub-items)
@@ -838,8 +838,8 @@ export default function TransactionsPage() {
                 </TableBody>
               </Table>
 
-              {/* กลุ่ม 2: รายได้อื่นๆ - ซ่อนสำหรับ VIEWER */}
-              {!isViewer && otherIncomeCategories.length > 0 && (
+              {/* กลุ่ม 2: รายได้อื่นๆ */}
+              {otherIncomeCategories.length > 0 && (
                 <>
                   <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
                     <div className="flex justify-between items-center">

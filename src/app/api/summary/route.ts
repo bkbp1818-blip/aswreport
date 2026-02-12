@@ -395,7 +395,7 @@ async function calculateBuildingSummary(
   }
 
   // รวม PayPal, Credit Card, Bank Transfer เข้า Direct Booking (สำหรับ Pie Chart)
-  const paymentSubChannels = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer']
+  const paymentSubChannels = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer', 'ค่าเช่า Cash']
   let directBookingTotal = incomeByChannel['ค่าเช่าจาก Direct Booking'] || 0
   for (const ch of paymentSubChannels) {
     if (incomeByChannel[ch]) {

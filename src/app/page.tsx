@@ -80,6 +80,7 @@ const BRAND_COLORS: Record<string, string> = {
   'PayPal': '#003087',          // PayPal Blue
   'Credit Card': '#1A1F71',     // Visa Blue
   'Bank Transfer': '#00A651',   // Bank Green
+  'Cash': '#2E7D32',             // Cash Green
 }
 
 // ฟังก์ชันดึงสีตามชื่อช่องทาง

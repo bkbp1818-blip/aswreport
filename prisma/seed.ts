@@ -50,6 +50,7 @@ async function main() {
     'ค่าเช่าจาก PayPal',
     'ค่าเช่าจาก Credit Card',
     'ค่าเช่าจาก Bank Transfer',
+    'ค่าเช่า Cash',
     'ค่าปรับของใช้เสียหาย',
   ]
 
