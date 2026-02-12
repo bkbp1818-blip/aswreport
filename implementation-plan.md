@@ -226,6 +226,10 @@ npx vercel --prod        # Deploy
   - อยู่ตำแหน่งบนสุดของตารางรายจ่าย (order: 0)
   - icon DollarSign สีชมพูโคราล (#F28482)
   - ทุกอาคาร ทุก user กรอกได้
+- **เพิ่ม "ค่า Fee จาก Credit Card" เป็นรายการรายจ่ายใหม่:**
+  - อยู่ถัดจาก ค่า Fee จาก PayPal (order: 20)
+  - icon CreditCard สีน้ำเงิน Visa Blue (#1A1F71)
+  - ทุกอาคาร ทุก user กรอกได้
 
 ### v1.8.9 (February 2026)
 - **เพิ่มเดือนมกราคม 2026 สำหรับ Funn D ทั้ง 2 อาคาร:**
