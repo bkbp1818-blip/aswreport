@@ -660,7 +660,7 @@ export default function SettingsPage() {
                         <SelectValue placeholder="เดือน" />
                       </SelectTrigger>
                       <SelectContent>
-                        {getAvailableMonths(buildingSelectedYear).map((m) => (
+                        {getAvailableMonths(buildingSelectedYear, selectedBuildingData?.code).map((m) => (
                           <SelectItem key={m.value} value={String(m.value)}>
                             {m.label}
                           </SelectItem>
@@ -1518,7 +1518,7 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableMonths(adjustYear).map((m) => (
+                    {getAvailableMonths(adjustYear, selectedBuildingData?.code).map((m) => (
                       <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                     ))}
                   </SelectContent>

@@ -61,8 +61,19 @@ export const DATA_START_MONTH = 2
 export const DATA_START_YEAR = 2026
 
 // กรองเดือนที่แสดงตามปีที่เลือก (ปี 2026 แสดงตั้งแต่ กพ. เป็นต้นไป)
-export function getAvailableMonths(selectedYear: string | number): { value: number; label: string }[] {
+// ยกเว้นอาคาร FD ที่สามารถเลือกตั้งแต่เดือนมกราคม 2026 ได้
+export function getAvailableMonths(
+  selectedYear: string | number,
+  buildingCode?: string
+): { value: number; label: string }[] {
   const year = typeof selectedYear === 'string' ? parseInt(selectedYear) : selectedYear
+
+  // FD building สามารถเลือกตั้งแต่เดือนมกราคม 2026 ได้
+  if (buildingCode === 'FD') {
+    return MONTHS
+  }
+
+  // อาคารอื่นๆ ปี 2026 เริ่มที่กุมภาพันธ์
   if (year === DATA_START_YEAR) {
     return MONTHS.filter((m) => m.value >= DATA_START_MONTH)
   }

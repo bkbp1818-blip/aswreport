@@ -660,7 +660,7 @@ export default function TransactionsPage() {
                 <SelectValue placeholder="เดือน" />
               </SelectTrigger>
               <SelectContent>
-                {getAvailableMonths(selectedYear).map((m) => (
+                {getAvailableMonths(selectedYear, selectedBuildingCode).map((m) => (
                   <SelectItem key={m.value} value={String(m.value)}>
                     {m.label}
                   </SelectItem>
@@ -1612,7 +1612,7 @@ export default function TransactionsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableMonths(adjustYear).map((m) => (
+                    {getAvailableMonths(adjustYear, selectedBuildingCode).map((m) => (
                       <SelectItem key={m.value} value={String(m.value)}>
                         {m.label}
                       </SelectItem>
