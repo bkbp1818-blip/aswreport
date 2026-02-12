@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.8.8 |
+| **Version** | 1.8.9 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -44,7 +44,7 @@
 
 | Username | Password | ชื่อ |
 |----------|----------|------|
-| bank | PB19021005 | Bank |
+| bank | admin | Bank |
 | tuiii | tuiii123 | Tuiii |
 | partner1 | 1234 | หุ้นส่วน 1 |
 | partner2 | 1234 | หุ้นส่วน 2 |
@@ -209,7 +209,16 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.8.8 (Current - February 2026)
+### v1.8.9 (Current - February 2026)
+- **เพิ่มเดือนมกราคม 2026 สำหรับ Funn D ทั้ง 2 อาคาร:**
+  - หน้ากรอกข้อมูล (`/transactions`): เลือกเดือน มค. ได้เมื่อเลือกอาคาร Funn D (FUNNLP, FUNNS81)
+  - หน้าจัดการค่าใช้จ่ายส่วนกลาง (`/settings`): แท็บตั้งค่าอาคาร เลือกเดือน มค. ได้เมื่อเลือก Funn D
+  - แท็บค่าใช้จ่ายส่วนกลาง: ไม่แสดงเดือน มค. (เริ่มที่ กพ. เหมือนเดิม)
+  - Dashboard: ไม่แสดงเดือน มค.
+  - ใช้ `buildingCode?.startsWith('FUNN')` ในการตรวจสอบ
+- **รีเซ็ตรหัสผ่าน user bank:** เปลี่ยนจาก PB19021005 เป็น admin
+
+### v1.8.8 (February 2026)
 - **เพิ่ม VIEWER role สำหรับผู้ดูแบบจำกัดสิทธิ์:**
   - สร้าง user "Jmng" (password: jmng) เป็น VIEWER
   - Login ผ่านหน้า `/access/staff`
