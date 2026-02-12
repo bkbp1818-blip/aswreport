@@ -779,7 +779,7 @@ export default function SettingsPage() {
                       <SelectValue placeholder="เดือน" />
                     </SelectTrigger>
                     <SelectContent>
-                      {MONTHS.map((m) => (
+                      {getAvailableMonths(globalSelectedYear).map((m) => (
                         <SelectItem key={m.value} value={String(m.value)}>
                           {m.label}
                         </SelectItem>
