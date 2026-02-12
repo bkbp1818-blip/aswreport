@@ -898,8 +898,8 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 3: รายได้ค่าเช่า รถรับส่งสนามบิน - ซ่อนสำหรับ VIEWER */}
-              {!isViewer && (
+              {/* กลุ่ม 3: รายได้ค่าเช่า รถรับส่งสนามบิน */}
+              {(
                 <>
                   <div className="bg-emerald-500/10 px-4 py-2 border-y border-emerald-500/20">
                     <div className="flex justify-between items-center">
@@ -954,8 +954,8 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 4: รายได้ Thai Bus Tour - ซ่อนสำหรับ VIEWER */}
-              {!isViewer && (
+              {/* กลุ่ม 4: รายได้ Thai Bus Tour */}
+              {(
                 <>
                   <div className="bg-purple-500/10 px-4 py-2 border-y border-purple-500/20">
                     <div className="flex justify-between items-center">
@@ -1010,8 +1010,8 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 5: รายได้ Co Van Kessel - ซ่อนสำหรับ VIEWER */}
-              {!isViewer && (
+              {/* กลุ่ม 5: รายได้ Co Van Kessel */}
+              {(
                 <>
                   <div className="bg-orange-500/10 px-4 py-2 border-y border-orange-500/20">
                     <div className="flex justify-between items-center">
