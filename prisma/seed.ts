@@ -59,6 +59,7 @@ async function main() {
     'รายจ่ายหน้างาน Cash',
     'Little Hotelier Expense',
     'ค่า Fee จาก PayPal',
+    'ค่า Fee จาก Credit Card',
     'ค่าไฟฟ้า',
     'ค่าน้ำประปา',
     'ค่า Internet',

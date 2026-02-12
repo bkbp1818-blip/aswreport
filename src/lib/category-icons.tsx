@@ -73,6 +73,7 @@ const iconColors: Record<string, string> = {
   'เดินทางแม่บ้าน': 'text-violet-500',
   'Little Hotelier': 'text-teal-500',
   'PayPal Fee': 'text-[#003087]',          // PayPal Blue
+  'Credit Card Fee': 'text-[#1A1F71]',    // Visa Blue
   'ค่าขนส่งสินค้า': 'text-orange-500',
   'ค่าดูแล MAX': 'text-[#9B59B6]',
   'ค่าดูแลจราจร': 'text-[#E74C3C]',
@@ -199,6 +200,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('fee') && lowerName.includes('paypal')) {
     return { Icon: CreditCard, color: iconColors['PayPal Fee'] }
+  }
+  if (lowerName.includes('fee') && lowerName.includes('credit card')) {
+    return { Icon: CreditCard, color: iconColors['Credit Card Fee'] }
   }
   if (lowerName.includes('ขนส่ง')) {
     return { Icon: Truck, color: iconColors['ค่าขนส่งสินค้า'] }
