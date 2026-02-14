@@ -28,7 +28,7 @@ interface User {
   id: number
   username: string
   name: string
-  role: 'PARTNER' | 'STAFF'
+  role: 'PARTNER' | 'STAFF' | 'VIEWER'
   isActive: boolean
   createdAt: string
 }
@@ -36,11 +36,13 @@ interface User {
 const roleLabels: Record<string, string> = {
   PARTNER: 'หุ้นส่วน',
   STAFF: 'พนักงาน',
+  VIEWER: 'ผู้ดู',
 }
 
 const roleColors: Record<string, { bg: string; text: string }> = {
   PARTNER: { bg: 'bg-[#84A59D]', text: 'text-white' },
   STAFF: { bg: 'bg-[#F28482]', text: 'text-white' },
+  VIEWER: { bg: 'bg-[#A8DADC]', text: 'text-[#333]' },
 }
 
 export default function UsersPage() {
@@ -56,7 +58,7 @@ export default function UsersPage() {
     username: '',
     password: '',
     name: '',
-    role: 'STAFF' as 'PARTNER' | 'STAFF',
+    role: 'STAFF' as 'PARTNER' | 'STAFF' | 'VIEWER',
   })
 
   // โหลดข้อมูล users
@@ -198,6 +200,7 @@ export default function UsersPage() {
   // นับจำนวน users ตาม role
   const partnerCount = users.filter((u) => u.role === 'PARTNER').length
   const staffCount = users.filter((u) => u.role === 'STAFF').length
+  const viewerCount = users.filter((u) => u.role === 'VIEWER').length
   const activeCount = users.filter((u) => u.isActive).length
 
   return (
@@ -298,7 +301,7 @@ export default function UsersPage() {
                   onValueChange={(value) =>
                     setFormData((prev) => ({
                       ...prev,
-                      role: value as 'PARTNER' | 'STAFF',
+                      role: value as 'PARTNER' | 'STAFF' | 'VIEWER',
                     }))
                   }
                 >
@@ -308,6 +311,7 @@ export default function UsersPage() {
                   <SelectContent>
                     <SelectItem value="PARTNER">หุ้นส่วน (เข้าถึงทุกหน้า)</SelectItem>
                     <SelectItem value="STAFF">พนักงาน (เฉพาะกรอกข้อมูล)</SelectItem>
+                    <SelectItem value="VIEWER">ผู้ดู (ดูข้อมูลอย่างเดียว)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -336,7 +340,7 @@ export default function UsersPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-white/90">
@@ -372,6 +376,18 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{staffCount} คน</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-[#A8DADC] to-[#88c4c8] text-[#333] shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-[#333]/90">ผู้ดู</CardTitle>
+            <div className="rounded-full bg-white/20 p-1.5">
+              <Eye className="h-4 w-4 text-[#333]" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-[#333]">{viewerCount} คน</div>
           </CardContent>
         </Card>
 
@@ -498,6 +514,10 @@ export default function UsersPage() {
           </p>
           <p>
             <strong>พนักงาน (Staff)</strong> - สามารถเข้าถึงได้เฉพาะหน้ากรอกข้อมูลรายรับ-รายจ่าย
+          </p>
+          <p>
+            <strong>ผู้ดู (Viewer)</strong> - สามารถดูข้อมูลได้แต่ไม่สามารถเข้า Dashboard,
+            เงินเดือนพนักงาน, จัดการผู้ใช้
           </p>
           <p className="text-orange-600">
             * การปิดใช้งานผู้ใช้จะทำให้ผู้ใช้นั้นไม่สามารถเข้าสู่ระบบได้
