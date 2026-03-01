@@ -203,18 +203,26 @@ export default function TransactionsPage() {
         year: selectedYear,
       })
 
-      // โหลด expense history totals, settings, global totals และ social security พร้อมกัน
-      const [historyTotalsRes, settingsRes, globalTotalsRes, socialSecurityRes] = await Promise.all([
+      // โหลด expense history totals, settings, global totals, social security และ settings history totals พร้อมกัน
+      const settingsHistoryParams = new URLSearchParams({
+        targetType: 'SETTINGS',
+        targetId: selectedBuilding,
+        month: selectedMonth,
+        year: selectedYear,
+      })
+      const [historyTotalsRes, settingsRes, globalTotalsRes, socialSecurityRes, settingsHistoryTotalsRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
         fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}`),
-        fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`)
+        fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
+        fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
       ])
 
       const historyData = await historyTotalsRes.json()
       const settings = await settingsRes.json()
       const globalTotalsData = await globalTotalsRes.json()
       const socialSecurityDataRes = await socialSecurityRes.json()
+      const settingsTotalsData = await settingsHistoryTotalsRes.json()
 
       // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
@@ -244,11 +252,11 @@ export default function TransactionsPage() {
       }
       setTransactionData(dataMap)
 
-      // เก็บ settings ของอาคาร
+      // เก็บ settings ของอาคาร (ใช้ค่า Coway จาก ExpenseHistory แทน Settings table)
       if (settings) {
         setBuildingSettings({
           monthlyRent: Number(settings.monthlyRent) || 0,
-          cowayWaterFilterExpense: Number(settings.cowayWaterFilterExpense) || 0,
+          cowayWaterFilterExpense: settingsTotalsData.totals?.cowayWaterFilterExpense || 0,
         })
       } else {
         setBuildingSettings(null)
@@ -454,8 +462,9 @@ export default function TransactionsPage() {
 
     setLoadingHistory(true)
     try {
+      const isSettingsField = categoryId === 'cowayWaterFilterExpense'
       const params = new URLSearchParams({
-        targetType: 'TRANSACTION',
+        targetType: isSettingsField ? 'SETTINGS' : 'TRANSACTION',
         targetId: selectedBuilding,
         fieldName: String(categoryId),
         month,

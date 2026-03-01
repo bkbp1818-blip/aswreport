@@ -320,8 +320,16 @@ async function calculateBuildingSummary(
     ? globalExpenseTotals.foodExpense / buildingCount
     : 0
 
-  // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก settings (แยกแต่ละอาคาร)
-  const cowayWaterFilterExpense = settings ? Number(settings.cowayWaterFilterExpense) : 0
+  // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
+  const cowayHistory = await prisma.expenseHistory.findMany({
+    where: { targetType: 'SETTINGS', targetId: buildingId, fieldName: 'cowayWaterFilterExpense', month, year },
+  })
+  let cowayWaterFilterExpense = 0
+  for (const item of cowayHistory) {
+    const amount = Number(item.amount)
+    cowayWaterFilterExpense += item.actionType === 'ADD' ? amount : -amount
+  }
+  cowayWaterFilterExpense = Math.max(0, cowayWaterFilterExpense)
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
