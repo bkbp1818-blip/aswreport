@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.9.1 |
+| **Version** | 1.9.2 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -214,7 +214,15 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.9.1 (Current - February 2026)
+### v1.9.2 (Current - March 2026)
+- **แก้บัก: กรองน้ำ Coway ไม่แสดงตัวเลขที่กรอก:**
+  - สาเหตุ: ข้อมูล Coway ถูกบันทึกด้วย `targetType: 'SETTINGS'` แต่ถูกโหลดกลับด้วย `targetType: 'TRANSACTION'` ทำให้ระบบหาไม่เจอ
+  - แก้ `fetchExpenseHistory` ให้ใช้ `targetType: 'SETTINGS'` สำหรับ Coway
+  - แก้ `loadTransactions` ให้โหลดค่า Coway จาก ExpenseHistory แทน Settings table
+  - แก้ Summary API (`/api/summary`, `/api/summary/history`) ให้ query ExpenseHistory แทน Settings table
+  - ไฟล์ที่แก้: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
+
+### v1.9.1 (February 2026)
 - **เพิ่มการ์ดสรุปกำไร/ขาดทุน + กราฟแท่งในหน้ากรอกข้อมูล:**
   - แสดงด้านบนสุดของหน้า (เหนือตารางรายรับ-รายจ่าย)
   - 3 ช่องสรุป: รวมรายรับ (สีเขียว) | รวมรายจ่าย (สีแดง) | กำไร/ขาดทุน (สีทอง/แดง)
