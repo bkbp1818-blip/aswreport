@@ -14,8 +14,9 @@ model Building {
   code         String        @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
-  settings     Settings?
+  transactions   Transaction[]
+  settings       Settings?
+  reimbursements Reimbursement[]
 }
 
 // หมวดหมู่รายรับ-รายจ่าย
@@ -164,4 +165,23 @@ model ExpenseHistory {
   createdAt   DateTime @default(now())
 
   @@index([targetType, targetId, fieldName, month, year])
+}
+
+// ยอดค้างจ่ายคืน (Reimbursement)
+model Reimbursement {
+  id           Int       @id @default(autoincrement())
+  amount       Decimal   @default(0) @db.Decimal(15, 2)
+  buildingId   Int
+  month        Int       // เดือน (1-12)
+  year         Int       // ปี ค.ศ. (เช่น 2026)
+  creditorName String    // ชื่อคนที่ต้องคืนให้
+  description  String?   // หมายเหตุ/รายละเอียด
+  paidDate     DateTime? // วันที่จ่ายเงินจริง
+  isReturned   Boolean   @default(false) // คืนแล้วหรือยัง
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId, month, year])
 }

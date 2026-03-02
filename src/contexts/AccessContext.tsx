@@ -106,7 +106,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
 
     // ถ้าเป็น viewer และพยายามเข้าหน้าที่ห้าม → redirect ไป transactions
     if (role === 'viewer') {
-      const blockedPaths = ['/', '/users', '/employees']
+      const blockedPaths = ['/', '/users', '/employees', '/reimbursements']
       const isBlocked = blockedPaths.some(path => pathname === path)
 
       if (isBlocked) {

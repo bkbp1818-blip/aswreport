@@ -16,6 +16,7 @@ import {
   LogOut,
   Calendar,
   Clock,
+  HandCoins,
 } from 'lucide-react'
 import { useAccess } from '@/contexts/AccessContext'
 
@@ -45,6 +46,7 @@ const allNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, partnerOnly: true, viewerHidden: true },
   { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false, viewerHidden: false },
   { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true, viewerHidden: true },
+  { name: 'ยอดค้างจ่ายคืน', href: '/reimbursements', icon: HandCoins, partnerOnly: true, viewerHidden: true },
   { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true, viewerHidden: true },
   { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false, viewerHidden: false },
 ]
