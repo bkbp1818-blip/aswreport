@@ -241,6 +241,10 @@ npx vercel --prod        # Deploy
   - เพิ่ม HandCoins icon ใน Sidebar
   - ไฟล์ใหม่: `prisma/schema.prisma`, `src/app/api/reimbursements/route.ts`, `src/app/reimbursements/page.tsx`
   - ไฟล์แก้ไข: `src/components/Sidebar.tsx`, `src/contexts/AccessContext.tsx`
+- **เพิ่ม Category รายจ่ายใหม่: เครื่องนอน (Bedding)**
+  - icon Bed สี indigo
+  - อยู่ในตารางรายจ่ายหน้ากรอกข้อมูล (`/transactions`)
+  - ไฟล์แก้ไข: `src/lib/category-icons.tsx`, `src/app/api/categories/add-payment-channels/route.ts`
 
 ### v1.9.2 (March 2026)
 - **แก้บัก: กรองน้ำ Coway ไม่แสดงตัวเลขที่กรอก:**
