@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.9.2 |
+| **Version** | 1.10.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -65,7 +65,7 @@
 
 **หมายเหตุ VIEWER:**
 - Login ผ่านหน้า `/access/staff` (ไม่ใช่หน้า partner)
-- ไม่เห็น: Dashboard, เงินเดือนพนักงาน, จัดการผู้ใช้
+- ไม่เห็น: Dashboard, เงินเดือนพนักงาน, ยอดค้างจ่ายคืน, จัดการผู้ใช้
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
 - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), การ์ดกำไร/ขาดทุน+กราฟ
 - หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel
@@ -106,12 +106,22 @@
 - แสดงเงินเดือนต่ออาคาร
 - สถานะ active/inactive
 
-### 4. จัดการผู้ใช้ (`/users`)
+### 4. ยอดค้างจ่ายคืน (`/reimbursements`) ✨ NEW
+- ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
+- เพิ่ม/แก้ไข/ลบ/คืนเงิน/ยกเลิกคืนเงิน
+- **เลือกหลายอาคาร** — ยอดหารเฉลี่ยอัตโนมัติ (เช่น 3,000 ÷ 3 อาคาร = 1,000/อาคาร)
+- กรองตามอาคาร/เดือน/ปี
+- Summary Cards 3 ใบ: ยอดค้างจ่ายรวม (แดง) | ยอดคืนแล้ว (เขียว) | จำนวนรายการค้างจ่าย (เหลือง)
+- ตารางแสดง: วันที่ยืมจ่าย, อาคาร, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน, วันที่คืนเงิน, สถานะ
+- Badge สถานะ: สีแดง "ค้างจ่าย" / สีเขียว "คืนแล้ว"
+- **เฉพาะ PARTNER** (Staff/Viewer เข้าไม่ได้)
+
+### 5. จัดการผู้ใช้ (`/users`)
 - เพิ่ม/แก้ไข/ลบ ผู้ใช้
 - กำหนด role (PARTNER/STAFF)
 - เปิด/ปิด บัญชี
 
-### 5. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
+### 6. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
 - **ทั้ง Partner, Staff, และ Viewer เข้าถึงได้** (Viewer ไม่เห็นค่าเช่าอาคาร)
 - **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น**
 - **Tab ตั้งค่าอาคาร:**
@@ -137,7 +147,7 @@
     - ค่าเริ่มต้น 750 บาท/คน
     - Dialog สำหรับแก้ไขรายละเอียด
 
-### 6. ดาวน์โหลดรายงาน (`/reports`)
+### 7. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
 - แสดงทุก category (แม้ค่าเป็น 0)
 - รายจ่ายแสดงค่าจาก GlobalSettings พร้อมรายละเอียด
@@ -147,7 +157,7 @@
 - พิมพ์รายงาน (เหมือน PDF)
 - มี emoji ตามหมวดหมู่
 
-### 7. ระบบ Login (`/access`)
+### 8. ระบบ Login (`/access`)
 - เลือกประเภทผู้ใช้ (หุ้นส่วน/พนักงาน)
 - Login ด้วย username/password
 - รหัสผ่านเข้ารหัสด้วย bcrypt
@@ -173,6 +183,7 @@
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
 | `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ | - |
 | `/api/social-security` | GET, POST | จัดการเงินสมทบประกันสังคม ✨ | Auth |
+| `/api/reimbursements` | GET, POST, PUT, DELETE | จัดการยอดค้างจ่ายคืน ✨ | Partner |
 | `/api/categories/add-payment-channels` | POST | เพิ่ม categories ใหม่ ✨ | - |
 
 ---
@@ -214,7 +225,24 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.9.2 (Current - March 2026)
+### v1.10.0 (Current - March 2026)
+- **เพิ่มหน้ายอดค้างจ่ายคืน (`/reimbursements`):**
+  - ระบบติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
+  - เพิ่ม Reimbursement model ใน database (amount, buildingId, month, year, creditorName, description, paidDate, returnedDate, isReturned)
+  - API `/api/reimbursements` รองรับ GET (filter), POST (หลายอาคาร), PUT, DELETE
+  - **เลือกหลายอาคาร** เมื่อเพิ่มรายการ — ยอดหารเฉลี่ยอัตโนมัติ (checkbox)
+  - **Dropdown เจ้าหนี้** แทนการพิมพ์: ป๊า, แบงค์, พลอย, ASW
+  - กรองตามอาคาร (มี "ทุกอาคาร") / เดือน / ปี
+  - Summary Cards 3 ใบ: ยอดค้างจ่ายรวม | ยอดคืนแล้ว | จำนวนรายการค้างจ่าย
+  - ตาราง: วันที่ยืมจ่าย, อาคาร, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน, วันที่คืนเงิน, สถานะ, จัดการ
+  - Badge สถานะ: สีแดง "ค้างจ่าย" / สีเขียว "คืนแล้ว"
+  - ปุ่มจัดการ: คืนเงิน/ยกเลิกคืน, แก้ไข, ลบ
+  - เฉพาะ PARTNER เท่านั้น (เพิ่ม Sidebar menu + block Viewer/Staff)
+  - เพิ่ม HandCoins icon ใน Sidebar
+  - ไฟล์ใหม่: `prisma/schema.prisma`, `src/app/api/reimbursements/route.ts`, `src/app/reimbursements/page.tsx`
+  - ไฟล์แก้ไข: `src/components/Sidebar.tsx`, `src/contexts/AccessContext.tsx`
+
+### v1.9.2 (March 2026)
 - **แก้บัก: กรองน้ำ Coway ไม่แสดงตัวเลขที่กรอก:**
   - สาเหตุ: ข้อมูล Coway ถูกบันทึกด้วย `targetType: 'SETTINGS'` แต่ถูกโหลดกลับด้วย `targetType: 'TRANSACTION'` ทำให้ระบบหาไม่เจอ
   - แก้ `fetchExpenseHistory` ให้ใช้ `targetType: 'SETTINGS'` สำหรับ Coway
@@ -582,7 +610,23 @@ npx vercel --prod        # Deploy
 | year | Int | ปี |
 | createdAt | DateTime | วันที่สร้าง |
 
-### SocialSecurityContribution ✨ NEW
+### Reimbursement ✨ NEW
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| amount | Decimal | จำนวนเงิน |
+| buildingId | Int | FK อาคาร |
+| month | Int | เดือน (1-12) |
+| year | Int | ปี |
+| creditorName | String | ชื่อเจ้าหนี้ (ป๊า/แบงค์/พลอย/ASW) |
+| description | String? | หมายเหตุ/รายละเอียด |
+| paidDate | DateTime? | วันที่ยืมจ่ายเงิน |
+| returnedDate | DateTime? | วันที่คืนเงิน |
+| isReturned | Boolean | สถานะคืนแล้วหรือยัง (default: false) |
+| createdAt | DateTime | วันที่สร้าง |
+| updatedAt | DateTime | วันที่อัปเดต |
+
+### SocialSecurityContribution
 | Field | Type | คำอธิบาย |
 |-------|------|----------|
 | id | Int | Primary key |
