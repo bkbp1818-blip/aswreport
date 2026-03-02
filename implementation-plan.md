@@ -245,6 +245,10 @@ npx vercel --prod        # Deploy
   - icon Bed สี indigo
   - อยู่ในตารางรายจ่ายหน้ากรอกข้อมูล (`/transactions`)
   - ไฟล์แก้ไข: `src/lib/category-icons.tsx`, `src/app/api/categories/add-payment-channels/route.ts`
+- **เพิ่ม Category รายจ่ายใหม่: ค่าตกแต่งอาคาร (Decoration)**
+  - icon Paintbrush สี rose
+  - อยู่ต่อจาก ค่าซ่อมบำรุงอาคาร ในตารางรายจ่าย
+- **ลบ Category รายได้: ค่าเช่าจาก RB** (ไม่ใช้แล้ว)
 
 ### v1.9.2 (March 2026)
 - **แก้บัก: กรองน้ำ Coway ไม่แสดงตัวเลขที่กรอก:**
