@@ -55,6 +55,13 @@ interface Reimbursement {
   building: Building
 }
 
+const CREDITORS = [
+  { value: 'ป๊า', label: 'ป๊า' },
+  { value: 'แบงค์', label: 'แบงค์' },
+  { value: 'พลอย', label: 'พลอย' },
+  { value: 'ASW', label: 'ASW' },
+]
+
 const currentDate = new Date()
 const currentMonth = currentDate.getMonth() + 1
 const currentYear = currentDate.getFullYear()
@@ -405,15 +412,24 @@ export default function ReimbursementsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="creditorName">ชื่อคนที่ต้องคืนให้ *</Label>
-                <Input
-                  id="creditorName"
+                <Label>ชื่อคนที่ต้องคืนให้ *</Label>
+                <Select
                   value={formData.creditorName}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, creditorName: e.target.value }))
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, creditorName: value }))
                   }
-                  placeholder="เช่น สมชาย, ร้าน ABC"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกชื่อเจ้าหนี้" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CREDITORS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">รายละเอียด</Label>
