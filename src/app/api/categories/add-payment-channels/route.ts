@@ -7,6 +7,43 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
+    if (action === 'bedding') {
+      const name = 'เครื่องนอน'
+
+      const existing = await prisma.category.findFirst({
+        where: { name }
+      })
+
+      if (existing) {
+        return NextResponse.json({
+          success: false,
+          message: 'Category already exists',
+          existing
+        })
+      }
+
+      // วางหลัง ค่าซ่อมบำรุงอาคาร (order ประมาณ 19)
+      const refCategory = await prisma.category.findFirst({
+        where: { name: { contains: 'ซ่อมบำรุงอาคาร' } }
+      })
+
+      const order = refCategory ? refCategory.order + 1 : 21
+
+      const category = await prisma.category.create({
+        data: {
+          name,
+          type: 'EXPENSE',
+          order,
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: 'Created เครื่องนอน category',
+        created: category
+      })
+    }
+
     if (action === 'paypal-fee') {
       // เพิ่ม PayPal Fee expense
       const name = 'ค่า Fee จาก PayPal'

@@ -79,6 +79,7 @@ const iconColors: Record<string, string> = {
   'ค่าดูแลจราจร': 'text-[#E74C3C]',
   'ประกันสังคม': 'text-[#E91E63]',
   'รายจ่ายหน้างาน': 'text-[#F28482]',
+  'เครื่องนอน': 'text-indigo-500',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -215,6 +216,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('ประกันสังคม')) {
     return { Icon: HeartPulse, color: iconColors['ประกันสังคม'] }
+  }
+  if (lowerName.includes('เครื่องนอน')) {
+    return { Icon: Bed, color: iconColors['เครื่องนอน'] }
   }
 
   // Default
