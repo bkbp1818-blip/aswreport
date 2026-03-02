@@ -7,6 +7,42 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
+    if (action === 'decoration') {
+      const name = 'ค่าตกแต่งอาคาร'
+
+      const existing = await prisma.category.findFirst({
+        where: { name }
+      })
+
+      if (existing) {
+        return NextResponse.json({
+          success: false,
+          message: 'Category already exists',
+          existing
+        })
+      }
+
+      const refCategory = await prisma.category.findFirst({
+        where: { name: { contains: 'ซ่อมบำรุงอาคาร' } }
+      })
+
+      const order = refCategory ? refCategory.order + 1 : 20
+
+      const category = await prisma.category.create({
+        data: {
+          name,
+          type: 'EXPENSE',
+          order,
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: 'Created ค่าตกแต่งอาคาร category',
+        created: category
+      })
+    }
+
     if (action === 'bedding') {
       const name = 'เครื่องนอน'
 

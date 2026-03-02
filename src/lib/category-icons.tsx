@@ -30,6 +30,7 @@ import {
   TrafficCone,
   HeartPulse,
   AlertTriangle,
+  Paintbrush,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -80,6 +81,7 @@ const iconColors: Record<string, string> = {
   'ประกันสังคม': 'text-[#E91E63]',
   'รายจ่ายหน้างาน': 'text-[#F28482]',
   'เครื่องนอน': 'text-indigo-500',
+  'ตกแต่งอาคาร': 'text-rose-500',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -216,6 +218,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('ประกันสังคม')) {
     return { Icon: HeartPulse, color: iconColors['ประกันสังคม'] }
+  }
+  if (lowerName.includes('ตกแต่งอาคาร') || lowerName.includes('ตกแต่ง')) {
+    return { Icon: Paintbrush, color: iconColors['ตกแต่งอาคาร'] }
   }
   if (lowerName.includes('เครื่องนอน')) {
     return { Icon: Bed, color: iconColors['เครื่องนอน'] }
