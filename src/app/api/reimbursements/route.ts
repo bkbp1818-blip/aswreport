@@ -43,38 +43,45 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - เพิ่มรายการใหม่
+// POST - เพิ่มรายการใหม่ (รองรับหลายอาคาร หารเฉลี่ย)
 export async function POST(request: NextRequest) {
   try {
     await requirePartner()
 
     const body = await request.json()
-    const { amount, buildingId, month, year, creditorName, description, paidDate } = body
+    const { amount, buildingIds, month, year, creditorName, description, paidDate } = body
 
-    if (!amount || !buildingId || !month || !year || !creditorName) {
+    if (!amount || !buildingIds || !Array.isArray(buildingIds) || buildingIds.length === 0 || !month || !year || !creditorName) {
       return NextResponse.json(
         { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       )
     }
 
-    const reimbursement = await prisma.reimbursement.create({
-      data: {
-        amount: parseFloat(amount),
-        buildingId: parseInt(buildingId),
-        month: parseInt(month),
-        year: parseInt(year),
-        creditorName,
-        description: description || null,
-        paidDate: paidDate ? new Date(paidDate) : null,
-        isReturned: false,
-      },
-      include: {
-        building: { select: { id: true, name: true, code: true } },
-      },
-    })
+    const totalAmount = parseFloat(amount)
+    const splitAmount = totalAmount / buildingIds.length
 
-    return NextResponse.json(reimbursement)
+    const reimbursements = await prisma.$transaction(
+      buildingIds.map((bid: string) =>
+        prisma.reimbursement.create({
+          data: {
+            amount: splitAmount,
+            buildingId: parseInt(bid),
+            month: parseInt(month),
+            year: parseInt(year),
+            creditorName,
+            description: description || null,
+            paidDate: paidDate ? new Date(paidDate) : null,
+            isReturned: false,
+          },
+          include: {
+            building: { select: { id: true, name: true, code: true } },
+          },
+        })
+      )
+    )
+
+    return NextResponse.json(reimbursements)
   } catch (error) {
     const authError = handleAuthError(error)
     if (authError) {

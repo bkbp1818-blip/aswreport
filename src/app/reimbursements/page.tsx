@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Plus, Pencil, Trash2, Loader2, HandCoins, CheckCircle, AlertCircle, RotateCcw } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
@@ -72,7 +73,7 @@ export default function ReimbursementsPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    buildingId: '',
+    buildingIds: [] as string[],
     month: currentMonth.toString(),
     year: currentYear.toString(),
     creditorName: '',
@@ -123,7 +124,7 @@ export default function ReimbursementsPage() {
   // Reset form
   const resetForm = () => {
     setFormData({
-      buildingId: '',
+      buildingIds: [],
       month: currentMonth.toString(),
       year: currentYear.toString(),
       creditorName: '',
@@ -134,11 +135,11 @@ export default function ReimbursementsPage() {
     setEditingItem(null)
   }
 
-  // เปิด dialog สำหรับแก้ไข
+  // เปิด dialog สำหรับแก้ไข (แก้ไขทีละ 1 อาคาร เพราะเป็นรายการที่สร้างแล้ว)
   const handleEdit = (item: Reimbursement) => {
     setEditingItem(item)
     setFormData({
-      buildingId: item.buildingId.toString(),
+      buildingIds: [item.buildingId.toString()],
       month: item.month.toString(),
       year: item.year.toString(),
       creditorName: item.creditorName,
@@ -151,8 +152,8 @@ export default function ReimbursementsPage() {
 
   // บันทึกรายการ
   const handleSave = async () => {
-    if (!formData.buildingId || !formData.creditorName || !formData.amount) {
-      alert('กรุณากรอกอาคาร ชื่อเจ้าหนี้ และจำนวนเงิน')
+    if (formData.buildingIds.length === 0 || !formData.creditorName || !formData.amount) {
+      alert('กรุณาเลือกอาคาร กรอกชื่อเจ้าหนี้ และจำนวนเงิน')
       return
     }
 
@@ -160,7 +161,16 @@ export default function ReimbursementsPage() {
     try {
       const method = editingItem ? 'PUT' : 'POST'
       const body = editingItem
-        ? { id: editingItem.id, ...formData }
+        ? {
+            id: editingItem.id,
+            buildingId: formData.buildingIds[0],
+            month: formData.month,
+            year: formData.year,
+            creditorName: formData.creditorName,
+            description: formData.description,
+            amount: formData.amount,
+            paidDate: formData.paidDate,
+          }
         : formData
 
       const res = await fetch('/api/reimbursements', {
@@ -304,24 +314,48 @@ export default function ReimbursementsPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>อาคาร *</Label>
-                <Select
-                  value={formData.buildingId}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, buildingId: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกอาคาร" />
-                  </SelectTrigger>
-                  <SelectContent>
+                <Label>อาคาร * {!editingItem && formData.buildingIds.length > 1 && <span className="text-xs text-[#84A59D] font-normal">(เลือก {formData.buildingIds.length} อาคาร — ยอดจะหารเฉลี่ย)</span>}</Label>
+                {editingItem ? (
+                  <Select
+                    value={formData.buildingIds[0] || ''}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, buildingIds: [value] }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกอาคาร" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {buildings.map((b) => (
+                        <SelectItem key={b.id} value={b.id.toString()}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="rounded-md border p-3 space-y-2">
                     {buildings.map((b) => (
-                      <SelectItem key={b.id} value={b.id.toString()}>
-                        {b.name}
-                      </SelectItem>
+                      <div key={b.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`building-${b.id}`}
+                          checked={formData.buildingIds.includes(b.id.toString())}
+                          onCheckedChange={(checked) => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              buildingIds: checked
+                                ? [...prev.buildingIds, b.id.toString()]
+                                : prev.buildingIds.filter((id) => id !== b.id.toString()),
+                            }))
+                          }}
+                        />
+                        <label htmlFor={`building-${b.id}`} className="text-sm cursor-pointer">
+                          {b.name}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -388,7 +422,7 @@ export default function ReimbursementsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">จำนวนเงิน (บาท) *</Label>
+                <Label htmlFor="amount">จำนวนเงินรวม (บาท) *</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -398,6 +432,11 @@ export default function ReimbursementsPage() {
                   }
                   placeholder="0"
                 />
+                {!editingItem && formData.buildingIds.length > 1 && formData.amount && (
+                  <p className="text-xs text-[#84A59D]">
+                    = {formatNumber(parseFloat(formData.amount) / formData.buildingIds.length)} บาท/อาคาร ({formData.buildingIds.length} อาคาร)
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paidDate">วันที่จ่ายเงิน</Label>
