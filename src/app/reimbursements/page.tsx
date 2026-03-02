@@ -50,6 +50,7 @@ interface Reimbursement {
   creditorName: string
   description: string | null
   paidDate: string | null
+  returnedDate: string | null
   isReturned: boolean
   building: Building
 }
@@ -80,6 +81,7 @@ export default function ReimbursementsPage() {
     description: '',
     amount: '',
     paidDate: '',
+    returnedDate: '',
   })
 
   const years = generateYears()
@@ -131,6 +133,7 @@ export default function ReimbursementsPage() {
       description: '',
       amount: '',
       paidDate: '',
+      returnedDate: '',
     })
     setEditingItem(null)
   }
@@ -146,6 +149,7 @@ export default function ReimbursementsPage() {
       description: item.description || '',
       amount: Number(item.amount).toString(),
       paidDate: item.paidDate ? item.paidDate.split('T')[0] : '',
+      returnedDate: item.returnedDate ? item.returnedDate.split('T')[0] : '',
     })
     setIsDialogOpen(true)
   }
@@ -170,6 +174,7 @@ export default function ReimbursementsPage() {
             description: formData.description,
             amount: formData.amount,
             paidDate: formData.paidDate,
+            returnedDate: formData.returnedDate,
           }
         : formData
 
@@ -438,16 +443,29 @@ export default function ReimbursementsPage() {
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="paidDate">วันที่จ่ายเงิน</Label>
-                <Input
-                  id="paidDate"
-                  type="date"
-                  value={formData.paidDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, paidDate: e.target.value }))
-                  }
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paidDate">วันที่ยืมจ่ายเงิน</Label>
+                  <Input
+                    id="paidDate"
+                    type="date"
+                    value={formData.paidDate}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, paidDate: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="returnedDate">วันที่คืนเงิน</Label>
+                  <Input
+                    id="returnedDate"
+                    type="date"
+                    value={formData.returnedDate}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, returnedDate: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -609,11 +627,12 @@ export default function ReimbursementsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
-                  <TableHead className="text-[#333] font-semibold">วันที่จ่าย</TableHead>
+                  <TableHead className="text-[#333] font-semibold">วันที่ยืมจ่าย</TableHead>
                   <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
                   <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
                   <TableHead className="text-[#333] font-semibold">รายละเอียด</TableHead>
                   <TableHead className="text-[#333] font-semibold text-right">จำนวนเงิน</TableHead>
+                  <TableHead className="text-[#333] font-semibold">วันที่คืนเงิน</TableHead>
                   <TableHead className="text-[#333] font-semibold text-center">สถานะ</TableHead>
                   <TableHead className="text-[#333] font-semibold text-center">จัดการ</TableHead>
                 </TableRow>
@@ -635,6 +654,9 @@ export default function ReimbursementsPage() {
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-right">
                       {formatNumber(Number(item.amount))}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(item.returnedDate)}
                     </TableCell>
                     <TableCell className="text-center">
                       {item.isReturned ? (

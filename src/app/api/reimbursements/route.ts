@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     await requirePartner()
 
     const body = await request.json()
-    const { amount, buildingIds, month, year, creditorName, description, paidDate } = body
+    const { amount, buildingIds, month, year, creditorName, description, paidDate, returnedDate } = body
 
     if (!amount || !buildingIds || !Array.isArray(buildingIds) || buildingIds.length === 0 || !month || !year || !creditorName) {
       return NextResponse.json(
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
             creditorName,
             description: description || null,
             paidDate: paidDate ? new Date(paidDate) : null,
+            returnedDate: returnedDate ? new Date(returnedDate) : null,
             isReturned: false,
           },
           include: {
@@ -101,7 +102,7 @@ export async function PUT(request: NextRequest) {
     await requirePartner()
 
     const body = await request.json()
-    const { id, amount, buildingId, month, year, creditorName, description, paidDate, isReturned } = body
+    const { id, amount, buildingId, month, year, creditorName, description, paidDate, returnedDate, isReturned } = body
 
     if (!id) {
       return NextResponse.json(
@@ -118,6 +119,7 @@ export async function PUT(request: NextRequest) {
     if (creditorName !== undefined) data.creditorName = creditorName
     if (description !== undefined) data.description = description || null
     if (paidDate !== undefined) data.paidDate = paidDate ? new Date(paidDate) : null
+    if (returnedDate !== undefined) data.returnedDate = returnedDate ? new Date(returnedDate) : null
     if (isReturned !== undefined) data.isReturned = isReturned
 
     const reimbursement = await prisma.reimbursement.update({

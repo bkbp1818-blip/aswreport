@@ -176,7 +176,8 @@ model Reimbursement {
   year         Int       // ปี ค.ศ. (เช่น 2026)
   creditorName String    // ชื่อคนที่ต้องคืนให้
   description  String?   // หมายเหตุ/รายละเอียด
-  paidDate     DateTime? // วันที่จ่ายเงินจริง
+  paidDate     DateTime? // วันที่ยืมจ่ายเงิน
+  returnedDate DateTime? // วันที่คืนเงิน
   isReturned   Boolean   @default(false) // คืนแล้วหรือยัง
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
