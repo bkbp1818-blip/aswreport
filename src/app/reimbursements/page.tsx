@@ -109,7 +109,7 @@ export default function ReimbursementsPage() {
     try {
       const params = new URLSearchParams()
       if (filterBuilding !== 'all') params.set('buildingId', filterBuilding)
-      if (filterMonth) params.set('month', filterMonth)
+      if (filterMonth && filterMonth !== 'all') params.set('month', filterMonth)
       if (filterYear) params.set('year', filterYear)
 
       const res = await fetch(`/api/reimbursements?${params.toString()}`)
@@ -536,6 +536,7 @@ export default function ReimbursementsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">ทุกเดือน</SelectItem>
                   {MONTHS.map((m) => (
                     <SelectItem key={m.value} value={m.value.toString()}>
                       {m.label}
