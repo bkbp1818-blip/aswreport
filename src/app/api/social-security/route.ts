@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // คำนวณยอดรวมและหาร 5 อาคาร
+    // คำนวณยอดรวมและหาร 3 อาคาร (Chinatown, Yaowarat 103, NANA)
     const totalAmount = contributions.reduce(
       (sum, c) => sum + Number(c.amount),
       0
     )
-    const buildingCount = 5
+    const buildingCount = 3
     const amountPerBuilding = totalAmount / buildingCount
 
     return NextResponse.json({
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       (sum, c) => sum + Number(c.amount),
       0
     )
-    const buildingCount = 5
+    const buildingCount = 3
     const amountPerBuilding = totalAmount / buildingCount
 
     return NextResponse.json({

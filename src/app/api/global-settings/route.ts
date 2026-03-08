@@ -19,9 +19,6 @@ const expenseFields = [
   'foodExpense',
 ] as const
 
-// ฟิลด์ที่หาร 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
-const threeWaySplitFields = ['maxCareExpense', 'trafficCareExpense', 'shippingExpense']
-
 // GET - ดึงค่าตั้งค่าส่วนกลาง
 export async function GET() {
   try {
@@ -38,26 +35,16 @@ export async function GET() {
     // ดึงจำนวนอาคารทั้งหมด
     const buildingCount = await prisma.building.count()
 
-    // ค่าดูแล MAX และค่าดูแลจราจร หารเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
-    const careExpenseDivisor = 3
-
     // สร้าง response object
     const response: Record<string, number | Date> = {
       id: globalSettings.id,
       buildingCount,
-      careExpenseDivisor, // จำนวนอาคารที่ร่วมจ่ายค่าดูแล MAX และจราจร
     }
 
-    // เพิ่มค่าใช้จ่ายแต่ละประเภท และค่าที่หารแล้ว
+    // เพิ่มค่าใช้จ่ายแต่ละประเภท (ไม่ต้องหาร - กรอกค่าแต่ละอาคารโดยตรง)
     for (const field of expenseFields) {
       const value = Number(globalSettings[field]) || 0
       response[field] = value
-      // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า หาร 3 อาคาร, ค่าอื่นๆ หารตามจำนวนอาคารทั้งหมด
-      if (threeWaySplitFields.includes(field)) {
-        response[`${field}PerBuilding`] = careExpenseDivisor > 0 ? value / careExpenseDivisor : 0
-      } else {
-        response[`${field}PerBuilding`] = buildingCount > 0 ? value / buildingCount : 0
-      }
     }
 
     return NextResponse.json(response)

@@ -211,7 +211,7 @@ async function calculateBuildingSummary(
   const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
   const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
 
-  // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 5 อาคาร)
+  // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({
     where: { month, year },
   })
@@ -219,14 +219,18 @@ async function calculateBuildingSummary(
     (sum, c) => sum + Number(c.amount),
     0
   )
-  const socialSecurityDivisor = 5 // หาร 5 อาคาร
-  const socialSecurityPerBuilding = totalSocialSecurity / socialSecurityDivisor
+  const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
+  const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
+  const isEligibleForSocialSecurity = eligibleBuildingsForSocialSecurity.includes(building.code)
+  const socialSecurityPerBuilding = isEligibleForSocialSecurity
+    ? totalSocialSecurity / socialSecurityDivisor
+    : 0
 
-  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (ตามเดือน/ปี)
+  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (แยกแต่ละอาคาร - ไม่ต้องหาร)
   const globalExpenseHistory = await prisma.expenseHistory.findMany({
     where: {
       targetType: 'GLOBAL_SETTINGS',
-      targetId: null,
+      targetId: buildingId,
       month,
       year,
     },
@@ -249,10 +253,7 @@ async function calculateBuildingSummary(
     'foodExpense',
   ]
 
-  // ฟิลด์ที่หาร 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
-  const threeWaySplitFields = ['maxCareExpense', 'trafficCareExpense', 'shippingExpense']
-
-  // คำนวณยอดรวมจาก ExpenseHistory
+  // คำนวณยอดรวมจาก ExpenseHistory (ค่าที่กรอกมาเป็นค่าของอาคารนี้โดยตรง ไม่ต้องหาร)
   const globalExpenseTotals: Record<string, number> = {}
   for (const field of globalExpenseFields) {
     globalExpenseTotals[field] = 0
@@ -275,50 +276,20 @@ async function calculateBuildingSummary(
     globalExpenseTotals[field] = Math.max(0, globalExpenseTotals[field])
   }
 
-  // ค่าดูแล MAX และค่าดูแลจราจร หารเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
-  const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
-  const isEligibleForCareExpense = eligibleBuildingsForCare.includes(building.code)
-  const careExpenseDivisor = 3 // จำนวนอาคารที่ร่วมจ่ายค่าดูแล
-
-  const maxCareExpensePerBuilding = isEligibleForCareExpense
-    ? globalExpenseTotals.maxCareExpense / careExpenseDivisor
-    : 0
-  const trafficCareExpensePerBuilding = isEligibleForCareExpense
-    ? globalExpenseTotals.trafficCareExpense / careExpenseDivisor
-    : 0
-  const shippingExpensePerBuilding = isEligibleForCareExpense
-    ? globalExpenseTotals.shippingExpense / careExpenseDivisor
-    : 0
-  const amenityExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.amenityExpense / buildingCount
-    : 0
-  const waterBottleExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.waterBottleExpense / buildingCount
-    : 0
-  const cookieExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.cookieExpense / buildingCount
-    : 0
-  const coffeeExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.coffeeExpense / buildingCount
-    : 0
-  const fuelExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.fuelExpense / buildingCount
-    : 0
-  const parkingExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.parkingExpense / buildingCount
-    : 0
-  const motorcycleMaintenanceExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.motorcycleMaintenanceExpense / buildingCount
-    : 0
-  const maidTravelExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.maidTravelExpense / buildingCount
-    : 0
-  const cleaningSupplyExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.cleaningSupplyExpense / buildingCount
-    : 0
-  const foodExpensePerBuilding = buildingCount > 0
-    ? globalExpenseTotals.foodExpense / buildingCount
-    : 0
+  // ค่าใช้จ่ายส่วนกลางแต่ละอาคาร (กรอกโดยตรง ไม่ต้องหาร)
+  const maxCareExpensePerBuilding = globalExpenseTotals.maxCareExpense
+  const trafficCareExpensePerBuilding = globalExpenseTotals.trafficCareExpense
+  const shippingExpensePerBuilding = globalExpenseTotals.shippingExpense
+  const amenityExpensePerBuilding = globalExpenseTotals.amenityExpense
+  const waterBottleExpensePerBuilding = globalExpenseTotals.waterBottleExpense
+  const cookieExpensePerBuilding = globalExpenseTotals.cookieExpense
+  const coffeeExpensePerBuilding = globalExpenseTotals.coffeeExpense
+  const fuelExpensePerBuilding = globalExpenseTotals.fuelExpense
+  const parkingExpensePerBuilding = globalExpenseTotals.parkingExpense
+  const motorcycleMaintenanceExpensePerBuilding = globalExpenseTotals.motorcycleMaintenanceExpense
+  const maidTravelExpensePerBuilding = globalExpenseTotals.maidTravelExpense
+  const cleaningSupplyExpensePerBuilding = globalExpenseTotals.cleaningSupplyExpense
+  const foodExpensePerBuilding = globalExpenseTotals.foodExpense
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({
@@ -416,7 +387,7 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่าเดินทางแม่บ้าน'] = maidTravelExpensePerBuilding
   expenseByCategory['ค่าอุปกรณ์ทำความสะอาด'] = cleaningSupplyExpensePerBuilding
   expenseByCategory['ค่าอาหาร'] = foodExpensePerBuilding
-  // เพิ่มเงินสมทบประกันสังคม (หาร 5 อาคาร)
+  // เพิ่มเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   expenseByCategory['เงินสมทบประกันสังคม'] = socialSecurityPerBuilding
 
   // คำนวณตามสูตร

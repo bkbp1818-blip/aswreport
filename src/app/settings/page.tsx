@@ -72,7 +72,6 @@ interface Settings {
 interface GlobalSettings {
   id: number
   buildingCount: number
-  careExpenseDivisor: number
   maxCareExpense: number
   trafficCareExpense: number
   shippingExpense: number
@@ -93,10 +92,9 @@ interface GlobalSettings {
 
 interface GlobalTotals {
   totals: Record<string, number>
-  totalsPerBuilding: Record<string, number>
   totalGlobalExpense: number
   buildingCount: number
-  careExpenseDivisor: number
+  buildingId: number | null
 }
 
 interface ExpenseHistoryItem {
@@ -139,13 +137,14 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('building-settings')
 
-  // Global settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี
+  // Global settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี/อาคาร
   const [globalSelectedMonth, setGlobalSelectedMonth] = useState<string>(
     String(new Date().getMonth() + 1)
   )
   const [globalSelectedYear, setGlobalSelectedYear] = useState<string>(
     String(new Date().getFullYear())
   )
+  const [globalSelectedBuilding, setGlobalSelectedBuilding] = useState<string>('')
   const [globalTotals, setGlobalTotals] = useState<GlobalTotals | null>(null)
   const [loadingGlobal, setLoadingGlobal] = useState(false)
   const years = generateYears()
@@ -230,7 +229,7 @@ export default function SettingsPage() {
       if (adjustTarget === 'building') {
         fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
       } else {
-        fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
+        fetchGlobalTotals(globalSelectedMonth, globalSelectedYear, globalSelectedBuilding)
       }
     }
   }
@@ -261,7 +260,7 @@ export default function SettingsPage() {
 
     // Fetch ประวัติ
     const targetType = target === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-    const targetId = target === 'building' ? parseInt(selectedBuilding) : null
+    const targetId = target === 'building' ? parseInt(selectedBuilding) : parseInt(globalSelectedBuilding)
     fetchExpenseHistory(targetType, targetId, fieldKey, currentMonth, currentYear)
   }
 
@@ -270,7 +269,7 @@ export default function SettingsPage() {
     setAdjustMonth(month)
     setAdjustYear(year)
     const targetType = adjustTarget === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-    const targetId = adjustTarget === 'building' ? parseInt(selectedBuilding) : null
+    const targetId = adjustTarget === 'building' ? parseInt(selectedBuilding) : parseInt(globalSelectedBuilding)
     fetchExpenseHistory(targetType, targetId, adjustFieldKey, month, year)
   }
 
@@ -290,7 +289,7 @@ export default function SettingsPage() {
           fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
         } else {
           // Refresh global totals
-          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
+          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear, globalSelectedBuilding)
         }
       }
     } catch (error) {
@@ -312,7 +311,7 @@ export default function SettingsPage() {
     const effectiveAction = getEffectiveAction()
     try {
       const targetType = adjustTarget === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-      const targetId = adjustTarget === 'building' ? selectedBuilding : null
+      const targetId = adjustTarget === 'building' ? selectedBuilding : globalSelectedBuilding
 
       const res = await fetch('/api/expense-history', {
         method: 'POST',
@@ -340,7 +339,7 @@ export default function SettingsPage() {
           fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
         } else {
           // Refresh global totals
-          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
+          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear, globalSelectedBuilding)
         }
         // Reset form
         setAdjustAmount('')
@@ -423,11 +422,12 @@ export default function SettingsPage() {
     }
   }
 
-  // ดึง global totals จาก ExpenseHistory
-  const fetchGlobalTotals = useCallback(async (month: string, year: string) => {
+  // ดึง global totals จาก ExpenseHistory (แยกแต่ละอาคาร)
+  const fetchGlobalTotals = useCallback(async (month: string, year: string, buildingId: string) => {
+    if (!buildingId) return
     setLoadingGlobal(true)
     try {
-      const res = await fetch(`/api/expense-history/global-totals?month=${month}&year=${year}`)
+      const res = await fetch(`/api/expense-history/global-totals?month=${month}&year=${year}&buildingId=${buildingId}`)
       const data = await res.json()
       if (res.ok) {
         setGlobalTotals(data)
@@ -507,6 +507,7 @@ export default function SettingsPage() {
         setBuildings(buildingsData)
         if (buildingsData.length > 0) {
           setSelectedBuilding(String(buildingsData[0].id))
+          setGlobalSelectedBuilding(String(buildingsData[0].id))
         }
         setGlobalSettings(globalData)
       })
@@ -514,10 +515,12 @@ export default function SettingsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // โหลด global totals เมื่อเปลี่ยนเดือน/ปี
+  // โหลด global totals เมื่อเปลี่ยนอาคาร/เดือน/ปี
   useEffect(() => {
-    fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
-  }, [globalSelectedMonth, globalSelectedYear, fetchGlobalTotals])
+    if (globalSelectedBuilding) {
+      fetchGlobalTotals(globalSelectedMonth, globalSelectedYear, globalSelectedBuilding)
+    }
+  }, [globalSelectedMonth, globalSelectedYear, globalSelectedBuilding, fetchGlobalTotals])
 
   // โหลด settings totals เมื่อเปลี่ยนอาคาร หรือ เดือน/ปี
   useEffect(() => {
@@ -765,10 +768,34 @@ export default function SettingsPage() {
                 ค่าใช้จ่ายส่วนกลาง
               </CardTitle>
               <CardDescription className="text-white/80 text-xs sm:text-sm">
-                ค่าใช้จ่ายที่ใช้ร่วมกันทุกอาคาร (หาร {globalTotals?.buildingCount || 0} อาคาร)
+                กรอกค่าใช้จ่ายส่วนกลางแยกแต่ละอาคาร
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6 bg-gradient-to-b from-[#9B59B6]/5 to-white">
+              {/* Selector อาคาร */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-[#9B59B6]/10 rounded-lg">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-[#9B59B6]" />
+                <span className="text-xs sm:text-sm font-medium text-[#9B59B6]">อาคาร:</span>
+                <Select value={globalSelectedBuilding} onValueChange={setGlobalSelectedBuilding}>
+                  <SelectTrigger className="w-full sm:w-[200px] bg-white text-xs sm:text-sm">
+                    <SelectValue placeholder="เลือกอาคาร" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {buildings.map((b) => (
+                      <SelectItem key={b.id} value={String(b.id)}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="h-3 w-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: getBuildingColor(b.id) }}
+                          />
+                          {b.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Selector เดือน/ปี */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-[#9B59B6]/10 rounded-lg">
                 <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-[#9B59B6]" />
@@ -820,8 +847,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals?.totalsPerBuilding?.maxCareExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals?.totals?.maxCareExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -842,8 +869,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals?.totalsPerBuilding?.trafficCareExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals?.totals?.trafficCareExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -864,8 +891,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'shippingExpense', 'ค่าขนส่งสินค้า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร 3 อาคาร</span>
-                    <span className="font-semibold text-orange-600">{formatNumber(globalTotals?.totalsPerBuilding?.shippingExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-orange-600">{formatNumber(globalTotals?.totals?.shippingExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -886,8 +913,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'amenityExpense', 'ค่า Amenity', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-pink-500">{formatNumber(globalTotals?.totalsPerBuilding?.amenityExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-pink-500">{formatNumber(globalTotals?.totals?.amenityExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -908,8 +935,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'waterBottleExpense', 'ค่าน้ำเปล่า', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-cyan-500">{formatNumber(globalTotals?.totalsPerBuilding?.waterBottleExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-cyan-500">{formatNumber(globalTotals?.totals?.waterBottleExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -930,8 +957,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cookieExpense', 'ค่าขนมคุ้กกี้', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-600">{formatNumber(globalTotals?.totalsPerBuilding?.cookieExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-amber-600">{formatNumber(globalTotals?.totals?.cookieExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -952,8 +979,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeExpense', 'ค่ากาแฟซอง', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-700">{formatNumber(globalTotals?.totalsPerBuilding?.coffeeExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-amber-700">{formatNumber(globalTotals?.totals?.coffeeExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -974,8 +1001,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'sugarExpense', 'ค่าน้ำตาลซอง', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-800">{formatNumber(globalTotals?.totalsPerBuilding?.sugarExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-amber-800">{formatNumber(globalTotals?.totals?.sugarExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -996,8 +1023,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'coffeeMateExpense', 'ค่าคอฟฟี่เมท', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-amber-900">{formatNumber(globalTotals?.totalsPerBuilding?.coffeeMateExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-amber-900">{formatNumber(globalTotals?.totals?.coffeeMateExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1018,8 +1045,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-gray-600">{formatNumber(globalTotals?.totalsPerBuilding?.fuelExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-gray-600">{formatNumber(globalTotals?.totals?.fuelExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1040,8 +1067,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-slate-600">{formatNumber(globalTotals?.totalsPerBuilding?.parkingExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-slate-600">{formatNumber(globalTotals?.totals?.parkingExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1062,8 +1089,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-rose-600">{formatNumber(globalTotals?.totalsPerBuilding?.motorcycleMaintenanceExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-rose-600">{formatNumber(globalTotals?.totals?.motorcycleMaintenanceExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1084,8 +1111,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maidTravelExpense', 'ค่าเดินทางแม่บ้าน', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-violet-600">{formatNumber(globalTotals?.totalsPerBuilding?.maidTravelExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-violet-600">{formatNumber(globalTotals?.totals?.maidTravelExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1106,8 +1133,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'cleaningSupplyExpense', 'ค่าอุปกรณ์ทำความสะอาด', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-teal-600">{formatNumber(globalTotals?.totalsPerBuilding?.cleaningSupplyExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-teal-600">{formatNumber(globalTotals?.totals?.cleaningSupplyExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1128,8 +1155,8 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร {globalTotals?.buildingCount || 0} อาคาร</span>
-                    <span className="font-semibold text-orange-500">{formatNumber(globalTotals?.totalsPerBuilding?.foodExpensePerBuilding || 0)} บาท/อาคาร</span>
+                    <span className="text-slate-400">ค่าใช้จ่ายอาคารนี้</span>
+                    <span className="font-semibold text-orange-500">{formatNumber(globalTotals?.totals?.foodExpense || 0)} บาท</span>
                   </div>
                 </div>
 
@@ -1148,7 +1175,7 @@ export default function SettingsPage() {
                     <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#E91E63] hover:bg-[#E91E63]/10" onClick={() => setSocialSecurityDialogOpen(true)}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร 5 อาคาร</span>
+                    <span className="text-slate-400">หาร 3 อาคาร (CT, YW, NANA)</span>
                     <span className="font-semibold text-[#E91E63]">{formatNumber(socialSecurityData?.amountPerBuilding || 0)} บาท/อาคาร</span>
                   </div>
                 </div>
@@ -1162,85 +1189,85 @@ export default function SettingsPage() {
                       <Globe className="h-4 w-4 text-[#9B59B6]" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-700">สรุปค่าใช้จ่ายต่ออาคาร</h4>
-                      <p className="text-[10px] text-slate-400">* หาร 3 อาคาร (CT, YW, NANA) | หาร {globalTotals.buildingCount} อาคาร (ทุกอาคาร)</p>
+                      <h4 className="font-semibold text-slate-700">สรุปค่าใช้จ่ายอาคารนี้</h4>
+                      <p className="text-[10px] text-slate-400">ค่าใช้จ่ายส่วนกลางของอาคาร {buildings.find(b => String(b.id) === globalSelectedBuilding)?.name || ''}</p>
                     </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#9B59B6]/10 text-sm">
                       <ShieldCheck className="h-4 w-4 text-[#9B59B6] flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าดูแล MAX</span>
-                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals.totalsPerBuilding?.maxCareExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals.totals?.maxCareExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E74C3C]/10 text-sm">
                       <TrafficCone className="h-4 w-4 text-[#E74C3C] flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าดูแลจราจร</span>
-                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals.totalsPerBuilding?.trafficCareExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals.totals?.trafficCareExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-500/10 text-sm">
                       <Truck className="h-4 w-4 text-orange-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าขนส่งสินค้า</span>
-                      <span className="font-semibold text-orange-600">{formatNumber(globalTotals.totalsPerBuilding?.shippingExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-orange-600">{formatNumber(globalTotals.totals?.shippingExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-pink-400/10 text-sm">
                       <Sparkles className="h-4 w-4 text-pink-500 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่า Amenity</span>
-                      <span className="font-semibold text-pink-500">{formatNumber(globalTotals.totalsPerBuilding?.amenityExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-pink-500">{formatNumber(globalTotals.totals?.amenityExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-cyan-400/10 text-sm">
                       <Droplets className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าน้ำเปล่า</span>
-                      <span className="font-semibold text-cyan-500">{formatNumber(globalTotals.totalsPerBuilding?.waterBottleExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-cyan-500">{formatNumber(globalTotals.totals?.waterBottleExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-400/10 text-sm">
                       <Cookie className="h-4 w-4 text-amber-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าขนมคุ้กกี้</span>
-                      <span className="font-semibold text-amber-600">{formatNumber(globalTotals.totalsPerBuilding?.cookieExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-amber-600">{formatNumber(globalTotals.totals?.cookieExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-700/10 text-sm">
                       <Coffee className="h-4 w-4 text-amber-700 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่ากาแฟซอง</span>
-                      <span className="font-semibold text-amber-700">{formatNumber(globalTotals.totalsPerBuilding?.coffeeExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-amber-700">{formatNumber(globalTotals.totals?.coffeeExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-800/10 text-sm">
                       <Coffee className="h-4 w-4 text-amber-800 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าน้ำตาลซอง</span>
-                      <span className="font-semibold text-amber-800">{formatNumber(globalTotals.totalsPerBuilding?.sugarExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-amber-800">{formatNumber(globalTotals.totals?.sugarExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-amber-900/10 text-sm">
                       <Coffee className="h-4 w-4 text-amber-900 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าคอฟฟี่เมท</span>
-                      <span className="font-semibold text-amber-900">{formatNumber(globalTotals.totalsPerBuilding?.coffeeMateExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-amber-900">{formatNumber(globalTotals.totals?.coffeeMateExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-500/10 text-sm">
                       <Fuel className="h-4 w-4 text-gray-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าน้ำมันรถ</span>
-                      <span className="font-semibold text-gray-600">{formatNumber(globalTotals.totalsPerBuilding?.fuelExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-gray-600">{formatNumber(globalTotals.totals?.fuelExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-500/10 text-sm">
                       <ParkingCircle className="h-4 w-4 text-slate-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าที่จอดรถ</span>
-                      <span className="font-semibold text-slate-600">{formatNumber(globalTotals.totalsPerBuilding?.parkingExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-slate-600">{formatNumber(globalTotals.totals?.parkingExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-rose-500/10 text-sm">
                       <Wrench className="h-4 w-4 text-rose-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าซ่อมบำรุงรถ</span>
-                      <span className="font-semibold text-rose-600">{formatNumber(globalTotals.totalsPerBuilding?.motorcycleMaintenanceExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-rose-600">{formatNumber(globalTotals.totals?.motorcycleMaintenanceExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-violet-500/10 text-sm">
                       <Bus className="h-4 w-4 text-violet-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าเดินทางแม่บ้าน</span>
-                      <span className="font-semibold text-violet-600">{formatNumber(globalTotals.totalsPerBuilding?.maidTravelExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-violet-600">{formatNumber(globalTotals.totals?.maidTravelExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-teal-500/10 text-sm">
                       <SprayCan className="h-4 w-4 text-teal-600 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าอุปกรณ์ทำความสะอาด</span>
-                      <span className="font-semibold text-teal-600">{formatNumber(globalTotals.totalsPerBuilding?.cleaningSupplyExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-teal-600">{formatNumber(globalTotals.totals?.cleaningSupplyExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-400/10 text-sm">
                       <Utensils className="h-4 w-4 text-orange-500 flex-shrink-0" />
                       <span className="text-slate-600 flex-1">ค่าอาหาร</span>
-                      <span className="font-semibold text-orange-500">{formatNumber(globalTotals.totalsPerBuilding?.foodExpensePerBuilding || 0)}</span>
+                      <span className="font-semibold text-orange-500">{formatNumber(globalTotals.totals?.foodExpense || 0)}</span>
                     </div>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E91E63]/10 text-sm">
                       <HeartPulse className="h-4 w-4 text-[#E91E63] flex-shrink-0" />
@@ -1250,7 +1277,7 @@ export default function SettingsPage() {
                   </div>
                   <div className="mt-3 pt-3 border-t border-slate-200">
                     <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
-                      <span className="font-semibold text-slate-700">รวมค่าใช้จ่ายส่วนกลาง/อาคาร (ทุกอาคาร)</span>
+                      <span className="font-semibold text-slate-700">รวมค่าใช้จ่ายส่วนกลาง (อาคารนี้)</span>
                       <span className="font-bold text-[#9B59B6] text-lg">
                         {formatNumber(globalTotals.totalGlobalExpense || 0)} บาท
                       </span>
@@ -1272,7 +1299,7 @@ export default function SettingsPage() {
               เงินสมทบประกันสังคม (นายจ้าง)
             </DialogTitle>
             <p className="text-white/80 text-sm">
-              กรอกจำนวนเงินสมทบประกันสังคมของแต่ละพนักงาน (หาร 5 อาคาร)
+              กรอกจำนวนเงินสมทบประกันสังคมของแต่ละพนักงาน (หาร 3 อาคาร (CT, YW, NANA))
             </p>
           </DialogHeader>
 
@@ -1383,7 +1410,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-[#E91E63]/20">
-                  <span className="text-sm text-slate-500">หาร 5 อาคาร</span>
+                  <span className="text-sm text-slate-500">หาร 3 อาคาร (CT, YW, NANA)</span>
                   <span className="font-semibold text-[#E91E63]">
                     {formatNumber(socialSecurityData.amountPerBuilding || 0)} บาท/อาคาร
                   </span>

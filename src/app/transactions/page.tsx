@@ -94,20 +94,6 @@ interface GlobalSettings {
   cleaningSupplyExpense: number
   foodExpense: number
   buildingCount: number
-  careExpenseDivisor: number // จำนวนอาคารที่ร่วมจ่ายค่าดูแล MAX, จราจร, ขนส่งสินค้า (3 อาคาร)
-  maxCareExpensePerBuilding: number
-  trafficCareExpensePerBuilding: number
-  shippingExpensePerBuilding: number
-  amenityExpensePerBuilding: number
-  waterBottleExpensePerBuilding: number
-  cookieExpensePerBuilding: number
-  coffeeExpensePerBuilding: number
-  fuelExpensePerBuilding: number
-  parkingExpensePerBuilding: number
-  motorcycleMaintenanceExpensePerBuilding: number
-  maidTravelExpensePerBuilding: number
-  cleaningSupplyExpensePerBuilding: number
-  foodExpensePerBuilding: number
 }
 
 interface SocialSecurityData {
@@ -213,7 +199,7 @@ export default function TransactionsPage() {
       const [historyTotalsRes, settingsRes, globalTotalsRes, socialSecurityRes, settingsHistoryTotalsRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
-        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}`),
+        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}&buildingId=${selectedBuilding}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
       ])
@@ -279,20 +265,6 @@ export default function TransactionsPage() {
           cleaningSupplyExpense: globalTotalsData.totals.cleaningSupplyExpense || 0,
           foodExpense: globalTotalsData.totals.foodExpense || 0,
           buildingCount: globalTotalsData.buildingCount || 0,
-          careExpenseDivisor: globalTotalsData.careExpenseDivisor || 3,
-          maxCareExpensePerBuilding: globalTotalsData.totalsPerBuilding?.maxCareExpensePerBuilding || 0,
-          trafficCareExpensePerBuilding: globalTotalsData.totalsPerBuilding?.trafficCareExpensePerBuilding || 0,
-          shippingExpensePerBuilding: globalTotalsData.totalsPerBuilding?.shippingExpensePerBuilding || 0,
-          amenityExpensePerBuilding: globalTotalsData.totalsPerBuilding?.amenityExpensePerBuilding || 0,
-          waterBottleExpensePerBuilding: globalTotalsData.totalsPerBuilding?.waterBottleExpensePerBuilding || 0,
-          cookieExpensePerBuilding: globalTotalsData.totalsPerBuilding?.cookieExpensePerBuilding || 0,
-          coffeeExpensePerBuilding: globalTotalsData.totalsPerBuilding?.coffeeExpensePerBuilding || 0,
-          fuelExpensePerBuilding: globalTotalsData.totalsPerBuilding?.fuelExpensePerBuilding || 0,
-          parkingExpensePerBuilding: globalTotalsData.totalsPerBuilding?.parkingExpensePerBuilding || 0,
-          motorcycleMaintenanceExpensePerBuilding: globalTotalsData.totalsPerBuilding?.motorcycleMaintenanceExpensePerBuilding || 0,
-          maidTravelExpensePerBuilding: globalTotalsData.totalsPerBuilding?.maidTravelExpensePerBuilding || 0,
-          cleaningSupplyExpensePerBuilding: globalTotalsData.totalsPerBuilding?.cleaningSupplyExpensePerBuilding || 0,
-          foodExpensePerBuilding: globalTotalsData.totalsPerBuilding?.foodExpensePerBuilding || 0,
         }
         setGlobalSettings(globalData)
       }
@@ -409,26 +381,22 @@ export default function TransactionsPage() {
 
   // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
   const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
-  const eligibleBuildingsForCare = ['NANA', 'CT', 'YW']
-  const isEligibleForCareExpense = eligibleBuildingsForCare.includes(selectedBuildingCode)
+  // ค่าใช้จ่ายส่วนกลาง (กรอกค่าแต่ละอาคารโดยตรง ไม่ต้องหาร)
+  const maxCareExpensePerBuilding = globalSettings?.maxCareExpense || 0
+  const trafficCareExpensePerBuilding = globalSettings?.trafficCareExpense || 0
+  const shippingExpensePerBuilding = globalSettings?.shippingExpense || 0
+  const amenityExpensePerBuilding = globalSettings?.amenityExpense || 0
+  const waterBottleExpensePerBuilding = globalSettings?.waterBottleExpense || 0
+  const cookieExpensePerBuilding = globalSettings?.cookieExpense || 0
+  const coffeeExpensePerBuilding = globalSettings?.coffeeExpense || 0
+  const fuelExpensePerBuilding = globalSettings?.fuelExpense || 0
+  const parkingExpensePerBuilding = globalSettings?.parkingExpense || 0
+  const motorcycleMaintenanceExpensePerBuilding = globalSettings?.motorcycleMaintenanceExpense || 0
+  const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpense || 0
+  const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpense || 0
+  const foodExpensePerBuilding = globalSettings?.foodExpense || 0
 
-  // ค่าใช้จ่ายส่วนกลาง (หารตามจำนวนอาคาร)
-  // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะอาคารที่ต้องจ่าย (3 อาคาร)
-  const maxCareExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.maxCareExpensePerBuilding || 0) : 0
-  const trafficCareExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.trafficCareExpensePerBuilding || 0) : 0
-  const shippingExpensePerBuilding = isEligibleForCareExpense ? (globalSettings?.shippingExpensePerBuilding || 0) : 0
-  const amenityExpensePerBuilding = globalSettings?.amenityExpensePerBuilding || 0
-  const waterBottleExpensePerBuilding = globalSettings?.waterBottleExpensePerBuilding || 0
-  const cookieExpensePerBuilding = globalSettings?.cookieExpensePerBuilding || 0
-  const coffeeExpensePerBuilding = globalSettings?.coffeeExpensePerBuilding || 0
-  const fuelExpensePerBuilding = globalSettings?.fuelExpensePerBuilding || 0
-  const parkingExpensePerBuilding = globalSettings?.parkingExpensePerBuilding || 0
-  const motorcycleMaintenanceExpensePerBuilding = globalSettings?.motorcycleMaintenanceExpensePerBuilding || 0
-  const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpensePerBuilding || 0
-  const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpensePerBuilding || 0
-  const foodExpensePerBuilding = globalSettings?.foodExpensePerBuilding || 0
-
-  // เงินสมทบประกันสังคม (หาร 5 อาคาร)
+  // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   const socialSecurityExpensePerBuilding = socialSecurityData?.amountPerBuilding || 0
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
@@ -456,15 +424,26 @@ export default function TransactionsPage() {
     { name: isProfit ? 'กำไร' : 'ขาดทุน', amount: Math.abs(profit), color: isProfit ? '#D4A24C' : '#E74C3C' },
   ]
 
+  // รายชื่อ field ของค่าใช้จ่ายส่วนกลาง (GLOBAL_SETTINGS)
+  const globalSettingsFields = [
+    'maxCareExpense', 'trafficCareExpense', 'shippingExpense',
+    'amenityExpense', 'waterBottleExpense', 'cookieExpense',
+    'coffeeExpense', 'fuelExpense', 'parkingExpense',
+    'motorcycleMaintenanceExpense', 'maidTravelExpense',
+    'cleaningSupplyExpense', 'foodExpense',
+  ]
+
   // ดึงประวัติค่าใช้จ่าย
   const fetchExpenseHistory = async (categoryId: number | string | null, month: string, year: string) => {
     if (!selectedBuilding || categoryId === null) return
 
     setLoadingHistory(true)
     try {
+      const isGlobalSettingsField = globalSettingsFields.includes(String(categoryId))
       const isSettingsField = categoryId === 'cowayWaterFilterExpense'
+      const targetType = isGlobalSettingsField ? 'GLOBAL_SETTINGS' : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
       const params = new URLSearchParams({
-        targetType: isSettingsField ? 'SETTINGS' : 'TRANSACTION',
+        targetType,
         targetId: selectedBuilding,
         fieldName: String(categoryId),
         month,
@@ -584,9 +563,10 @@ export default function TransactionsPage() {
     setSavingHistory(true)
     const effectiveAction = getEffectiveAction()
 
-    // ตรวจสอบว่าเป็น settings field (เช่น cowayWaterFilterExpense) หรือไม่
+    // ตรวจสอบว่าเป็น global settings field, settings field หรือ transaction
+    const isGlobalSettingsField = globalSettingsFields.includes(String(currentCategoryId))
     const isSettingsField = currentCategoryId === 'cowayWaterFilterExpense'
-    const targetType = isSettingsField ? 'SETTINGS' : 'TRANSACTION'
+    const targetType = isGlobalSettingsField ? 'GLOBAL_SETTINGS' : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
 
     try {
       const res = await fetch('/api/expense-history', {
@@ -623,6 +603,12 @@ export default function TransactionsPage() {
             setBuildingSettings(prev => prev ? {
               ...prev,
               cowayWaterFilterExpense: data.total || 0
+            } : null)
+          } else if (isGlobalSettingsField) {
+            // อัปเดต globalSettings สำหรับค่าใช้จ่ายส่วนกลาง
+            setGlobalSettings(prev => prev ? {
+              ...prev,
+              [String(currentCategoryId)]: data.total || 0
             } : null)
           } else {
             setTransactionData((prev) => ({
@@ -1275,14 +1261,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ค่าดูแล MAX" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-[#9B59B6]">ค่าดูแล MAX</span>
-                                <p className="text-[10px] md:text-xs text-[#9B59B6] hidden md:block">
-                                  ({formatNumber(globalSettings.maxCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-[#9B59B6]">{formatNumber(maxCareExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-[#9B59B6]">{formatNumber(maxCareExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'maxCareExpense', 'ค่าดูแล MAX')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'maxCareExpense', 'ค่าดูแล MAX')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1297,14 +1291,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ค่าดูแลจราจร" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-[#E74C3C]">ค่าดูแลจราจร</span>
-                                <p className="text-[10px] md:text-xs text-[#E74C3C] hidden md:block">
-                                  ({formatNumber(globalSettings.trafficCareExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-[#E74C3C]">{formatNumber(trafficCareExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-[#E74C3C]">{formatNumber(trafficCareExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'trafficCareExpense', 'ค่าดูแลจราจร')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'trafficCareExpense', 'ค่าดูแลจราจร')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1319,14 +1321,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ค่าขนส่งสินค้า" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-orange-600">ค่าขนส่งสินค้า</span>
-                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
-                                  ({formatNumber(globalSettings.shippingExpense)} / {globalSettings.careExpenseDivisor} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(shippingExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(shippingExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'shippingExpense', 'ค่าขนส่งสินค้า')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'shippingExpense', 'ค่าขนส่งสินค้า')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'shippingExpense', 'ค่าขนส่งสินค้า')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1343,14 +1353,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="Amenity" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-pink-500">Amenity</span>
-                                <p className="text-[10px] md:text-xs text-pink-400 hidden md:block">
-                                  ({formatNumber(globalSettings.amenityExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-pink-500">{formatNumber(amenityExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-pink-500">{formatNumber(amenityExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'amenityExpense', 'Amenity')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'amenityExpense', 'Amenity')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'amenityExpense', 'Amenity')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1415,14 +1433,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="น้ำเปล่า" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-cyan-500">ค่าน้ำเปล่า</span>
-                                <p className="text-[10px] md:text-xs text-cyan-400 hidden md:block">
-                                  ({formatNumber(globalSettings.waterBottleExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-cyan-500">{formatNumber(waterBottleExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-cyan-500">{formatNumber(waterBottleExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'waterBottleExpense', 'ค่าน้ำเปล่า')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'waterBottleExpense', 'ค่าน้ำเปล่า')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'waterBottleExpense', 'ค่าน้ำเปล่า')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1439,14 +1465,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="คุ้กกี้" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-amber-500">ค่าขนมคุ้กกี้</span>
-                                <p className="text-[10px] md:text-xs text-amber-400 hidden md:block">
-                                  ({formatNumber(globalSettings.cookieExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-amber-500">{formatNumber(cookieExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-amber-500">{formatNumber(cookieExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'cookieExpense', 'ค่าขนมคุ้กกี้')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'cookieExpense', 'ค่าขนมคุ้กกี้')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'cookieExpense', 'ค่าขนมคุ้กกี้')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1463,14 +1497,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="กาแฟ" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-amber-700">กาแฟ น้ำตาล คอฟฟี่เมท</span>
-                                <p className="text-[10px] md:text-xs text-amber-600 hidden md:block">
-                                  ({formatNumber(globalSettings.coffeeExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-amber-700">{formatNumber(coffeeExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-amber-700">{formatNumber(coffeeExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'coffeeExpense', 'กาแฟ น้ำตาล คอฟฟี่เมท')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'coffeeExpense', 'กาแฟ น้ำตาล คอฟฟี่เมท')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'coffeeExpense', 'กาแฟ น้ำตาล คอฟฟี่เมท')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1487,14 +1529,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="น้ำมัน" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-gray-600">ค่าน้ำมันมอไซค์</span>
-                                <p className="text-[10px] md:text-xs text-gray-500 hidden md:block">
-                                  ({formatNumber(globalSettings.fuelExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-gray-600">{formatNumber(fuelExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-gray-600">{formatNumber(fuelExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'fuelExpense', 'ค่าน้ำมันมอไซค์')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'fuelExpense', 'ค่าน้ำมันมอไซค์')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันมอไซค์')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1511,14 +1561,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ที่จอดรถ" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-slate-600">ค่าที่จอดรถมอไซค์</span>
-                                <p className="text-[10px] md:text-xs text-slate-500 hidden md:block">
-                                  ({formatNumber(globalSettings.parkingExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-slate-600">{formatNumber(parkingExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-slate-600">{formatNumber(parkingExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'parkingExpense', 'ค่าที่จอดรถมอไซค์')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'parkingExpense', 'ค่าที่จอดรถมอไซค์')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถมอไซค์')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1535,14 +1593,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ซ่อมบำรุงรถ" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-orange-600">ซ่อมบำรุงมอไซค์</span>
-                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
-                                  ({formatNumber(globalSettings.motorcycleMaintenanceExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(motorcycleMaintenanceExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(motorcycleMaintenanceExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'motorcycleMaintenanceExpense', 'ซ่อมบำรุงมอไซค์')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'motorcycleMaintenanceExpense', 'ซ่อมบำรุงมอไซค์')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ซ่อมบำรุงมอไซค์')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1559,14 +1625,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="เดินทางแม่บ้าน" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-violet-600">เดินทางแม่บ้าน</span>
-                                <p className="text-[10px] md:text-xs text-violet-500 hidden md:block">
-                                  ({formatNumber(globalSettings.maidTravelExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-violet-600">{formatNumber(maidTravelExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-violet-600">{formatNumber(maidTravelExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'maidTravelExpense', 'เดินทางแม่บ้าน')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'maidTravelExpense', 'เดินทางแม่บ้าน')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'maidTravelExpense', 'เดินทางแม่บ้าน')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1583,14 +1657,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-teal-600">อุปกรณ์ทำความสะอาด</span>
-                                <p className="text-[10px] md:text-xs text-teal-500 hidden md:block">
-                                  ({formatNumber(globalSettings.cleaningSupplyExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-teal-600">{formatNumber(cleaningSupplyExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-teal-600">{formatNumber(cleaningSupplyExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'cleaningSupplyExpense', 'อุปกรณ์ทำความสะอาด')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'cleaningSupplyExpense', 'อุปกรณ์ทำความสะอาด')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'cleaningSupplyExpense', 'อุปกรณ์ทำความสะอาด')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1607,14 +1689,22 @@ export default function TransactionsPage() {
                               <CategoryIcon name="อาหาร" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-orange-600">ค่าอาหาร</span>
-                                <p className="text-[10px] md:text-xs text-orange-500 hidden md:block">
-                                  ({formatNumber(globalSettings.foodExpense)} / {globalSettings.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(foodExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(foodExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'foodExpense', 'ค่าอาหาร')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'foodExpense', 'ค่าอาหาร')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -1631,9 +1721,6 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ประกันสังคม" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-pink-600">ประกันสังคม</span>
-                                <p className="text-[10px] md:text-xs text-pink-500 hidden md:block">
-                                  ({formatNumber(socialSecurityData.totalAmount)} / {socialSecurityData.buildingCount} อาคาร)
-                                </p>
                               </div>
                             </div>
                           </TableCell>
