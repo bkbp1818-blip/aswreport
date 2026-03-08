@@ -381,9 +381,11 @@ export default function TransactionsPage() {
 
   // ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) - ไม่รวม Funn D
   const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+  const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
+  const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
   // ค่าใช้จ่ายส่วนกลาง (กรอกค่าแต่ละอาคารโดยตรง ไม่ต้องหาร)
-  const maxCareExpensePerBuilding = globalSettings?.maxCareExpense || 0
-  const trafficCareExpensePerBuilding = globalSettings?.trafficCareExpense || 0
+  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) : 0
+  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) : 0
   const shippingExpensePerBuilding = globalSettings?.shippingExpense || 0
   const amenityExpensePerBuilding = globalSettings?.amenityExpense || 0
   const waterBottleExpensePerBuilding = globalSettings?.waterBottleExpense || 0
@@ -395,10 +397,6 @@ export default function TransactionsPage() {
   const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpense || 0
   const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = globalSettings?.foodExpense || 0
-
-  // เช็คว่าอาคารที่เลือกมีสิทธิ์รับเงินเดือนหรือไม่ (เฉพาะ CT, YW, NANA)
-  const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
-  const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
 
   // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA) - ไม่แสดงสำหรับ Funn D
   const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
@@ -1257,7 +1255,7 @@ export default function TransactionsPage() {
                   {globalSettings && (
                     <>
                       {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {maxCareExpensePerBuilding > 0 && (
+                      {isEligibleForSalary && maxCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#9B59B6]/10">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + 1}
@@ -1287,7 +1285,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าดูแลจราจร - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {trafficCareExpensePerBuilding > 0 && (
+                      {isEligibleForSalary && trafficCareExpensePerBuilding > 0 && (
                         <TableRow className="bg-[#E74C3C]/10">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
