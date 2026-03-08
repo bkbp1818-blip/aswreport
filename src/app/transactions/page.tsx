@@ -348,9 +348,9 @@ export default function TransactionsPage() {
 
   // ฟังก์ชันดึงค่าแสดงผลสำหรับแต่ละ category
   const getDisplayAmount = (categoryId: number): number => {
-    // ถ้าเป็นเงินเดือนพนักงาน ให้ใช้ค่าจาก salary summary
+    // ถ้าเป็นเงินเดือนพนักงาน ให้ใช้ค่าจาก salary summary (เฉพาะ CT, YW, NANA)
     if (categoryId === salaryCategoryId && salarySummary) {
-      return salarySummary.salaryPerBuilding
+      return isEligibleForSalary ? salarySummary.salaryPerBuilding : 0
     }
     return transactionData[categoryId] || 0
   }
@@ -396,6 +396,10 @@ export default function TransactionsPage() {
   const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = globalSettings?.foodExpense || 0
 
+  // เช็คว่าอาคารที่เลือกมีสิทธิ์รับเงินเดือนหรือไม่ (เฉพาะ CT, YW, NANA)
+  const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
+  const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
+
   // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   const socialSecurityExpensePerBuilding = socialSecurityData?.amountPerBuilding || 0
 
@@ -407,7 +411,7 @@ export default function TransactionsPage() {
     cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + socialSecurityExpensePerBuilding
 
   // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่า Coway + ค่าใช้จ่ายส่วนกลาง
-  const salaryExpense = salarySummary?.salaryPerBuilding || 0
+  const salaryExpense = isEligibleForSalary ? (salarySummary?.salaryPerBuilding || 0) : 0
   const otherExpense = otherExpenseCategories.reduce(
     (sum, c) => sum + (transactionData[c.id] || 0),
     0
@@ -1226,7 +1230,7 @@ export default function TransactionsPage() {
                     </TableRow>
                   )}
                   {/* เงินเดือนพนักงาน (ซ่อนสำหรับ VIEWER) */}
-                  {!isViewer && salaryCategory && salarySummary && (
+                  {!isViewer && salaryCategory && salarySummary && isEligibleForSalary && (
                     <TableRow className="bg-[#84A59D]/10">
                       <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
                       <TableCell className="px-2 md:px-4">
