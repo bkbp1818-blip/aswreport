@@ -1315,7 +1315,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {shippingExpensePerBuilding > 0 && (
+                      {globalSettings && (
                         <TableRow className="bg-orange-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) + 1}
