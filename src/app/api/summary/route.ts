@@ -293,8 +293,11 @@ async function calculateBuildingSummary(
   }
 
   // ค่าใช้จ่ายส่วนกลางแต่ละอาคาร (กรอกโดยตรง ไม่ต้องหาร)
-  const maxCareExpensePerBuilding = globalExpenseTotals.maxCareExpense
-  const trafficCareExpensePerBuilding = globalExpenseTotals.trafficCareExpense
+  // ค่าดูแล MAX และ ค่าดูแลจราจร เฉพาะ 3 อาคาร (CT, YW, NANA)
+  const eligibleBuildingsForCare = ['CT', 'YW', 'NANA']
+  const isEligibleForCare = eligibleBuildingsForCare.includes(building.code)
+  const maxCareExpensePerBuilding = isEligibleForCare ? globalExpenseTotals.maxCareExpense : 0
+  const trafficCareExpensePerBuilding = isEligibleForCare ? globalExpenseTotals.trafficCareExpense : 0
   const shippingExpensePerBuilding = globalExpenseTotals.shippingExpense
   const amenityExpensePerBuilding = globalExpenseTotals.amenityExpense
   const waterBottleExpensePerBuilding = globalExpenseTotals.waterBottleExpense
