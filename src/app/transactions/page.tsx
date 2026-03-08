@@ -400,8 +400,10 @@ export default function TransactionsPage() {
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
 
-  // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
-  const socialSecurityExpensePerBuilding = socialSecurityData?.amountPerBuilding || 0
+  // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA) - ไม่แสดงสำหรับ Funn D
+  const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
+  const isEligibleForSocialSecurity = eligibleBuildingsForSocialSecurity.includes(selectedBuildingCode)
+  const socialSecurityExpensePerBuilding = isEligibleForSocialSecurity ? (socialSecurityData?.amountPerBuilding || 0) : 0
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
@@ -1713,7 +1715,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* เงินสมทบประกันสังคม - ซ่อนสำหรับ Viewer */}
-                      {!isViewer && socialSecurityData && (
+                      {!isViewer && socialSecurityData && isEligibleForSocialSecurity && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
