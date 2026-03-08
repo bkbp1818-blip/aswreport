@@ -202,14 +202,18 @@ async function calculateBuildingSummary(
     }
   }
 
-  // ดึงข้อมูลเงินเดือนพนักงาน (คำนวณจาก employees table)
+  // ดึงข้อมูลเงินเดือนพนักงาน (หาร 3 อาคาร: CT, YW, NANA)
   const buildings = await prisma.building.findMany()
-  const buildingCount = buildings.length
   const employees = await prisma.employee.findMany({
     where: { isActive: true },
   })
   const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
-  const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
+  const salaryDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
+  const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
+  const isEligibleForSalary = eligibleBuildingsForSalary.includes(building.code)
+  const salaryPerBuilding = isEligibleForSalary
+    ? totalSalary / salaryDivisor
+    : 0
 
   // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({

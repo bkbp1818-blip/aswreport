@@ -1235,7 +1235,7 @@ export default function TransactionsPage() {
                           <div>
                             <span className="text-xs md:text-sm font-medium text-[#84A59D]">{salaryCategory.name}</span>
                             <p className="text-[10px] md:text-xs text-[#84A59D] hidden md:block">
-                              ({formatNumber(salarySummary.totalSalary)} / {salarySummary.buildingCount} อาคาร)
+                              ({formatNumber(salarySummary.totalSalary)} / 3 อาคาร: CT, YW, NANA)
                             </p>
                           </div>
                         </div>

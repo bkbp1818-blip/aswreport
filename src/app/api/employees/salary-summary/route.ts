@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// GET - ดึงข้อมูลเงินเดือนรวมและหาร 5 อาคาร
+// GET - ดึงข้อมูลเงินเดือนรวมและหาร 3 อาคาร (CT, YW, NANA)
 export async function GET() {
   try {
     // ดึงพนักงานที่ยังทำงานอยู่
@@ -19,16 +19,14 @@ export async function GET() {
       0
     )
 
-    // นับจำนวนอาคาร
-    const buildingCount = await prisma.building.count()
-
-    // คำนวณเงินเดือนต่ออาคาร
-    const salaryPerBuilding = buildingCount > 0 ? totalSalary / buildingCount : 0
+    // หาร 3 อาคาร (CT, YW, NANA) - ไม่รวม Funn D
+    const salaryDivisor = 3
+    const salaryPerBuilding = salaryDivisor > 0 ? totalSalary / salaryDivisor : 0
 
     return NextResponse.json({
       employees: activeEmployees,
       totalSalary,
-      buildingCount,
+      buildingCount: salaryDivisor,
       salaryPerBuilding,
     })
   } catch (error) {
