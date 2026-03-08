@@ -1255,7 +1255,7 @@ export default function TransactionsPage() {
                   {globalSettings && (
                     <>
                       {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {isEligibleForSalary && maxCareExpensePerBuilding > 0 && (
+                      {isEligibleForSalary && (
                         <TableRow className="bg-[#9B59B6]/10">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + 1}
@@ -1285,7 +1285,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าดูแลจราจร - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {isEligibleForSalary && trafficCareExpensePerBuilding > 0 && (
+                      {isEligibleForSalary && (
                         <TableRow className="bg-[#E74C3C]/10">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
