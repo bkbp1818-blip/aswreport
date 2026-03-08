@@ -20,7 +20,7 @@ const expenseFields = [
   'foodExpense',
 ] as const
 
-// GET - ดึงยอดรวมของทุก field สำหรับ GLOBAL_SETTINGS (แยกแต่ละอาคาร)
+// GET - ดึงยอดรวมของทุก field สำหรับ GLOBAL_SETTINGS (ใช้ร่วม 3 อาคาร)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams

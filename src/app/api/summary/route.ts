@@ -240,11 +240,11 @@ async function calculateBuildingSummary(
     ? totalSocialSecurity / socialSecurityDivisor
     : 0
 
-  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (แยกแต่ละอาคาร - ไม่ต้องหาร)
+  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (targetId: null, หาร 3 อาคาร)
   const globalExpenseHistory = await prisma.expenseHistory.findMany({
     where: {
       targetType: 'GLOBAL_SETTINGS',
-      targetId: buildingId,
+      targetId: null,
       month,
       year,
     },
@@ -292,25 +292,25 @@ async function calculateBuildingSummary(
     globalExpenseTotals[field] = Math.max(0, globalExpenseTotals[field])
   }
 
-  // ค่าใช้จ่ายส่วนกลางแต่ละอาคาร (กรอกโดยตรง ไม่ต้องหาร)
-  // ค่าดูแล MAX และ ค่าดูแลจราจร เฉพาะ 3 อาคาร (CT, YW, NANA)
-  const eligibleBuildingsForCare = ['CT', 'YW', 'NANA']
-  const isEligibleForCare = eligibleBuildingsForCare.includes(building.code)
-  const maxCareExpensePerBuilding = isEligibleForCare ? globalExpenseTotals.maxCareExpense : 0
-  const trafficCareExpensePerBuilding = isEligibleForCare ? globalExpenseTotals.trafficCareExpense : 0
-  const shippingExpensePerBuilding = globalExpenseTotals.shippingExpense
-  const amenityExpensePerBuilding = globalExpenseTotals.amenityExpense
-  const waterBottleExpensePerBuilding = globalExpenseTotals.waterBottleExpense
-  const cookieExpensePerBuilding = globalExpenseTotals.cookieExpense
-  const coffeeExpensePerBuilding = globalExpenseTotals.coffeeExpense
-  const sugarExpensePerBuilding = globalExpenseTotals.sugarExpense
-  const coffeeMateExpensePerBuilding = globalExpenseTotals.coffeeMateExpense
-  const fuelExpensePerBuilding = globalExpenseTotals.fuelExpense
-  const parkingExpensePerBuilding = globalExpenseTotals.parkingExpense
-  const motorcycleMaintenanceExpensePerBuilding = globalExpenseTotals.motorcycleMaintenanceExpense
-  const maidTravelExpensePerBuilding = globalExpenseTotals.maidTravelExpense
-  const cleaningSupplyExpensePerBuilding = globalExpenseTotals.cleaningSupplyExpense
-  const foodExpensePerBuilding = globalExpenseTotals.foodExpense
+  // ค่าใช้จ่ายส่วนกลาง (ยอดรวมหาร 3 อาคาร: CT, YW, NANA)
+  const eligibleBuildingsForGlobal = ['CT', 'YW', 'NANA']
+  const isEligibleForGlobal = eligibleBuildingsForGlobal.includes(building.code)
+  const globalDivisor = 3
+  const maxCareExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.maxCareExpense / globalDivisor : 0
+  const trafficCareExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.trafficCareExpense / globalDivisor : 0
+  const shippingExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.shippingExpense / globalDivisor : 0
+  const amenityExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.amenityExpense / globalDivisor : 0
+  const waterBottleExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.waterBottleExpense / globalDivisor : 0
+  const cookieExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.cookieExpense / globalDivisor : 0
+  const coffeeExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.coffeeExpense / globalDivisor : 0
+  const sugarExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.sugarExpense / globalDivisor : 0
+  const coffeeMateExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.coffeeMateExpense / globalDivisor : 0
+  const fuelExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.fuelExpense / globalDivisor : 0
+  const parkingExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.parkingExpense / globalDivisor : 0
+  const motorcycleMaintenanceExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.motorcycleMaintenanceExpense / globalDivisor : 0
+  const maidTravelExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.maidTravelExpense / globalDivisor : 0
+  const cleaningSupplyExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.cleaningSupplyExpense / globalDivisor : 0
+  const foodExpensePerBuilding = isEligibleForGlobal ? globalExpenseTotals.foodExpense / globalDivisor : 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({

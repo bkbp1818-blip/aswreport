@@ -199,7 +199,7 @@ export default function TransactionsPage() {
       const [historyTotalsRes, settingsRes, globalTotalsRes, socialSecurityRes, settingsHistoryTotalsRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
-        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}&buildingId=${selectedBuilding}`),
+        fetch(`/api/expense-history/global-totals?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
       ])
@@ -383,20 +383,21 @@ export default function TransactionsPage() {
   const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
-  // ค่าใช้จ่ายส่วนกลาง (กรอกค่าแต่ละอาคารโดยตรง ไม่ต้องหาร)
-  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) : 0
-  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) : 0
-  const shippingExpensePerBuilding = globalSettings?.shippingExpense || 0
-  const amenityExpensePerBuilding = globalSettings?.amenityExpense || 0
-  const waterBottleExpensePerBuilding = globalSettings?.waterBottleExpense || 0
-  const cookieExpensePerBuilding = globalSettings?.cookieExpense || 0
-  const coffeeExpensePerBuilding = globalSettings?.coffeeExpense || 0
-  const fuelExpensePerBuilding = globalSettings?.fuelExpense || 0
-  const parkingExpensePerBuilding = globalSettings?.parkingExpense || 0
-  const motorcycleMaintenanceExpensePerBuilding = globalSettings?.motorcycleMaintenanceExpense || 0
-  const maidTravelExpensePerBuilding = globalSettings?.maidTravelExpense || 0
-  const cleaningSupplyExpensePerBuilding = globalSettings?.cleaningSupplyExpense || 0
-  const foodExpensePerBuilding = globalSettings?.foodExpense || 0
+  // ค่าใช้จ่ายส่วนกลาง (ยอดรวมหาร 3 อาคาร: CT, YW, NANA)
+  const globalDivisor = 3
+  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) / globalDivisor : 0
+  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) / globalDivisor : 0
+  const shippingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.shippingExpense || 0) / globalDivisor : 0
+  const amenityExpensePerBuilding = isEligibleForSalary ? (globalSettings?.amenityExpense || 0) / globalDivisor : 0
+  const waterBottleExpensePerBuilding = isEligibleForSalary ? (globalSettings?.waterBottleExpense || 0) / globalDivisor : 0
+  const cookieExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cookieExpense || 0) / globalDivisor : 0
+  const coffeeExpensePerBuilding = isEligibleForSalary ? (globalSettings?.coffeeExpense || 0) / globalDivisor : 0
+  const fuelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.fuelExpense || 0) / globalDivisor : 0
+  const parkingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.parkingExpense || 0) / globalDivisor : 0
+  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? (globalSettings?.motorcycleMaintenanceExpense || 0) / globalDivisor : 0
+  const maidTravelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maidTravelExpense || 0) / globalDivisor : 0
+  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cleaningSupplyExpense || 0) / globalDivisor : 0
+  const foodExpensePerBuilding = isEligibleForSalary ? (globalSettings?.foodExpense || 0) / globalDivisor : 0
 
   // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA) - ไม่แสดงสำหรับ Funn D
   const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
@@ -446,9 +447,10 @@ export default function TransactionsPage() {
       const isGlobalSettingsField = globalSettingsFields.includes(String(categoryId))
       const isSettingsField = categoryId === 'cowayWaterFilterExpense'
       const targetType = isGlobalSettingsField ? 'GLOBAL_SETTINGS' : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
+      const targetId = isGlobalSettingsField ? '' : selectedBuilding
       const params = new URLSearchParams({
         targetType,
-        targetId: selectedBuilding,
+        ...(targetId ? { targetId } : {}),
         fieldName: String(categoryId),
         month,
         year,
@@ -578,7 +580,7 @@ export default function TransactionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetType,
-          targetId: selectedBuilding,
+          targetId: isGlobalSettingsField ? null : selectedBuilding,
           fieldName: String(currentCategoryId),
           fieldLabel: adjustCategoryName,
           actionType: effectiveAction === 'add' ? 'ADD' : 'SUBTRACT',
