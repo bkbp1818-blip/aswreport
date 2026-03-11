@@ -23,31 +23,13 @@ import {
 import {
   Loader2,
   Building2,
-  Globe,
-  ShieldCheck,
-  TrafficCone,
-  Truck,
-  Sparkles,
-  Droplets,
-  Cookie,
-  Coffee,
-  Fuel,
-  ParkingCircle,
-  Wrench,
-  Bus,
-  Waves,
-  SprayCan,
-  Utensils,
   Plus,
   Minus,
   Trash2,
   Calendar,
   Pencil,
-  HeartPulse,
-  Check,
 } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
-import { formatNumber, MONTHS } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { useAccess } from '@/contexts/AccessContext'
 import { getBuildingColor } from '@/lib/building-colors'
 import { generateYears, getAvailableMonths } from '@/lib/calculations'
@@ -69,34 +51,6 @@ interface Settings {
   building?: Building
 }
 
-interface GlobalSettings {
-  id: number
-  buildingCount: number
-  maxCareExpense: number
-  trafficCareExpense: number
-  shippingExpense: number
-  amenityExpense: number
-  waterBottleExpense: number
-  cookieExpense: number
-  coffeeExpense: number
-  sugarExpense: number
-  coffeeMateExpense: number
-  fuelExpense: number
-  parkingExpense: number
-  motorcycleMaintenanceExpense: number
-  maidTravelExpense: number
-  cleaningSupplyExpense: number
-  foodExpense: number
-  [key: string]: number // for dynamic fields
-}
-
-interface GlobalTotals {
-  totals: Record<string, number>
-  totalGlobalExpense: number
-  buildingCount: number
-  buildingId: number | null
-}
-
 interface ExpenseHistoryItem {
   id: number
   targetType: string
@@ -111,42 +65,13 @@ interface ExpenseHistoryItem {
   createdAt: string
 }
 
-interface SocialSecurityEmployee {
-  id: number
-  firstName: string
-  lastName: string
-  nickname: string | null
-  position: string
-  contributionId: number | null
-  amount: number
-}
-
-interface SocialSecurityData {
-  employees: SocialSecurityEmployee[]
-  totalAmount: number
-  amountPerBuilding: number
-  buildingCount: number
-}
-
 export default function SettingsPage() {
   const { isViewer } = useAccess()
   const [buildings, setBuildings] = useState<Building[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('building-settings')
-
-  // Global settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี/อาคาร
-  const [globalSelectedMonth, setGlobalSelectedMonth] = useState<string>(
-    String(new Date().getMonth() + 1)
-  )
-  const [globalSelectedYear, setGlobalSelectedYear] = useState<string>(
-    String(new Date().getFullYear())
-  )
-  const [globalSelectedBuilding, setGlobalSelectedBuilding] = useState<string>('')
-  const [globalTotals, setGlobalTotals] = useState<GlobalTotals | null>(null)
-  const [loadingGlobal, setLoadingGlobal] = useState(false)
   const years = generateYears()
 
   // Building settings - ใช้ดึงจาก ExpenseHistory totals ตามเดือน/ปี
@@ -166,7 +91,6 @@ export default function SettingsPage() {
   const [adjustFieldKey, setAdjustFieldKey] = useState<string>('')
   const [adjustFieldName, setAdjustFieldName] = useState('')
   const [adjustAmount, setAdjustAmount] = useState<string>('')
-  const [adjustTarget, setAdjustTarget] = useState<'building' | 'global'>('building')
   const [adjustDescription, setAdjustDescription] = useState('')
   const [adjustMonth, setAdjustMonth] = useState(new Date().getMonth() + 1)
   const [adjustYear, setAdjustYear] = useState(new Date().getFullYear())
@@ -182,12 +106,6 @@ export default function SettingsPage() {
   const [percentFieldName, setPercentFieldName] = useState('')
   const [percentValue, setPercentValue] = useState<string>('')
   const [savingPercent, setSavingPercent] = useState(false)
-
-  // State สำหรับเงินสมทบประกันสังคม
-  const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
-  const [loadingSocialSecurity, setLoadingSocialSecurity] = useState(false)
-  const [savingSocialSecurity, setSavingSocialSecurity] = useState<number | null>(null)
-  const [socialSecurityDialogOpen, setSocialSecurityDialogOpen] = useState(false)
 
   // Fetch ประวัติค่าใช้จ่าย
   const fetchExpenseHistory = async (
@@ -224,13 +142,8 @@ export default function SettingsPage() {
   // ปิด Dialog และ reload ข้อมูล
   const handleDialogClose = (open: boolean) => {
     setAdjustDialogOpen(open)
-    // เมื่อปิด Dialog ให้ reload ข้อมูลใหม่
     if (!open) {
-      if (adjustTarget === 'building') {
-        fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
-      } else {
-        fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
-      }
+      fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
     }
   }
 
@@ -244,12 +157,10 @@ export default function SettingsPage() {
     type: 'add' | 'subtract' | 'edit',
     fieldKey: string,
     fieldName: string,
-    target: 'building' | 'global'
   ) => {
     setAdjustType(type)
     setAdjustFieldKey(fieldKey)
     setAdjustFieldName(fieldName)
-    setAdjustTarget(target)
     setAdjustAmount('')
     setAdjustDescription('')
     const currentMonth = new Date().getMonth() + 1
@@ -258,19 +169,14 @@ export default function SettingsPage() {
     setAdjustYear(currentYear)
     setAdjustDialogOpen(true)
 
-    // Fetch ประวัติ
-    const targetType = target === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-    const targetId = target === 'building' ? parseInt(selectedBuilding) : null
-    fetchExpenseHistory(targetType, targetId, fieldKey, currentMonth, currentYear)
+    fetchExpenseHistory('SETTINGS', parseInt(selectedBuilding), fieldKey, currentMonth, currentYear)
   }
 
   // เมื่อเปลี่ยนเดือน/ปี ให้ fetch ประวัติใหม่
   const handleMonthYearChange = (month: number, year: number) => {
     setAdjustMonth(month)
     setAdjustYear(year)
-    const targetType = adjustTarget === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-    const targetId = adjustTarget === 'building' ? parseInt(selectedBuilding) : null
-    fetchExpenseHistory(targetType, targetId, adjustFieldKey, month, year)
+    fetchExpenseHistory('SETTINGS', parseInt(selectedBuilding), adjustFieldKey, month, year)
   }
 
   // ลบรายการประวัติ
@@ -283,14 +189,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setExpenseHistory(data.history || [])
         setHistoryTotal(data.total || 0)
-        // อัปเดตยอด - refresh totals
-        if (adjustTarget === 'building') {
-          // Refresh settings totals for building
-          fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
-        } else {
-          // Refresh global totals
-          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
-        }
+        fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
       }
     } catch (error) {
       console.error('Error deleting history:', error)
@@ -310,15 +209,12 @@ export default function SettingsPage() {
     setSavingHistory(true)
     const effectiveAction = getEffectiveAction()
     try {
-      const targetType = adjustTarget === 'building' ? 'SETTINGS' : 'GLOBAL_SETTINGS'
-      const targetId = adjustTarget === 'building' ? selectedBuilding : null
-
       const res = await fetch('/api/expense-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetType,
-          targetId,
+          targetType: 'SETTINGS',
+          targetId: selectedBuilding,
           fieldName: adjustFieldKey,
           fieldLabel: adjustFieldName,
           actionType: effectiveAction === 'add' ? 'ADD' : 'SUBTRACT',
@@ -333,14 +229,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setExpenseHistory(data.history || [])
         setHistoryTotal(data.total || 0)
-        // อัปเดตยอด - refresh totals
-        if (adjustTarget === 'building') {
-          // Refresh settings totals for building
-          fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
-        } else {
-          // Refresh global totals
-          fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
-        }
+        fetchSettingsTotals(selectedBuilding, buildingSelectedMonth, buildingSelectedYear)
         // Reset form
         setAdjustAmount('')
         setAdjustDescription('')
@@ -422,21 +311,6 @@ export default function SettingsPage() {
     }
   }
 
-  // ดึง global totals จาก ExpenseHistory (แยกแต่ละอาคาร)
-  const fetchGlobalTotals = useCallback(async (month: string, year: string) => {
-    setLoadingGlobal(true)
-    try {
-      const res = await fetch(`/api/expense-history/global-totals?month=${month}&year=${year}`)
-      const data = await res.json()
-      if (res.ok) {
-        setGlobalTotals(data)
-      }
-    } catch (error) {
-      console.error('Error fetching global totals:', error)
-    } finally {
-      setLoadingGlobal(false)
-    }
-  }, [])
 
   // ดึง settings totals จาก ExpenseHistory (per building)
   const fetchSettingsTotals = useCallback(async (buildingId: string, month: string, year: string) => {
@@ -455,69 +329,22 @@ export default function SettingsPage() {
     }
   }, [])
 
-  // ดึงข้อมูลเงินสมทบประกันสังคม
-  const fetchSocialSecurity = useCallback(async (month: string, year: string) => {
-    setLoadingSocialSecurity(true)
-    try {
-      const res = await fetch(`/api/social-security?month=${month}&year=${year}`)
-      const data = await res.json()
-      if (res.ok) {
-        setSocialSecurityData(data)
-      }
-    } catch (error) {
-      console.error('Error fetching social security:', error)
-    } finally {
-      setLoadingSocialSecurity(false)
-    }
-  }, [])
 
-  // บันทึกเงินสมทบประกันสังคม
-  const saveSocialSecurityContribution = async (employeeId: number, amount: number) => {
-    setSavingSocialSecurity(employeeId)
-    try {
-      const res = await fetch('/api/social-security', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId,
-          amount,
-          month: parseInt(globalSelectedMonth),
-          year: parseInt(globalSelectedYear),
-        }),
-      })
-      if (res.ok) {
-        // Refresh data
-        fetchSocialSecurity(globalSelectedMonth, globalSelectedYear)
-      }
-    } catch (error) {
-      console.error('Error saving social security:', error)
-    } finally {
-      setSavingSocialSecurity(null)
-    }
-  }
 
-  // โหลดรายการอาคารและ Global Settings
+  // โหลดรายการอาคาร
   useEffect(() => {
-    Promise.all([
-      fetch('/api/buildings').then((res) => res.json()),
-      fetch('/api/global-settings').then((res) => res.json()),
-    ])
-      .then(([buildingsData, globalData]) => {
+    fetch('/api/buildings')
+      .then((res) => res.json())
+      .then((buildingsData) => {
         setBuildings(buildingsData)
         if (buildingsData.length > 0) {
           setSelectedBuilding(String(buildingsData[0].id))
-          setGlobalSelectedBuilding(String(buildingsData[0].id))
         }
-        setGlobalSettings(globalData)
       })
       .catch((err) => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
   }, [])
 
-  // โหลด global totals เมื่อเปลี่ยนเดือน/ปี
-  useEffect(() => {
-    fetchGlobalTotals(globalSelectedMonth, globalSelectedYear)
-  }, [globalSelectedMonth, globalSelectedYear, fetchGlobalTotals])
 
   // โหลด settings totals เมื่อเปลี่ยนอาคาร หรือ เดือน/ปี
   useEffect(() => {
@@ -526,10 +353,6 @@ export default function SettingsPage() {
     }
   }, [selectedBuilding, buildingSelectedMonth, buildingSelectedYear, fetchSettingsTotals])
 
-  // โหลดเงินสมทบประกันสังคมเมื่อเปลี่ยนเดือน/ปี (ซิงค์กับค่าใช้จ่ายส่วนกลาง)
-  useEffect(() => {
-    fetchSocialSecurity(globalSelectedMonth, globalSelectedYear)
-  }, [globalSelectedMonth, globalSelectedYear, fetchSocialSecurity])
 
   // โหลด settings เมื่อเลือกอาคาร
   useEffect(() => {
@@ -573,16 +396,6 @@ export default function SettingsPage() {
             }}
           >
             ตั้งค่าอาคาร
-          </TabsTrigger>
-          <TabsTrigger
-            value="global-settings"
-            className="transition-colors duration-300 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
-            style={{
-              backgroundColor: activeTab === 'global-settings' ? '#9B59B6' : 'transparent',
-              color: activeTab === 'global-settings' ? 'white' : undefined,
-            }}
-          >
-            ค่าใช้จ่ายส่วนกลาง
           </TabsTrigger>
           <TabsTrigger
             value="info"
@@ -721,7 +534,7 @@ export default function SettingsPage() {
                           variant="ghost"
                           type="button"
                           className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                          onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                          onClick={() => openAdjustDialog('edit', 'monthlyRent', 'ค่าเช่าอาคาร')}
                         >
                           <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
@@ -730,7 +543,7 @@ export default function SettingsPage() {
                           variant="ghost"
                           type="button"
                           className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                          onClick={() => openAdjustDialog('add', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                          onClick={() => openAdjustDialog('add', 'monthlyRent', 'ค่าเช่าอาคาร')}
                         >
                           <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
@@ -739,7 +552,7 @@ export default function SettingsPage() {
                           variant="ghost"
                           type="button"
                           className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                          onClick={() => openAdjustDialog('subtract', 'monthlyRent', 'ค่าเช่าอาคาร', 'building')}
+                          onClick={() => openAdjustDialog('subtract', 'monthlyRent', 'ค่าเช่าอาคาร')}
                         >
                           <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
@@ -756,412 +569,7 @@ export default function SettingsPage() {
           )}
         </TabsContent>
 
-        {/* Tab ค่าใช้จ่ายส่วนกลาง */}
-        <TabsContent value="global-settings" className="space-y-3 sm:space-y-4">
-          <Card className="border-0 shadow-md overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-[#9B59B6] to-[#8E44AD] text-white px-4 py-3 sm:px-6 sm:py-4">
-              <CardTitle className="flex items-center gap-2 text-white text-sm sm:text-base">
-                <Globe className="h-4 w-4 sm:h-5 sm:w-5" />
-                ค่าใช้จ่ายส่วนกลาง
-              </CardTitle>
-              <CardDescription className="text-white/80 text-xs sm:text-sm">
-                กรอกค่าใช้จ่ายส่วนกลางแยกแต่ละอาคาร
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6 bg-gradient-to-b from-[#9B59B6]/5 to-white">
-              {/* ข้อความแจ้งว่าค่าใช้จ่ายนี้ใช้ร่วม 3 อาคาร */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-[#9B59B6]/10 rounded-lg">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-[#9B59B6]" />
-                <span className="text-xs sm:text-sm font-medium text-[#9B59B6]">ค่าใช้จ่ายส่วนกลางสำหรับ 3 อาคาร: Chinatown, Yaowarat, 103 NANA</span>
-              </div>
 
-              {/* Selector เดือน/ปี */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-[#9B59B6]/10 rounded-lg">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-[#9B59B6]" />
-                <span className="text-xs sm:text-sm font-medium text-[#9B59B6]">เดือน/ปี:</span>
-                <div className="flex gap-2 flex-1 sm:flex-none">
-                  <Select value={globalSelectedMonth} onValueChange={setGlobalSelectedMonth}>
-                    <SelectTrigger className="w-full sm:w-[130px] bg-white text-xs sm:text-sm">
-                      <SelectValue placeholder="เดือน" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableMonths(globalSelectedYear).map((m) => (
-                        <SelectItem key={m.value} value={String(m.value)}>
-                          {m.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={globalSelectedYear} onValueChange={setGlobalSelectedYear}>
-                    <SelectTrigger className="w-[80px] sm:w-[100px] bg-white text-xs sm:text-sm">
-                      <SelectValue placeholder="ปี" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years.map((y) => (
-                        <SelectItem key={y} value={String(y)}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {loadingGlobal && <Loader2 className="h-4 w-4 animate-spin text-[#9B59B6]" />}
-              </div>
-
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {/* ค่าดูแล MAX - หาร 3 อาคาร */}
-                <div className="space-y-3 rounded-xl border border-[#9B59B6]/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-[#9B59B6]/10">
-                      <ShieldCheck className="h-4 w-4 text-[#9B59B6]" />
-                    </div>
-                    <Label className="text-[#9B59B6] font-semibold text-sm">ค่าดูแล MAX</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#9B59B6]/5 border border-[#9B59B6]/30 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.maxCareExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'maxCareExpense', 'ค่าดูแล MAX', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals?.totals?.maxCareExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* ค่าดูแลจราจร - หาร 3 อาคาร */}
-                <div className="space-y-3 rounded-xl border border-[#E74C3C]/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-[#E74C3C]/10">
-                      <TrafficCone className="h-4 w-4 text-[#E74C3C]" />
-                    </div>
-                    <Label className="text-[#E74C3C] font-semibold text-sm">ค่าดูแลจราจร</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#E74C3C]/5 border border-[#E74C3C]/30 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.trafficCareExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'trafficCareExpense', 'ค่าดูแลจราจร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals?.totals?.trafficCareExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* ค่าน้ำมันรถ */}
-                <div className="space-y-3 rounded-xl border border-gray-500/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-gray-500/10">
-                      <Fuel className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <Label className="text-gray-600 font-semibold text-sm">ค่าน้ำมันรถ</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 border border-gray-300 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.fuelExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'fuelExpense', 'ค่าน้ำมันรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-gray-600">{formatNumber(globalTotals?.totals?.fuelExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* ค่าเช่าที่จอดรถมอเตอร์ไซค์ */}
-                <div className="space-y-3 rounded-xl border border-slate-500/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-slate-500/10">
-                      <ParkingCircle className="h-4 w-4 text-slate-600" />
-                    </div>
-                    <Label className="text-slate-600 font-semibold text-sm">ค่าที่จอดรถ</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-300 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.parkingExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'parkingExpense', 'ค่าที่จอดรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-slate-600">{formatNumber(globalTotals?.totals?.parkingExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* ค่าซ่อมบำรุงรถมอเตอร์ไซค์ */}
-                <div className="space-y-3 rounded-xl border border-rose-500/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-rose-500/10">
-                      <Wrench className="h-4 w-4 text-rose-600" />
-                    </div>
-                    <Label className="text-rose-600 font-semibold text-sm">ค่าซ่อมบำรุงรถ</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-rose-50 border border-rose-200 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.motorcycleMaintenanceExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'motorcycleMaintenanceExpense', 'ค่าซ่อมบำรุงรถ', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-rose-600">{formatNumber(globalTotals?.totals?.motorcycleMaintenanceExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* ค่าอาหาร */}
-                <div className="space-y-3 rounded-xl border border-orange-400/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-orange-400/10">
-                      <Utensils className="h-4 w-4 text-orange-500" />
-                    </div>
-                    <Label className="text-orange-500 font-semibold text-sm">ค่าอาหาร</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-orange-50 border border-orange-200 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(globalTotals?.totals?.foodExpense || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-blue-600 hover:bg-blue-100" onClick={() => openAdjustDialog('edit', 'foodExpense', 'ค่าอาหาร', 'global')}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-green-600 hover:bg-green-100" onClick={() => openAdjustDialog('add', 'foodExpense', 'ค่าอาหาร', 'global')}><Plus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-red-600 hover:bg-red-100" onClick={() => openAdjustDialog('subtract', 'foodExpense', 'ค่าอาหาร', 'global')}><Minus className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">ยอดรวม (หาร 3 อาคาร)</span>
-                    <span className="font-semibold text-orange-500">{formatNumber(globalTotals?.totals?.foodExpense || 0)} บาท</span>
-                  </div>
-                </div>
-
-                {/* เงินสมทบประกันสังคม */}
-                <div className="space-y-3 rounded-xl border border-[#E91E63]/30 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-[#E91E63]/10">
-                      <HeartPulse className="h-4 w-4 text-[#E91E63]" />
-                    </div>
-                    <Label className="text-[#E91E63] font-semibold text-sm">เงินสมทบประกันสังคม</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#E91E63]/5 border border-[#E91E63]/20 rounded-md text-right font-medium text-sm sm:text-base">
-                      {formatNumber(socialSecurityData?.totalAmount || 0)}
-                    </div>
-                    <Button size="icon" variant="ghost" type="button" className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 text-[#E91E63] hover:bg-[#E91E63]/10" onClick={() => setSocialSecurityDialogOpen(true)}><Pencil className="h-3 w-3 sm:h-4 sm:w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">หาร 3 อาคาร (CT, YW, NANA)</span>
-                    <span className="font-semibold text-[#E91E63]">{formatNumber(socialSecurityData?.amountPerBuilding || 0)} บาท/อาคาร</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* สรุปค่าใช้จ่ายต่ออาคาร */}
-              {globalTotals && globalTotals.buildingCount > 0 && (
-                <div className="rounded-xl border border-[#9B59B6]/20 bg-gradient-to-br from-[#9B59B6]/5 to-white p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-[#9B59B6]/10">
-                      <Globe className="h-4 w-4 text-[#9B59B6]" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-700">สรุปค่าใช้จ่ายส่วนกลาง</h4>
-                      <p className="text-[10px] text-slate-400">ยอดรวมทั้งหมด (หาร 3 อาคาร: CT, YW, NANA)</p>
-                    </div>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#9B59B6]/10 text-sm">
-                      <ShieldCheck className="h-4 w-4 text-[#9B59B6] flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าดูแล MAX</span>
-                      <span className="font-semibold text-[#9B59B6]">{formatNumber(globalTotals.totals?.maxCareExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E74C3C]/10 text-sm">
-                      <TrafficCone className="h-4 w-4 text-[#E74C3C] flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าดูแลจราจร</span>
-                      <span className="font-semibold text-[#E74C3C]">{formatNumber(globalTotals.totals?.trafficCareExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-gray-500/10 text-sm">
-                      <Fuel className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าน้ำมันรถ</span>
-                      <span className="font-semibold text-gray-600">{formatNumber(globalTotals.totals?.fuelExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-500/10 text-sm">
-                      <ParkingCircle className="h-4 w-4 text-slate-600 flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าที่จอดรถ</span>
-                      <span className="font-semibold text-slate-600">{formatNumber(globalTotals.totals?.parkingExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-rose-500/10 text-sm">
-                      <Wrench className="h-4 w-4 text-rose-600 flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าซ่อมบำรุงรถ</span>
-                      <span className="font-semibold text-rose-600">{formatNumber(globalTotals.totals?.motorcycleMaintenanceExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-orange-400/10 text-sm">
-                      <Utensils className="h-4 w-4 text-orange-500 flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">ค่าอาหาร</span>
-                      <span className="font-semibold text-orange-500">{formatNumber(globalTotals.totals?.foodExpense || 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-[#E91E63]/10 text-sm">
-                      <HeartPulse className="h-4 w-4 text-[#E91E63] flex-shrink-0" />
-                      <span className="text-slate-600 flex-1">เงินสมทบประกันสังคม</span>
-                      <span className="font-semibold text-[#E91E63]">{formatNumber(socialSecurityData?.totalAmount || 0)}</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-slate-200">
-                    <div className="flex justify-between items-center p-2 bg-[#9B59B6]/10 rounded">
-                      <span className="font-semibold text-slate-700">รวมค่าใช้จ่ายส่วนกลาง (ทั้งหมด)</span>
-                      <span className="font-bold text-[#9B59B6] text-lg">
-                        {formatNumber(globalTotals.totalGlobalExpense || 0)} บาท
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          </TabsContent>
-
-      {/* Dialog เงินสมทบประกันสังคม */}
-      <Dialog open={socialSecurityDialogOpen} onOpenChange={setSocialSecurityDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[550px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader className="bg-gradient-to-r from-[#E91E63] to-[#C2185B] -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 py-3 sm:py-4 rounded-t-lg">
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <HeartPulse className="h-5 w-5" />
-              เงินสมทบประกันสังคม (นายจ้าง)
-            </DialogTitle>
-            <p className="text-white/80 text-sm">
-              กรอกจำนวนเงินสมทบประกันสังคมของแต่ละพนักงาน (หาร 3 อาคาร (CT, YW, NANA))
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-4 pt-4">
-            {/* รายชื่อพนักงาน */}
-            {socialSecurityData && socialSecurityData.employees.length > 0 ? (
-              <div className="space-y-2">
-                {socialSecurityData.employees.map((emp) => (
-                  <div
-                    key={emp.id}
-                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#E91E63]/20 hover:border-[#E91E63]/40 transition-colors"
-                  >
-                    <Checkbox
-                      id={`dialog-emp-${emp.id}`}
-                      checked={emp.amount > 0}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          // เมื่อ check ให้ตั้งค่าเริ่มต้น 750 บาท
-                          setSocialSecurityData((prev) => {
-                            if (!prev) return prev
-                            return {
-                              ...prev,
-                              employees: prev.employees.map((e) =>
-                                e.id === emp.id ? { ...e, amount: 750 } : e
-                              ),
-                            }
-                          })
-                          saveSocialSecurityContribution(emp.id, 750)
-                        } else {
-                          // เมื่อ uncheck ให้ตั้งค่าเป็น 0
-                          setSocialSecurityData((prev) => {
-                            if (!prev) return prev
-                            return {
-                              ...prev,
-                              employees: prev.employees.map((e) =>
-                                e.id === emp.id ? { ...e, amount: 0 } : e
-                              ),
-                            }
-                          })
-                          saveSocialSecurityContribution(emp.id, 0)
-                        }
-                      }}
-                      className="h-5 w-5 border-[#E91E63] data-[state=checked]:bg-[#E91E63] data-[state=checked]:border-[#E91E63]"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <Label htmlFor={`dialog-emp-${emp.id}`} className="font-medium text-slate-700 cursor-pointer text-sm">
-                        {emp.firstName} {emp.lastName}
-                        {emp.nickname && <span className="text-slate-400 ml-1">({emp.nickname})</span>}
-                      </Label>
-                      <p className="text-xs text-slate-400">
-                        {emp.position === 'MAID' ? 'แม่บ้าน' : emp.position === 'MANAGER' ? 'ผู้จัดการ' : 'หุ้นส่วน'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={emp.amount || ''}
-                        onChange={(e) => {
-                          const newAmount = parseFloat(e.target.value) || 0
-                          setSocialSecurityData((prev) => {
-                            if (!prev) return prev
-                            return {
-                              ...prev,
-                              employees: prev.employees.map((e) =>
-                                e.id === emp.id ? { ...e, amount: newAmount } : e
-                              ),
-                            }
-                          })
-                        }}
-                        onBlur={(e) => {
-                          const newAmount = parseFloat(e.target.value) || 0
-                          saveSocialSecurityContribution(emp.id, newAmount)
-                        }}
-                        placeholder="0"
-                        className="w-24 text-right border-[#E91E63]/30 focus:border-[#E91E63]"
-                        disabled={savingSocialSecurity === emp.id}
-                      />
-                      <span className="text-xs text-slate-500">บาท</span>
-                      {savingSocialSecurity === emp.id && (
-                        <Loader2 className="h-4 w-4 animate-spin text-[#E91E63]" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-slate-400">
-                {loadingSocialSecurity ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>กำลังโหลด...</span>
-                  </div>
-                ) : (
-                  <p>ไม่พบข้อมูลพนักงาน กรุณาเพิ่มพนักงานก่อน</p>
-                )}
-              </div>
-            )}
-
-            {/* สรุปยอดรวม */}
-            {socialSecurityData && socialSecurityData.employees.length > 0 && (
-              <div className="p-4 bg-[#E91E63]/10 rounded-xl border border-[#E91E63]/30">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-slate-700">รวมเงินสมทบประกันสังคม</span>
-                  <span className="font-bold text-[#E91E63] text-lg">
-                    {formatNumber(socialSecurityData.totalAmount || 0)} บาท
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-[#E91E63]/20">
-                  <span className="text-sm text-slate-500">หาร 3 อาคาร (CT, YW, NANA)</span>
-                  <span className="font-semibold text-[#E91E63]">
-                    {formatNumber(socialSecurityData.amountPerBuilding || 0)} บาท/อาคาร
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setSocialSecurityDialogOpen(false)} className="w-full sm:w-auto">
-              ปิด
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
         <TabsContent value="info" className="space-y-4">
           <Card className="border-0 shadow-md overflow-hidden">
