@@ -308,23 +308,22 @@ async function calculateBuildingSummary(
     globalExpenseTotals[field] = Math.max(0, globalExpenseTotals[field])
   }
 
-  // ค่าใช้จ่ายส่วนกลาง: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
-  const globalDivisor = 3
-  const maxCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maxCareExpense / globalDivisor : (perBuildingTotals.maxCareExpense || 0)
-  const trafficCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.trafficCareExpense / globalDivisor : (perBuildingTotals.trafficCareExpense || 0)
-  const shippingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.shippingExpense / globalDivisor : (perBuildingTotals.shippingExpense || 0)
-  const amenityExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.amenityExpense / globalDivisor : (perBuildingTotals.amenityExpense || 0)
-  const waterBottleExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.waterBottleExpense / globalDivisor : (perBuildingTotals.waterBottleExpense || 0)
-  const cookieExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cookieExpense / globalDivisor : (perBuildingTotals.cookieExpense || 0)
-  const coffeeExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeExpense / globalDivisor : (perBuildingTotals.coffeeExpense || 0)
-  const sugarExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.sugarExpense / globalDivisor : (perBuildingTotals.sugarExpense || 0)
-  const coffeeMateExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeMateExpense / globalDivisor : (perBuildingTotals.coffeeMateExpense || 0)
-  const fuelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.fuelExpense / globalDivisor : (perBuildingTotals.fuelExpense || 0)
-  const parkingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.parkingExpense / globalDivisor : (perBuildingTotals.parkingExpense || 0)
-  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.motorcycleMaintenanceExpense / globalDivisor : (perBuildingTotals.motorcycleMaintenanceExpense || 0)
-  const maidTravelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maidTravelExpense / globalDivisor : (perBuildingTotals.maidTravelExpense || 0)
-  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cleaningSupplyExpense / globalDivisor : (perBuildingTotals.cleaningSupplyExpense || 0)
-  const foodExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.foodExpense / globalDivisor : (perBuildingTotals.foodExpense || 0)
+  // ค่าใช้จ่ายส่วนกลาง: ยอดที่กรอกคือยอดต่ออาคารอยู่แล้ว (ไม่ต้องหาร), Funn D = กรอกเองแยกอาคาร
+  const maxCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maxCareExpense : (perBuildingTotals.maxCareExpense || 0)
+  const trafficCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.trafficCareExpense : (perBuildingTotals.trafficCareExpense || 0)
+  const shippingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.shippingExpense : (perBuildingTotals.shippingExpense || 0)
+  const amenityExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.amenityExpense : (perBuildingTotals.amenityExpense || 0)
+  const waterBottleExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.waterBottleExpense : (perBuildingTotals.waterBottleExpense || 0)
+  const cookieExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cookieExpense : (perBuildingTotals.cookieExpense || 0)
+  const coffeeExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeExpense : (perBuildingTotals.coffeeExpense || 0)
+  const sugarExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.sugarExpense : (perBuildingTotals.sugarExpense || 0)
+  const coffeeMateExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeMateExpense : (perBuildingTotals.coffeeMateExpense || 0)
+  const fuelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.fuelExpense : (perBuildingTotals.fuelExpense || 0)
+  const parkingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.parkingExpense : (perBuildingTotals.parkingExpense || 0)
+  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.motorcycleMaintenanceExpense : (perBuildingTotals.motorcycleMaintenanceExpense || 0)
+  const maidTravelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maidTravelExpense : (perBuildingTotals.maidTravelExpense || 0)
+  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cleaningSupplyExpense : (perBuildingTotals.cleaningSupplyExpense || 0)
+  const foodExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.foodExpense : (perBuildingTotals.foodExpense || 0)
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({

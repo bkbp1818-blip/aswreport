@@ -396,21 +396,20 @@ export default function TransactionsPage() {
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
   const isFunnD = !isEligibleForSalary && selectedBuildingCode !== ''
-  // ค่าใช้จ่ายส่วนกลาง: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
-  const globalDivisor = 3
-  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) / globalDivisor : (perBuildingExpenses.maxCareExpense || 0)
-  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) / globalDivisor : (perBuildingExpenses.trafficCareExpense || 0)
-  const shippingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.shippingExpense || 0) / globalDivisor : (perBuildingExpenses.shippingExpense || 0)
-  const amenityExpensePerBuilding = isEligibleForSalary ? (globalSettings?.amenityExpense || 0) / globalDivisor : (perBuildingExpenses.amenityExpense || 0)
-  const waterBottleExpensePerBuilding = isEligibleForSalary ? (globalSettings?.waterBottleExpense || 0) / globalDivisor : (perBuildingExpenses.waterBottleExpense || 0)
-  const cookieExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cookieExpense || 0) / globalDivisor : (perBuildingExpenses.cookieExpense || 0)
-  const coffeeExpensePerBuilding = isEligibleForSalary ? (globalSettings?.coffeeExpense || 0) / globalDivisor : (perBuildingExpenses.coffeeExpense || 0)
-  const fuelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.fuelExpense || 0) / globalDivisor : (perBuildingExpenses.fuelExpense || 0)
-  const parkingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.parkingExpense || 0) / globalDivisor : (perBuildingExpenses.parkingExpense || 0)
-  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? (globalSettings?.motorcycleMaintenanceExpense || 0) / globalDivisor : (perBuildingExpenses.motorcycleMaintenanceExpense || 0)
-  const maidTravelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maidTravelExpense || 0) / globalDivisor : (perBuildingExpenses.maidTravelExpense || 0)
-  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cleaningSupplyExpense || 0) / globalDivisor : (perBuildingExpenses.cleaningSupplyExpense || 0)
-  const foodExpensePerBuilding = isEligibleForSalary ? (globalSettings?.foodExpense || 0) / globalDivisor : (perBuildingExpenses.foodExpense || 0)
+  // ค่าใช้จ่ายส่วนกลาง: ยอดที่กรอกคือยอดต่ออาคารอยู่แล้ว (ไม่ต้องหาร), Funn D = กรอกเองแยกอาคาร
+  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) : (perBuildingExpenses.maxCareExpense || 0)
+  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) : (perBuildingExpenses.trafficCareExpense || 0)
+  const shippingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.shippingExpense || 0) : (perBuildingExpenses.shippingExpense || 0)
+  const amenityExpensePerBuilding = isEligibleForSalary ? (globalSettings?.amenityExpense || 0) : (perBuildingExpenses.amenityExpense || 0)
+  const waterBottleExpensePerBuilding = isEligibleForSalary ? (globalSettings?.waterBottleExpense || 0) : (perBuildingExpenses.waterBottleExpense || 0)
+  const cookieExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cookieExpense || 0) : (perBuildingExpenses.cookieExpense || 0)
+  const coffeeExpensePerBuilding = isEligibleForSalary ? (globalSettings?.coffeeExpense || 0) : (perBuildingExpenses.coffeeExpense || 0)
+  const fuelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.fuelExpense || 0) : (perBuildingExpenses.fuelExpense || 0)
+  const parkingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.parkingExpense || 0) : (perBuildingExpenses.parkingExpense || 0)
+  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? (globalSettings?.motorcycleMaintenanceExpense || 0) : (perBuildingExpenses.motorcycleMaintenanceExpense || 0)
+  const maidTravelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maidTravelExpense || 0) : (perBuildingExpenses.maidTravelExpense || 0)
+  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cleaningSupplyExpense || 0) : (perBuildingExpenses.cleaningSupplyExpense || 0)
+  const foodExpensePerBuilding = isEligibleForSalary ? (globalSettings?.foodExpense || 0) : (perBuildingExpenses.foodExpense || 0)
 
   // เงินสมทบประกันสังคม: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
   const socialSecurityExpensePerBuilding = isEligibleForSalary ? (socialSecurityData?.amountPerBuilding || 0) : (perBuildingExpenses.socialSecurityExpense || 0)
