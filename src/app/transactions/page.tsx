@@ -136,6 +136,7 @@ export default function TransactionsPage() {
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings | null>(null)
   const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
+  const [perBuildingExpenses, setPerBuildingExpenses] = useState<Record<string, number>>({})
 
   // State สำหรับ Dialog เพิ่ม/ลดยอด
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
@@ -247,6 +248,17 @@ export default function TransactionsPage() {
       } else {
         setBuildingSettings(null)
       }
+
+      // เก็บค่าใช้จ่ายแยกตามอาคาร (สำหรับ Funn D ที่กรอกเองทุกรายการ)
+      const perBuildingMap: Record<string, number> = {}
+      if (settingsTotalsData.totals) {
+        for (const [fieldName, amount] of Object.entries(settingsTotalsData.totals)) {
+          if (fieldName !== 'cowayWaterFilterExpense') {
+            perBuildingMap[fieldName] = amount as number
+          }
+        }
+      }
+      setPerBuildingExpenses(perBuildingMap)
 
       // อัปเดต globalSettings จาก expense-history/global-totals
       if (globalTotalsData && globalTotalsData.totals) {
@@ -383,26 +395,25 @@ export default function TransactionsPage() {
   const selectedBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
-  // ค่าใช้จ่ายส่วนกลาง (ยอดรวมหาร 3 อาคาร: CT, YW, NANA)
+  const isFunnD = !isEligibleForSalary && selectedBuildingCode !== ''
+  // ค่าใช้จ่ายส่วนกลาง: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
   const globalDivisor = 3
-  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) / globalDivisor : 0
-  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) / globalDivisor : 0
-  const shippingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.shippingExpense || 0) / globalDivisor : 0
-  const amenityExpensePerBuilding = isEligibleForSalary ? (globalSettings?.amenityExpense || 0) / globalDivisor : 0
-  const waterBottleExpensePerBuilding = isEligibleForSalary ? (globalSettings?.waterBottleExpense || 0) / globalDivisor : 0
-  const cookieExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cookieExpense || 0) / globalDivisor : 0
-  const coffeeExpensePerBuilding = isEligibleForSalary ? (globalSettings?.coffeeExpense || 0) / globalDivisor : 0
-  const fuelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.fuelExpense || 0) / globalDivisor : 0
-  const parkingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.parkingExpense || 0) / globalDivisor : 0
-  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? (globalSettings?.motorcycleMaintenanceExpense || 0) / globalDivisor : 0
-  const maidTravelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maidTravelExpense || 0) / globalDivisor : 0
-  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cleaningSupplyExpense || 0) / globalDivisor : 0
-  const foodExpensePerBuilding = isEligibleForSalary ? (globalSettings?.foodExpense || 0) / globalDivisor : 0
+  const maxCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maxCareExpense || 0) / globalDivisor : (perBuildingExpenses.maxCareExpense || 0)
+  const trafficCareExpensePerBuilding = isEligibleForSalary ? (globalSettings?.trafficCareExpense || 0) / globalDivisor : (perBuildingExpenses.trafficCareExpense || 0)
+  const shippingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.shippingExpense || 0) / globalDivisor : (perBuildingExpenses.shippingExpense || 0)
+  const amenityExpensePerBuilding = isEligibleForSalary ? (globalSettings?.amenityExpense || 0) / globalDivisor : (perBuildingExpenses.amenityExpense || 0)
+  const waterBottleExpensePerBuilding = isEligibleForSalary ? (globalSettings?.waterBottleExpense || 0) / globalDivisor : (perBuildingExpenses.waterBottleExpense || 0)
+  const cookieExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cookieExpense || 0) / globalDivisor : (perBuildingExpenses.cookieExpense || 0)
+  const coffeeExpensePerBuilding = isEligibleForSalary ? (globalSettings?.coffeeExpense || 0) / globalDivisor : (perBuildingExpenses.coffeeExpense || 0)
+  const fuelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.fuelExpense || 0) / globalDivisor : (perBuildingExpenses.fuelExpense || 0)
+  const parkingExpensePerBuilding = isEligibleForSalary ? (globalSettings?.parkingExpense || 0) / globalDivisor : (perBuildingExpenses.parkingExpense || 0)
+  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? (globalSettings?.motorcycleMaintenanceExpense || 0) / globalDivisor : (perBuildingExpenses.motorcycleMaintenanceExpense || 0)
+  const maidTravelExpensePerBuilding = isEligibleForSalary ? (globalSettings?.maidTravelExpense || 0) / globalDivisor : (perBuildingExpenses.maidTravelExpense || 0)
+  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? (globalSettings?.cleaningSupplyExpense || 0) / globalDivisor : (perBuildingExpenses.cleaningSupplyExpense || 0)
+  const foodExpensePerBuilding = isEligibleForSalary ? (globalSettings?.foodExpense || 0) / globalDivisor : (perBuildingExpenses.foodExpense || 0)
 
-  // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA) - ไม่แสดงสำหรับ Funn D
-  const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
-  const isEligibleForSocialSecurity = eligibleBuildingsForSocialSecurity.includes(selectedBuildingCode)
-  const socialSecurityExpensePerBuilding = isEligibleForSocialSecurity ? (socialSecurityData?.amountPerBuilding || 0) : 0
+  // เงินสมทบประกันสังคม: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
+  const socialSecurityExpensePerBuilding = isEligibleForSalary ? (socialSecurityData?.amountPerBuilding || 0) : (perBuildingExpenses.socialSecurityExpense || 0)
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
@@ -412,7 +423,7 @@ export default function TransactionsPage() {
     cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + socialSecurityExpensePerBuilding
 
   // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่า Coway + ค่าใช้จ่ายส่วนกลาง
-  const salaryExpense = isEligibleForSalary ? (salarySummary?.salaryPerBuilding || 0) : 0
+  const salaryExpense = isEligibleForSalary ? (salarySummary?.salaryPerBuilding || 0) : (perBuildingExpenses.salaryExpense || 0)
   const otherExpense = otherExpenseCategories.reduce(
     (sum, c) => sum + (transactionData[c.id] || 0),
     0
@@ -445,9 +456,14 @@ export default function TransactionsPage() {
     setLoadingHistory(true)
     try {
       const isGlobalSettingsField = globalSettingsFields.includes(String(categoryId))
-      const isSettingsField = categoryId === 'cowayWaterFilterExpense'
-      const targetType = isGlobalSettingsField ? 'GLOBAL_SETTINGS' : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
-      const targetId = isGlobalSettingsField ? '' : selectedBuilding
+      const isFunnDSettingsField = ['salaryExpense', 'socialSecurityExpense'].includes(String(categoryId))
+      const isSettingsField = categoryId === 'cowayWaterFilterExpense' || isFunnDSettingsField
+      const currentBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+      const isFunnDBuilding = !['CT', 'YW', 'NANA'].includes(currentBuildingCode)
+      const targetType = isGlobalSettingsField
+        ? (isFunnDBuilding ? 'SETTINGS' : 'GLOBAL_SETTINGS')
+        : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
+      const targetId = (isGlobalSettingsField && !isFunnDBuilding) ? '' : selectedBuilding
       const params = new URLSearchParams({
         targetType,
         ...(targetId ? { targetId } : {}),
@@ -571,8 +587,13 @@ export default function TransactionsPage() {
 
     // ตรวจสอบว่าเป็น global settings field, settings field หรือ transaction
     const isGlobalSettingsField = globalSettingsFields.includes(String(currentCategoryId))
-    const isSettingsField = currentCategoryId === 'cowayWaterFilterExpense'
-    const targetType = isGlobalSettingsField ? 'GLOBAL_SETTINGS' : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
+    const isFunnDSettingsField = ['salaryExpense', 'socialSecurityExpense'].includes(String(currentCategoryId))
+    const isSettingsField = currentCategoryId === 'cowayWaterFilterExpense' || isFunnDSettingsField
+    const currentBuildingCode = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+    const isFunnDBuilding = !['CT', 'YW', 'NANA'].includes(currentBuildingCode)
+    const targetType = isGlobalSettingsField
+      ? (isFunnDBuilding ? 'SETTINGS' : 'GLOBAL_SETTINGS')
+      : isSettingsField ? 'SETTINGS' : 'TRANSACTION'
 
     try {
       const res = await fetch('/api/expense-history', {
@@ -580,7 +601,7 @@ export default function TransactionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetType,
-          targetId: isGlobalSettingsField ? null : selectedBuilding,
+          targetId: (isGlobalSettingsField && !isFunnDBuilding) ? null : selectedBuilding,
           fieldName: String(currentCategoryId),
           fieldLabel: adjustCategoryName,
           actionType: effectiveAction === 'add' ? 'ADD' : 'SUBTRACT',
@@ -610,8 +631,20 @@ export default function TransactionsPage() {
               ...prev,
               cowayWaterFilterExpense: data.total || 0
             } : null)
+          } else if (isGlobalSettingsField && isFunnDBuilding) {
+            // อัปเดต perBuildingExpenses สำหรับ Funn D
+            setPerBuildingExpenses(prev => ({
+              ...prev,
+              [String(currentCategoryId)]: data.total || 0
+            }))
+          } else if (isFunnDSettingsField) {
+            // อัปเดต perBuildingExpenses สำหรับเงินเดือน/ประกันสังคม Funn D
+            setPerBuildingExpenses(prev => ({
+              ...prev,
+              [String(currentCategoryId)]: data.total || 0
+            }))
           } else if (isGlobalSettingsField) {
-            // อัปเดต globalSettings สำหรับค่าใช้จ่ายส่วนกลาง
+            // อัปเดต globalSettings สำหรับค่าใช้จ่ายส่วนกลาง (CT/YW/NANA)
             setGlobalSettings(prev => prev ? {
               ...prev,
               [String(currentCategoryId)]: data.total || 0
@@ -1231,7 +1264,7 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* เงินเดือนพนักงาน (ซ่อนสำหรับ VIEWER) */}
+                  {/* เงินเดือนพนักงาน - CT/YW/NANA (read-only จาก salary summary, ซ่อนสำหรับ VIEWER) */}
                   {!isViewer && salaryCategory && salarySummary && isEligibleForSalary && (
                     <TableRow className="bg-[#84A59D]/10">
                       <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
@@ -1253,14 +1286,42 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* ค่าใช้จ่ายส่วนกลาง - แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) ไม่แสดงสำหรับ Funn D */}
-                  {isEligibleForSalary && globalSettings && (
+                  {/* เงินเดือนพนักงาน - Funn D (กรอกเองแยกอาคาร, ซ่อนสำหรับ VIEWER) */}
+                  {!isViewer && isFunnD && (
+                    <TableRow className="bg-[#84A59D]/10">
+                      <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + 1}</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <CategoryIcon name="เงินเดือนพนักงาน" className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs md:text-sm font-medium text-[#84A59D]">เงินเดือนพนักงาน</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-2 md:px-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <p className="font-medium text-xs md:text-sm text-[#84A59D]">{formatNumber(perBuildingExpenses.salaryExpense || 0)}</p>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'salaryExpense', 'เงินเดือนพนักงาน')}>
+                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'salaryExpense', 'เงินเดือนพนักงาน')}>
+                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'salaryExpense', 'เงินเดือนพนักงาน')}>
+                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {/* ค่าใช้จ่ายส่วนกลาง - CT/YW/NANA: หาร 3, Funn D: กรอกเองแยกอาคาร */}
+                  {(globalSettings || isFunnD) && (
                     <>
-                      {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {isEligibleForSalary && (
+                      {/* ค่าดูแล MAX - ทุกอาคาร */}
+                      {(isEligibleForSalary || isFunnD) && (
                         <TableRow className="bg-[#9B59B6]/10">
                           <TableCell className="font-medium px-2 md:px-4">
-                            {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + 1}
+                            {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && (isEligibleForSalary ? (salaryCategory && salarySummary) : true) ? 1 : 0) + 1}
                           </TableCell>
                           <TableCell className="px-2 md:px-4">
                             <div className="flex items-center gap-1 md:gap-2">
@@ -1286,8 +1347,8 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* ค่าดูแลจราจร - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {isEligibleForSalary && (
+                      {/* ค่าดูแลจราจร - ทุกอาคาร */}
+                      {(isEligibleForSalary || isFunnD) && (
                         <TableRow className="bg-[#E74C3C]/10">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(!isViewer && monthlyRent > 0 ? 1 : 0) + (!isViewer && salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + 1}
@@ -1317,7 +1378,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าขนส่งสินค้า - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-orange-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) + 1}
@@ -1347,7 +1408,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่า Amenity - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1427,7 +1488,7 @@ export default function TransactionsPage() {
                         </TableCell>
                       </TableRow>
                       {/* ค่าน้ำเปล่า - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-sky-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1459,7 +1520,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าขนมคุ้กกี้ - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-amber-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1491,7 +1552,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-amber-200/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1523,7 +1584,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าน้ำมันรถมอเตอร์ไซค์ - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-gray-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1555,7 +1616,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าเช่าที่จอดรถมอเตอร์ไซค์ - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-slate-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1587,7 +1648,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าซ่อมบำรุงรถมอเตอร์ไซค์ - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-orange-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1619,7 +1680,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าเดินทางแม่บ้าน - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-violet-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1651,7 +1712,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าอุปกรณ์ทำความสะอาด - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-teal-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1683,7 +1744,7 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                       {/* ค่าอาหาร - แสดงเสมอ */}
-                      {globalSettings && (
+                      {(globalSettings || isFunnD) && (
                         <TableRow className="bg-orange-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1714,8 +1775,8 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* เงินสมทบประกันสังคม - ซ่อนสำหรับ Viewer */}
-                      {!isViewer && socialSecurityData && isEligibleForSocialSecurity && (
+                      {/* เงินสมทบประกันสังคม - CT/YW/NANA: read-only, Funn D: กรอกเอง */}
+                      {!isViewer && socialSecurityData && isEligibleForSalary && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1735,14 +1796,49 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
+                      {/* เงินสมทบประกันสังคม - Funn D (กรอกเองแยกอาคาร) */}
+                      {!isViewer && isFunnD && (
+                        <TableRow className="bg-pink-100/50">
+                          <TableCell className="font-medium px-2 md:px-4">
+                            {(monthlyRent > 0 ? 1 : 0) + 1 +
+                             (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
+                             (shippingExpensePerBuilding > 0 ? 1 : 0) + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1}
+                          </TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name="ประกันสังคม" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-xs md:text-sm font-medium text-pink-600">ประกันสังคม</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
                     // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 12 รายการค่าใช้จ่ายส่วนกลาง (รวมประกันสังคม)
-                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + 1 + (salaryCategory && salarySummary ? 1 : 0) +
+                    const hasSalaryRow = isEligibleForSalary ? (salaryCategory && salarySummary) : isFunnD
+                    const hasGlobalItems = globalSettings || isFunnD
+                    const hasSocialSecurity = isEligibleForSalary ? !!socialSecurityData : isFunnD
+                    const baseIndex = (monthlyRent > 0 ? 1 : 0) + 1 + (hasSalaryRow ? 1 : 0) +
                       (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (globalSettings ? 11 : 0) + (socialSecurityData ? 1 : 0)
+                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (hasGlobalItems ? 11 : 0) + (hasSocialSecurity ? 1 : 0)
                     return (
                       <TableRow
                         key={category.id}
