@@ -1185,8 +1185,8 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 6: รายได้ค่าทำความสะอาด (เฉพาะ Funn D) */}
-              {isFunnD && (
+              {/* กลุ่ม 6: รายได้ค่าทำความสะอาด */}
+              {(
                 <>
                   <div className="bg-teal-500/10 px-4 py-2 border-y border-teal-500/20">
                     <div className="flex justify-between items-center">
