@@ -1253,8 +1253,8 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {/* ค่าใช้จ่ายส่วนกลาง - แสดงเฉพาะรายการที่มีค่ามากกว่า 0 */}
-                  {globalSettings && (
+                  {/* ค่าใช้จ่ายส่วนกลาง - แสดงเฉพาะ 3 อาคาร (NANA, CT, YW) ไม่แสดงสำหรับ Funn D */}
+                  {isEligibleForSalary && globalSettings && (
                     <>
                       {/* ค่าดูแล MAX - เฉพาะ 3 อาคาร (NANA, CT, YW) */}
                       {isEligibleForSalary && (
