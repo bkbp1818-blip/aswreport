@@ -131,6 +131,7 @@ export default function TransactionsPage() {
   const [airportShuttleRentIncome, setAirportShuttleRentIncome] = useState<number>(0)
   const [thaiBusTourIncome, setThaiBusTourIncome] = useState<number>(0)
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
+  const [cleaningFeeIncome, setCleaningFeeIncome] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
@@ -222,6 +223,8 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(amount as number)
           } else if (fieldName === 'coVanKesselIncome') {
             setCoVanKesselIncome(amount as number)
+          } else if (fieldName === 'cleaningFeeIncome') {
+            setCleaningFeeIncome(amount as number)
           } else {
             dataMap[parseInt(fieldName)] = amount as number
           }
@@ -236,6 +239,9 @@ export default function TransactionsPage() {
       }
       if (!historyData.totals?.coVanKesselIncome) {
         setCoVanKesselIncome(0)
+      }
+      if (!historyData.totals?.cleaningFeeIncome) {
+        setCleaningFeeIncome(0)
       }
       setTransactionData(dataMap)
 
@@ -383,7 +389,7 @@ export default function TransactionsPage() {
   )
 
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
-  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome
+  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome
 
   // รวมค่าเช่าอาคารจาก settings ด้วย
   const monthlyRent = buildingSettings?.monthlyRent || 0
@@ -624,6 +630,8 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(data.total || 0)
           } else if (currentCategoryId === 'coVanKesselIncome') {
             setCoVanKesselIncome(data.total || 0)
+          } else if (currentCategoryId === 'cleaningFeeIncome') {
+            setCleaningFeeIncome(data.total || 0)
           } else if (currentCategoryId === 'cowayWaterFilterExpense') {
             // อัปเดต buildingSettings สำหรับ Coway
             setBuildingSettings(prev => prev ? {
@@ -1166,6 +1174,62 @@ export default function TransactionsPage() {
                               variant="ghost"
                               className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
                               onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+
+              {/* กลุ่ม 6: รายได้ค่าทำความสะอาด (เฉพาะ Funn D) */}
+              {isFunnD && (
+                <>
+                  <div className="bg-teal-500/10 px-4 py-2 border-y border-teal-500/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-teal-600">รายได้ค่าทำความสะอาด</p>
+                      <p className="text-sm font-bold text-teal-600">{formatNumber(cleaningFeeIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      <TableRow className="bg-teal-50/50">
+                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm font-medium text-teal-600">ค่าทำความสะอาด</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-teal-50 border border-teal-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-teal-600">
+                              {formatNumber(cleaningFeeIncome)}
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', 'cleaningFeeIncome', 'ค่าทำความสะอาด')}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', 'cleaningFeeIncome', 'ค่าทำความสะอาด')}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', 'cleaningFeeIncome', 'ค่าทำความสะอาด')}
                             >
                               <Minus className="h-3 w-3 md:h-4 md:w-4" />
                             </Button>

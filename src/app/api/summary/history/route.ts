@@ -141,6 +141,7 @@ async function calculateBuildingSummary(
   let airportShuttleRentIncome = 0
   let thaiBusTourIncome = 0
   let coVanKesselIncome = 0
+  let cleaningFeeIncome = 0
   for (const item of expenseHistory) {
     // ถ้าเป็น special income fields ให้เก็บแยก
     if (item.fieldName === 'airportShuttleRentIncome') {
@@ -170,6 +171,15 @@ async function calculateBuildingSummary(
       }
       continue
     }
+    if (item.fieldName === 'cleaningFeeIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        cleaningFeeIncome += amount
+      } else {
+        cleaningFeeIncome -= amount
+      }
+      continue
+    }
     const categoryId = parseInt(item.fieldName)
     if (!categoryTotals[categoryId]) {
       categoryTotals[categoryId] = 0
@@ -185,6 +195,7 @@ async function calculateBuildingSummary(
   airportShuttleRentIncome = Math.max(0, airportShuttleRentIncome)
   thaiBusTourIncome = Math.max(0, thaiBusTourIncome)
   coVanKesselIncome = Math.max(0, coVanKesselIncome)
+  cleaningFeeIncome = Math.max(0, cleaningFeeIncome)
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
   }
@@ -324,7 +335,7 @@ async function calculateBuildingSummary(
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome
 
   // คำนวณรายจ่าย (ไม่รวมเงินเดือนพนักงานที่กรอกมา เพราะจะใช้ค่าจาก employees แทน)
   const expenseTransactions = transactions.filter(
@@ -353,6 +364,9 @@ async function calculateBuildingSummary(
   }
   if (coVanKesselIncome > 0) {
     incomeByChannel['Co Van Kessel'] = coVanKesselIncome
+  }
+  if (cleaningFeeIncome > 0) {
+    incomeByChannel['ค่าทำความสะอาด'] = cleaningFeeIncome
   }
 
   // แยกรายจ่ายตามหมวดหมู่

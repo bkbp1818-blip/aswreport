@@ -151,6 +151,7 @@ async function calculateBuildingSummary(
   let airportShuttleRentIncome = 0
   let thaiBusTourIncome = 0
   let coVanKesselIncome = 0
+  let cleaningFeeIncome = 0
   for (const item of expenseHistory) {
     // ถ้าเป็น special income fields ให้เก็บแยก
     if (item.fieldName === 'airportShuttleRentIncome') {
@@ -180,6 +181,15 @@ async function calculateBuildingSummary(
       }
       continue
     }
+    if (item.fieldName === 'cleaningFeeIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        cleaningFeeIncome += amount
+      } else {
+        cleaningFeeIncome -= amount
+      }
+      continue
+    }
     const categoryId = parseInt(item.fieldName)
     if (!categoryTotals[categoryId]) {
       categoryTotals[categoryId] = 0
@@ -195,6 +205,7 @@ async function calculateBuildingSummary(
   airportShuttleRentIncome = Math.max(0, airportShuttleRentIncome)
   thaiBusTourIncome = Math.max(0, thaiBusTourIncome)
   coVanKesselIncome = Math.max(0, coVanKesselIncome)
+  cleaningFeeIncome = Math.max(0, cleaningFeeIncome)
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
   }
@@ -352,7 +363,7 @@ async function calculateBuildingSummary(
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome
 
   // คำนวณรายได้ค่าเช่า (สำหรับ Management Fee)
   // เฉพาะหมวดหมู่ที่มีคำว่า "ค่าเช่า" เท่านั้น (ไม่รวมค่าอาหาร, รับส่งสนามบิน, ทัวร์, Thai bus, Co van)
@@ -387,6 +398,9 @@ async function calculateBuildingSummary(
   }
   if (coVanKesselIncome > 0) {
     incomeByChannel['Co Van Kessel'] = coVanKesselIncome
+  }
+  if (cleaningFeeIncome > 0) {
+    incomeByChannel['ค่าทำความสะอาด'] = cleaningFeeIncome
   }
 
   // รวม PayPal, Credit Card, Bank Transfer เข้า Direct Booking (สำหรับ Pie Chart)
