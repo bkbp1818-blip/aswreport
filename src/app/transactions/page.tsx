@@ -378,6 +378,7 @@ export default function TransactionsPage() {
 
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
+  const aswOtherServiceExpense = perBuildingExpenses.aswOtherServiceExpense || 0
 
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
   const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
@@ -396,7 +397,7 @@ export default function TransactionsPage() {
     0
   )
   const cashExpenseAmount = cashExpenseCategory ? (transactionData[cashExpenseCategory.id] || 0) : 0
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + (isFunnD ? managerAdminSalaryExpense : 0)
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + (isFunnD ? (managerAdminSalaryExpense + aswOtherServiceExpense) : 0)
 
   // คำนวณกำไร/ขาดทุน
   const profit = totalIncome - totalExpense
@@ -414,7 +415,7 @@ export default function TransactionsPage() {
     'coffeeExpense', 'fuelExpense', 'parkingExpense',
     'motorcycleMaintenanceExpense', 'maidTravelExpense',
     'cleaningSupplyExpense', 'foodExpense',
-    'managerAdminSalaryIncome', 'managerAdminSalaryExpense',
+    'managerAdminSalaryIncome', 'managerAdminSalaryExpense', 'aswOtherServiceExpense',
   ]
 
   // ดึงประวัติค่าใช้จ่าย
@@ -1896,6 +1897,34 @@ export default function TransactionsPage() {
                                 <Plus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'managerAdminSalaryExpense', 'รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* บริการอื่นๆจาก ASW - เฉพาะ Funn D */}
+                      {isFunnD && (
+                        <TableRow className="bg-amber-500/10">
+                          <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name="บริการ" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-xs md:text-sm font-medium text-amber-600">บริการอื่นๆจาก ASW</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-amber-600">{formatNumber(aswOtherServiceExpense)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
                                 <Minus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                             </div>
