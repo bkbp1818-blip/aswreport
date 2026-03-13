@@ -347,9 +347,6 @@ export default function TransactionsPage() {
     0
   )
 
-  // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
-  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome
-
   // รวมค่าเช่าอาคารจาก settings ด้วย
   const monthlyRent = buildingSettings?.monthlyRent || 0
 
@@ -379,6 +376,12 @@ export default function TransactionsPage() {
   // เงินสมทบประกันสังคม: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
   const socialSecurityExpensePerBuilding = isEligibleForSalary ? (socialSecurityData?.amountPerBuilding || 0) : (perBuildingExpenses.socialSecurityExpense || 0)
 
+  const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
+  const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
+
+  // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
+  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
+
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
@@ -393,7 +396,7 @@ export default function TransactionsPage() {
     0
   )
   const cashExpenseAmount = cashExpenseCategory ? (transactionData[cashExpenseCategory.id] || 0) : 0
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + (isFunnD ? managerAdminSalaryExpense : 0)
 
   // คำนวณกำไร/ขาดทุน
   const profit = totalIncome - totalExpense
@@ -411,6 +414,7 @@ export default function TransactionsPage() {
     'coffeeExpense', 'fuelExpense', 'parkingExpense',
     'motorcycleMaintenanceExpense', 'maidTravelExpense',
     'cleaningSupplyExpense', 'foodExpense',
+    'managerAdminSalaryIncome', 'managerAdminSalaryExpense',
   ]
 
   // ดึงประวัติค่าใช้จ่าย
@@ -1178,6 +1182,47 @@ export default function TransactionsPage() {
                   </Table>
                 </>
               )}
+
+              {/* กลุ่ม 7: รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน - เฉพาะ CT/YW/NANA */}
+              {isEligibleForSalary && (
+                <>
+                  <div className="bg-violet-500/10 px-4 py-2 border-y border-violet-500/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-violet-600">รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน</p>
+                      <p className="text-sm font-bold text-violet-600">{formatNumber(managerAdminSalaryIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      <TableRow className="bg-violet-50/50">
+                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <CategoryIcon name="เงินเดือน" className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm font-medium text-violet-600">เงินเดือนเมเนเจอร์แอดมิน</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-violet-50 border border-violet-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-violet-600">
+                              {formatNumber(managerAdminSalaryIncome)}
+                            </div>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'managerAdminSalaryIncome', 'รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน')}>
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'managerAdminSalaryIncome', 'รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน')}>
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'managerAdminSalaryIncome', 'รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน')}>
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1823,6 +1868,34 @@ export default function TransactionsPage() {
                                 <Plus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                               <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {/* รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน - เฉพาะ Funn D */}
+                      {isFunnD && (
+                        <TableRow className="bg-violet-500/10">
+                          <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name="เงินเดือน" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-xs md:text-sm font-medium text-violet-600">รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-violet-600">{formatNumber(managerAdminSalaryExpense)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'managerAdminSalaryExpense', 'รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'managerAdminSalaryExpense', 'รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'managerAdminSalaryExpense', 'รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน')}>
                                 <Minus className="h-3 w-3 md:h-4 md:w-4" />
                               </Button>
                             </div>

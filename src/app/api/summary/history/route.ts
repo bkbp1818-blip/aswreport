@@ -222,6 +222,7 @@ async function calculateBuildingSummary(
   const salaryDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(building.code)
+  const isFunnD = !isEligibleForSalary
   const salaryPerBuilding = isEligibleForSalary
     ? totalSalary / salaryDivisor
     : 0
@@ -272,6 +273,10 @@ async function calculateBuildingSummary(
   const cleaningSupplyExpensePerBuilding = perBuildingTotals.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = perBuildingTotals.foodExpense || 0
 
+  // รายได้/รายจ่ายเงินเดือนเมเนเจอร์แอดมิน (CT/YW/NANA = รายได้, Funn D = รายจ่าย)
+  const managerAdminSalaryIncome = isEligibleForSalary ? (perBuildingTotals.managerAdminSalaryIncome || 0) : 0
+  const managerAdminSalaryExpense = isFunnD ? (perBuildingTotals.managerAdminSalaryExpense || 0) : 0
+
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({
     where: { targetType: 'SETTINGS', targetId: buildingId, fieldName: 'cowayWaterFilterExpense', month, year },
@@ -298,7 +303,7 @@ async function calculateBuildingSummary(
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome + managerAdminSalaryIncome
 
   // คำนวณรายจ่าย (ไม่รวมเงินเดือนพนักงานที่กรอกมา เพราะจะใช้ค่าจาก employees แทน)
   const expenseTransactions = transactions.filter(
@@ -311,7 +316,7 @@ async function calculateBuildingSummary(
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
   // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -330,6 +335,9 @@ async function calculateBuildingSummary(
   }
   if (cleaningFeeIncome > 0) {
     incomeByChannel['ค่าทำความสะอาด'] = cleaningFeeIncome
+  }
+  if (managerAdminSalaryIncome > 0) {
+    incomeByChannel['รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryIncome
   }
 
   // แยกรายจ่ายตามหมวดหมู่
@@ -373,6 +381,9 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่าอาหาร'] = foodExpensePerBuilding
   // เพิ่มเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   expenseByCategory['เงินสมทบประกันสังคม'] = socialSecurityPerBuilding
+  if (managerAdminSalaryExpense > 0) {
+    expenseByCategory['รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryExpense
+  }
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
