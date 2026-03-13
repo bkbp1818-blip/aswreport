@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.10.0 |
+| **Version** | 1.11.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -68,7 +68,7 @@
 - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, ยอดค้างจ่ายคืน, จัดการผู้ใช้
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
 - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), การ์ดกำไร/ขาดทุน+กราฟ
-- หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel
+- หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel, ค่าทำความสะอาด
 
 ---
 
@@ -87,13 +87,18 @@
   - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
   - ยอดรวม Reset เป็น 0 ทุกเดือน
   - ดูประวัติ/ลบรายการได้
-- แสดงค่าใช้จ่ายส่วนกลางจาก GlobalSettings
+- ค่าใช้จ่ายส่วนกลาง **แยกตามอาคาร** (ไม่ใช่ GlobalSettings อีกแล้ว) ✨ UPDATED
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
 - **กรองน้ำ Coway** - กรอกได้โดยตรงในหน้านี้ (ย้ายมาจากหน้า Settings) ✨ MOVED
 - **รายได้พิเศษ (Special Income):**
   - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
   - Thai Bus Tour (สีม่วง purple)
   - Co Van Kessel (สีส้ม orange)
+  - ค่าทำความสะอาด (สีเขียว teal) — ทุกอาคาร ✨ NEW
+  - รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet) — เฉพาะ CT/YW/NANA ✨ NEW
+- **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:** ✨ NEW
+  - รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet)
+  - บริการอื่นๆจาก ASW (สีส้มอำพัน amber)
 - **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (เห็น Direct Booking+Cash, รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus, Co Van Kessel) ✨ UPDATED
 - **การ์ดสรุปกำไร/ขาดทุน + กราฟแท่ง** แสดงด้านบนสุด (ซ่อนสำหรับ VIEWER) ✨ NEW
   - 3 ช่องสรุป: รวมรายรับ | รวมรายจ่าย | กำไร/ขาดทุน
@@ -125,27 +130,11 @@
 - **ทั้ง Partner, Staff, และ Viewer เข้าถึงได้** (Viewer ไม่เห็นค่าเช่าอาคาร)
 - **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น**
 - **Tab ตั้งค่าอาคาร:**
-  - **Management Fee % / VAT %** - กดปุ่มแก้ไข (ดินสอ) → กรอกค่า % ใหม่ → บันทึกไป Settings table
+  - **VAT %** - กดปุ่มแก้ไข (ดินสอ) → กรอกค่า % ใหม่ → บันทึกไป Settings table
   - **ค่าเช่าอาคาร** - กดปุ่ม +/- → กรอกรายละเอียด+จำนวนเงิน → บันทึกผ่าน ExpenseHistory (สะสมตามเดือน)
   - ~~ค่า Coway~~ - **ย้ายไปหน้า Transactions แล้ว** ✨ MOVED
-- **Tab ค่าใช้จ่ายส่วนกลาง:**
-  - ค่าดูแล MAX (หาร 3 อาคาร: NANA, CT, YW)
-  - ค่าดูแลจราจร (หาร 3 อาคาร)
-  - ค่าขนส่งสินค้า (หาร 3 อาคาร)
-  - ค่า Amenity (หารทุกอาคาร)
-  - ค่าน้ำเปล่า (หารทุกอาคาร)
-  - ค่าขนมคุ้กกี้ (หารทุกอาคาร)
-  - ค่ากาแฟ (หารทุกอาคาร)
-  - ค่าน้ำมัน (หารทุกอาคาร)
-  - ค่าเช่าที่จอดรถ (หารทุกอาคาร)
-  - ค่าซ่อมบำรุงรถ (หารทุกอาคาร)
-  - ค่าเดินทางแม่บ้าน (หารทุกอาคาร)
-  - ค่าอุปกรณ์ทำความสะอาด (หารทุกอาคาร)
-  - ค่าอาหาร (หารทุกอาคาร)
-  - **เงินสมทบประกันสังคม (หาร 5 อาคาร)** ✨ NEW
-    - เลือกพนักงานแบบ checkbox
-    - ค่าเริ่มต้น 750 บาท/คน
-    - Dialog สำหรับแก้ไขรายละเอียด
+- ~~**Tab ค่าใช้จ่ายส่วนกลาง:**~~ — **ลบแล้ว** ย้ายไปกรอกในหน้า Transactions แยกตามอาคาร (ไม่มี GLOBAL_SETTINGS อีกแล้ว) ✨ REMOVED
+- **Tab ข้อมูลอาคาร:** แสดงข้อมูลอาคารทั้งหมด + สูตรการคำนวณ
 
 ### 7. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
@@ -173,7 +162,7 @@
 | `/api/categories` | GET | หมวดหมู่รายรับ-รายจ่าย | - |
 | `/api/transactions` | GET, PUT, DELETE | บันทึก/ดึงรายการ | Auth |
 | `/api/settings` | GET, PUT | ตั้งค่าอาคาร | Auth/Partner |
-| `/api/global-settings` | GET, PUT | ค่าใช้จ่ายส่วนกลาง | Auth |
+| ~~`/api/global-settings`~~ | ~~GET, PUT~~ | ~~ค่าใช้จ่ายส่วนกลาง~~ — **ลบแล้ว** ใช้ ExpenseHistory แยกอาคารแทน | - |
 | `/api/summary` | GET | สรุปผลประกอบการ | Auth |
 | `/api/summary/history` | GET | ข้อมูลย้อนหลัง | Partner |
 | `/api/employees` | GET, POST, PUT, DELETE | จัดการพนักงาน | Partner |
@@ -202,8 +191,11 @@ Amount to Pay    = Management Fee + VAT
 
 **หมายเหตุ:**
 - อาคาร FUNNS81, FUNNLP ไม่คำนวณ Management Fee และ VAT
-- ค่าดูแล MAX, ค่าดูแลจราจร, ค่าขนส่งสินค้า หาร 3 อาคาร (NANA, CT, YW)
-- ค่าใช้จ่ายส่วนกลางอื่นๆ หารตามจำนวนอาคารทั้งหมด
+- **เงินเดือนพนักงาน** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
+- **เงินสมทบประกันสังคม** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
+- **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
+- **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
+- **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
 
 ---
 
@@ -225,14 +217,50 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.10.0 (Current - March 2026)
+### v1.11.0 (Current - March 2026)
+- **เปลี่ยนค่าใช้จ่ายส่วนกลาง 13 รายการให้แยกตามอาคาร:**
+  - ลบระบบ GLOBAL_SETTINGS (targetId=null) — เปลี่ยนเป็น SETTINGS + buildingId สำหรับทุกอาคาร
+  - CT/YW/NANA กรอกแยกกัน ไม่แชร์ข้อมูลอีกต่อไป
+  - ลบ API `/api/expense-history/global-totals` และ `/api/global-settings`
+  - ลบ `GlobalSettings` state/interface จาก transactions page
+  - Migration ข้อมูลเก่า 54 รายการ → 162 รายการ (คัดลอกให้ 3 อาคาร)
+  - ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`, `api/expense-history/route.ts`
+  - ไฟล์ลบ: `api/expense-history/global-totals/route.ts`, `api/global-settings/route.ts`
+- **เพิ่มรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (CT/YW/NANA):**
+  - fieldName: `managerAdminSalaryIncome` — สีม่วง violet
+  - แสดงในตารางรายรับ เฉพาะ CT/YW/NANA
+  - รวมใน totalIncome, Summary API, Summary History API
+- **เพิ่มรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (Funn D):**
+  - fieldName: `managerAdminSalaryExpense` — สีม่วง violet
+  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว, สุขุมวิท 81)
+  - รวมใน totalExpense, Summary API, Summary History API
+- **เพิ่มรายจ่ายบริการอื่นๆจาก ASW (Funn D):**
+  - fieldName: `aswOtherServiceExpense` — สีส้มอำพัน amber
+  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว, สุขุมวิท 81)
+  - รวมใน totalExpense, Summary API, Summary History API
+- ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
+
+### v1.10.1 (March 2026)
+- **ลบแท็บ "ค่าใช้จ่ายส่วนกลาง" ออกจากหน้า Settings:**
+  - ค่าใช้จ่ายส่วนกลางทุกรายการถูกย้ายไปกรอกในหน้า Transactions แยกตามอาคารเรียบร้อยแล้ว
+  - ลบ TabsTrigger, TabsContent, Dialog เงินสมทบประกันสังคม, state/function/useEffect ที่ไม่ใช้
+  - Cleanup unused imports (~600 บรรทัด)
+  - เหลือแท็บ: "ตั้งค่าอาคาร" (VAT, ค่าเช่าอาคาร) และ "ข้อมูลอาคาร"
+- **เพิ่มรายได้ค่าทำความสะอาด (cleaningFeeIncome):**
+  - แสดงในตารางรายรับหน้ากรอกข้อมูล (ทุกอาคาร)
+  - สี teal เขียวอมฟ้า
+  - กรอกผ่านปุ่ม +/- เหมือน field อื่นๆ
+  - รวมใน Summary API (summary + summary/history)
+  - ไฟล์แก้ไข: `transactions/page.tsx`, `settings/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
+
+### v1.10.0 (March 2026)
 - **เพิ่มหน้ายอดค้างจ่ายคืน (`/reimbursements`):**
   - ระบบติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
   - เพิ่ม Reimbursement model ใน database (amount, buildingId, month, year, creditorName, description, paidDate, returnedDate, isReturned)
   - API `/api/reimbursements` รองรับ GET (filter), POST (หลายอาคาร), PUT, DELETE
   - **เลือกหลายอาคาร** เมื่อเพิ่มรายการ — ยอดหารเฉลี่ยอัตโนมัติ (checkbox)
   - **Dropdown เจ้าหนี้** แทนการพิมพ์: ป๊า, แบงค์, พลอย, ASW
-  - กรองตามอาคาร (มี "ทุกอาคาร") / เดือน / ปี
+  - กรองตามอาคาร (มี "ทุกอาคาร") / เดือน (มี "ทุกเดือน") / ปี
   - Summary Cards 3 ใบ: ยอดค้างจ่ายรวม | ยอดคืนแล้ว | จำนวนรายการค้างจ่าย
   - ตาราง: วันที่ยืมจ่าย, อาคาร, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน, วันที่คืนเงิน, สถานะ, จัดการ
   - Badge สถานะ: สีแดง "ค้างจ่าย" / สีเขียว "คืนแล้ว"
@@ -249,6 +277,19 @@ npx vercel --prod        # Deploy
   - icon Paintbrush สี rose
   - อยู่ต่อจาก ค่าซ่อมบำรุงอาคาร ในตารางรายจ่าย
 - **ลบ Category รายได้: ค่าเช่าจาก RB** (ไม่ใช้แล้ว)
+- **เพิ่มตัวเลือก "ทุกเดือน" ใน filter เดือนของหน้ายอดค้างจ่ายคืน:**
+  - เลือก "ทุกเดือน" จะแสดงรายการทุกเดือนในปีที่เลือก
+  - ไฟล์แก้ไข: `src/app/reimbursements/page.tsx`
+- **ปรับระบบค่าใช้จ่ายส่วนกลาง — หาร 3 อาคาร (CT, YW, NANA) เท่านั้น:** ✨ NEW
+  - ลบตัวเลือกอาคารออกจากหน้าจัดการค่าใช้จ่ายส่วนกลาง
+  - เก็บข้อมูลร่วมด้วย `targetId: null` แล้วหาร 3 ในหน้ากรอกข้อมูล/สรุป
+  - ลดรายการจาก 13+ เหลือ 7 รายการ (ประกันสังคม, ค่าที่จอดรถ, ค่าน้ำมันรถ, ค่าดูแลจราจร, ค่าดูแล MAX, ค่าอาหาร, ค่าซ่อมบำรุงรถ)
+  - อาคาร Funn D ไม่แสดงค่าใช้จ่ายส่วนกลาง, เงินเดือน, ประกันสังคม
+  - ไฟล์แก้ไข: `settings/page.tsx`, `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`, `api/expense-history/global-totals/route.ts`, `api/employees/salary-summary/route.ts`, `api/social-security/route.ts`
+- **เงินเดือนพนักงาน หาร 3 อาคาร (CT, YW, NANA):** ✨ NEW
+  - Funn D ไม่แสดงเงินเดือนพนักงาน
+- **เงินสมทบประกันสังคม หาร 3 อาคาร (CT, YW, NANA):** ✨ NEW
+  - Funn D ไม่แสดงประกันสังคม
 
 ### v1.9.2 (March 2026)
 - **แก้บัก: กรองน้ำ Coway ไม่แสดงตัวเลขที่กรอก:**
@@ -384,7 +425,7 @@ npx vercel --prod        # Deploy
 - **ยืนยัน PDF แสดง Social Security ถูกต้อง:**
   - แสดงในตาราง "ค่าใช้จ่ายรวมอาคาร"
   - สีชมพู (#E91E63) พร้อมไอคอน HeartPulse
-  - หาร 5 อาคาร (เช่น 2,750 ÷ 5 = 550 บาท/อาคาร)
+  - หาร 3 อาคาร (CT, YW, NANA) — อัปเดตใน v1.10.0
 
 ### v1.8.0 (December 2025)
 - **ระบบเงินสมทบประกันสังคม (Social Security):**
@@ -394,7 +435,7 @@ npx vercel --prod        # Deploy
   - Dialog สำหรับแก้ไขเงินสมทบพนักงานแต่ละคน
   - Checkbox เลือกพนักงาน (ค่าเริ่มต้น 750 บาท)
   - แสดงในหน้า transactions และ reports/PDF
-  - หาร 5 อาคาร
+  - หาร 3 อาคาร (CT, YW, NANA) — อัปเดตใน v1.10.0
 - **เพิ่ม Categories รายได้ใหม่:**
   - ค่าเช่าจาก PayPal
   - ค่าเช่าจาก Credit Card
@@ -410,7 +451,7 @@ npx vercel --prod        # Deploy
 
 ### v1.7.1 (December 2025)
 - **แก้ไข Bug ยอดรวมไม่อัปเดต:**
-  - รายได้พิเศษ (airportShuttleRentIncome, thaiBusTourIncome, coVanKesselIncome) อัปเดตยอดรวมถูกต้องแล้ว
+  - รายได้พิเศษ (airportShuttleRentIncome, thaiBusTourIncome, coVanKesselIncome, cleaningFeeIncome) อัปเดตยอดรวมถูกต้องแล้ว
   - ยอดรวมอัปเดตอัตโนมัติเมื่อปิด popup หลังกรอกข้อมูลผ่าน +/-
   - ยอดรวมอัปเดตเมื่อกดปุ่มถังขยะลบรายการ
 - **เพิ่มปุ่มแก้ไข (ดินสอ) ทุก field:**
@@ -607,7 +648,7 @@ npx vercel --prod        # Deploy
 | Field | Type | คำอธิบาย |
 |-------|------|----------|
 | id | Int | Primary key |
-| targetType | String | "SETTINGS", "GLOBAL_SETTINGS", หรือ "TRANSACTION" |
+| targetType | String | "SETTINGS" หรือ "TRANSACTION" (legacy: "GLOBAL_SETTINGS") |
 | targetId | Int? | buildingId (สำหรับ Settings/Transaction) หรือ null |
 | fieldName | String | ชื่อ field หรือ categoryId |
 | fieldLabel | String | ชื่อที่แสดง (เช่น "ค่าเช่าอาคาร") |
@@ -668,5 +709,5 @@ npx vercel --prod        # Deploy
 - รหัสผ่านเข้ารหัสด้วย bcrypt
 - API มีการตรวจสอบสิทธิ์ (Auth)
 - Production URL: https://aswreport.vercel.app
-- **ค่าใช้จ่ายส่วนกลางแยกตามเดือน:** ข้อมูลเก็บใน ExpenseHistory แยกตาม month/year - ไม่ใช่ค่าคงที่ใน GlobalSettings
+- **ค่าใช้จ่ายส่วนกลางแยกตามอาคาร+เดือน:** ข้อมูลเก็บใน ExpenseHistory (targetType=SETTINGS, targetId=buildingId) แยกตาม month/year — ไม่ใช้ GLOBAL_SETTINGS อีกแล้ว (v1.11.0)
 - **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year
