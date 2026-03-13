@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
         )
       }
       where.targetId = parseInt(targetId)
-    } else {
+    } else if (targetType === 'GLOBAL_SETTINGS') {
+      // รองรับการอ่านข้อมูลเก่า (GLOBAL_SETTINGS ที่ targetId=null)
       where.targetId = null
     }
 

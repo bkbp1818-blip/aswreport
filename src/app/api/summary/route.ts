@@ -234,10 +234,10 @@ async function calculateBuildingSummary(
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(building.code)
   const isFunnD = !isEligibleForSalary
 
-  // Funn D: ดึงค่าใช้จ่ายแยกตามอาคาร (กรอกเอง) จาก ExpenseHistory
-  const perBuildingSettingsHistory = isFunnD ? await prisma.expenseHistory.findMany({
+  // ดึงค่าใช้จ่ายแยกตามอาคาร จาก ExpenseHistory (ทุกอาคาร)
+  const perBuildingSettingsHistory = await prisma.expenseHistory.findMany({
     where: { targetType: 'SETTINGS', targetId: buildingId, month, year },
-  }) : []
+  })
   const perBuildingTotals: Record<string, number> = {}
   for (const item of perBuildingSettingsHistory) {
     const fieldName = item.fieldName
@@ -267,74 +267,22 @@ async function calculateBuildingSummary(
     ? totalSocialSecurity / socialSecurityDivisor
     : (perBuildingTotals.socialSecurityExpense || 0)
 
-  // ดึงข้อมูลค่าใช้จ่ายส่วนกลางจาก ExpenseHistory (targetId: null, หาร 3 อาคาร)
-  const globalExpenseHistory = await prisma.expenseHistory.findMany({
-    where: {
-      targetType: 'GLOBAL_SETTINGS',
-      targetId: null,
-      month,
-      year,
-    },
-  })
-
-  // รายการฟิลด์ค่าใช้จ่ายส่วนกลางทั้งหมด
-  const globalExpenseFields = [
-    'maxCareExpense',
-    'trafficCareExpense',
-    'shippingExpense',
-    'amenityExpense',
-    'waterBottleExpense',
-    'cookieExpense',
-    'coffeeExpense',
-    'sugarExpense',
-    'coffeeMateExpense',
-    'fuelExpense',
-    'parkingExpense',
-    'motorcycleMaintenanceExpense',
-    'maidTravelExpense',
-    'cleaningSupplyExpense',
-    'foodExpense',
-  ]
-
-  // คำนวณยอดรวมจาก ExpenseHistory (ค่าที่กรอกมาเป็นค่าของอาคารนี้โดยตรง ไม่ต้องหาร)
-  const globalExpenseTotals: Record<string, number> = {}
-  for (const field of globalExpenseFields) {
-    globalExpenseTotals[field] = 0
-  }
-
-  for (const item of globalExpenseHistory) {
-    const fieldName = item.fieldName
-    if (!globalExpenseFields.includes(fieldName)) continue
-
-    const amount = Number(item.amount)
-    if (item.actionType === 'ADD') {
-      globalExpenseTotals[fieldName] += amount
-    } else {
-      globalExpenseTotals[fieldName] -= amount
-    }
-  }
-
-  // ไม่ให้ติดลบ
-  for (const field of globalExpenseFields) {
-    globalExpenseTotals[field] = Math.max(0, globalExpenseTotals[field])
-  }
-
-  // ค่าใช้จ่ายส่วนกลาง: ยอดที่กรอกคือยอดต่ออาคารอยู่แล้ว (ไม่ต้องหาร), Funn D = กรอกเองแยกอาคาร
-  const maxCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maxCareExpense : (perBuildingTotals.maxCareExpense || 0)
-  const trafficCareExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.trafficCareExpense : (perBuildingTotals.trafficCareExpense || 0)
-  const shippingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.shippingExpense : (perBuildingTotals.shippingExpense || 0)
-  const amenityExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.amenityExpense : (perBuildingTotals.amenityExpense || 0)
-  const waterBottleExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.waterBottleExpense : (perBuildingTotals.waterBottleExpense || 0)
-  const cookieExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cookieExpense : (perBuildingTotals.cookieExpense || 0)
-  const coffeeExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeExpense : (perBuildingTotals.coffeeExpense || 0)
-  const sugarExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.sugarExpense : (perBuildingTotals.sugarExpense || 0)
-  const coffeeMateExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.coffeeMateExpense : (perBuildingTotals.coffeeMateExpense || 0)
-  const fuelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.fuelExpense : (perBuildingTotals.fuelExpense || 0)
-  const parkingExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.parkingExpense : (perBuildingTotals.parkingExpense || 0)
-  const motorcycleMaintenanceExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.motorcycleMaintenanceExpense : (perBuildingTotals.motorcycleMaintenanceExpense || 0)
-  const maidTravelExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.maidTravelExpense : (perBuildingTotals.maidTravelExpense || 0)
-  const cleaningSupplyExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.cleaningSupplyExpense : (perBuildingTotals.cleaningSupplyExpense || 0)
-  const foodExpensePerBuilding = isEligibleForSalary ? globalExpenseTotals.foodExpense : (perBuildingTotals.foodExpense || 0)
+  // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
+  const maxCareExpensePerBuilding = perBuildingTotals.maxCareExpense || 0
+  const trafficCareExpensePerBuilding = perBuildingTotals.trafficCareExpense || 0
+  const shippingExpensePerBuilding = perBuildingTotals.shippingExpense || 0
+  const amenityExpensePerBuilding = perBuildingTotals.amenityExpense || 0
+  const waterBottleExpensePerBuilding = perBuildingTotals.waterBottleExpense || 0
+  const cookieExpensePerBuilding = perBuildingTotals.cookieExpense || 0
+  const coffeeExpensePerBuilding = perBuildingTotals.coffeeExpense || 0
+  const sugarExpensePerBuilding = perBuildingTotals.sugarExpense || 0
+  const coffeeMateExpensePerBuilding = perBuildingTotals.coffeeMateExpense || 0
+  const fuelExpensePerBuilding = perBuildingTotals.fuelExpense || 0
+  const parkingExpensePerBuilding = perBuildingTotals.parkingExpense || 0
+  const motorcycleMaintenanceExpensePerBuilding = perBuildingTotals.motorcycleMaintenanceExpense || 0
+  const maidTravelExpensePerBuilding = perBuildingTotals.maidTravelExpense || 0
+  const cleaningSupplyExpensePerBuilding = perBuildingTotals.cleaningSupplyExpense || 0
+  const foodExpensePerBuilding = perBuildingTotals.foodExpense || 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({
