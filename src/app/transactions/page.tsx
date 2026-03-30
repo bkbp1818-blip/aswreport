@@ -373,8 +373,8 @@ export default function TransactionsPage() {
   const cleaningSupplyExpensePerBuilding = perBuildingExpenses.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = perBuildingExpenses.foodExpense || 0
 
-  // เงินสมทบประกันสังคม: CT/YW/NANA = หาร 3, Funn D = กรอกเองแยกอาคาร
-  const socialSecurityExpensePerBuilding = isEligibleForSalary ? (socialSecurityData?.amountPerBuilding || 0) : (perBuildingExpenses.socialSecurityExpense || 0)
+  // เงินสมทบประกันสังคม: ทุกอาคารกรอกเองผ่าน ExpenseHistory
+  const socialSecurityExpensePerBuilding = perBuildingExpenses.socialSecurityExpense || 0
 
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
@@ -416,6 +416,7 @@ export default function TransactionsPage() {
     'motorcycleMaintenanceExpense', 'maidTravelExpense',
     'cleaningSupplyExpense', 'foodExpense',
     'managerAdminSalaryIncome', 'managerAdminSalaryExpense', 'aswOtherServiceExpense',
+    'socialSecurityExpense',
   ]
 
   // ดึงประวัติค่าใช้จ่าย
@@ -1822,8 +1823,8 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* เงินสมทบประกันสังคม - CT/YW/NANA: read-only, Funn D: กรอกเอง */}
-                      {!isViewer && socialSecurityData && isEligibleForSalary && (
+                      {/* เงินสมทบประกันสังคม - CT/YW/NANA: กรอกเองผ่าน ExpenseHistory */}
+                      {!isViewer && isEligibleForSalary && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1839,7 +1840,18 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'socialSecurityExpense', 'ประกันสังคม')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}

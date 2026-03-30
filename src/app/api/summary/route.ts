@@ -263,9 +263,7 @@ async function calculateBuildingSummary(
     0
   )
   const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
-  const socialSecurityPerBuilding = isEligibleForSalary
-    ? totalSocialSecurity / socialSecurityDivisor
-    : (perBuildingTotals.socialSecurityExpense || 0)
+  const socialSecurityPerBuilding = perBuildingTotals.socialSecurityExpense || 0
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
   const maxCareExpensePerBuilding = perBuildingTotals.maxCareExpense || 0

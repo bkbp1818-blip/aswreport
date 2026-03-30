@@ -238,9 +238,8 @@ async function calculateBuildingSummary(
   const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
   const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
   const isEligibleForSocialSecurity = eligibleBuildingsForSocialSecurity.includes(building.code)
-  const socialSecurityPerBuilding = isEligibleForSocialSecurity
-    ? totalSocialSecurity / socialSecurityDivisor
-    : 0
+  // socialSecurityPerBuilding จะคำนวณหลัง perBuildingTotals
+  let socialSecurityPerBuilding = 0
 
   // ดึงค่าใช้จ่ายส่วนกลางแยกตามอาคาร จาก ExpenseHistory (ทุกอาคาร)
   const perBuildingSettingsHistory = await prisma.expenseHistory.findMany({
@@ -257,6 +256,9 @@ async function calculateBuildingSummary(
   for (const key of Object.keys(perBuildingTotals)) {
     perBuildingTotals[key] = Math.max(0, perBuildingTotals[key])
   }
+
+  // เงินสมทบประกันสังคม: ใช้ค่าจาก ExpenseHistory (ทุกอาคาร)
+  socialSecurityPerBuilding = perBuildingTotals.socialSecurityExpense || 0
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
   const maxCareExpensePerBuilding = perBuildingTotals.maxCareExpense || 0
