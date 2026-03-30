@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.11.0 |
+| **Version** | 1.11.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -192,7 +192,7 @@ Amount to Pay    = Management Fee + VAT
 **หมายเหตุ:**
 - อาคาร FUNNS81, FUNNLP ไม่คำนวณ Management Fee และ VAT
 - **เงินเดือนพนักงาน** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
-- **เงินสมทบประกันสังคม** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
+- **เงินสมทบประกันสังคม** — ทุกอาคารกรอกเองแยกผ่าน ExpenseHistory (ไม่หาร 3 อีกแล้ว) ✨ UPDATED v1.11.1
 - **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
 - **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
 - **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
@@ -217,7 +217,15 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.11.0 (Current - March 2026)
+### v1.11.1 (Current - March 2026)
+- **แก้ไข: ประกันสังคมไม่มีปุ่มแก้ไขสำหรับอาคาร CT/YW/NANA:**
+  - เปลี่ยนจากระบบคำนวณอัตโนมัติ (SocialSecurityContribution ÷ 3) เป็นกรอกเองผ่าน ExpenseHistory เหมือนค่าใช้จ่ายอื่นๆ
+  - เพิ่มปุ่มแก้ไข (ดินสอ), เพิ่ม (+), ลด (-) ให้แถวประกันสังคมของ CT/YW/NANA
+  - เพิ่ม `socialSecurityExpense` ใน `perBuildingSettingsFields`
+  - อัปเดต Summary API และ Summary History API ให้ใช้ค่าจาก ExpenseHistory แทน
+  - ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
+
+### v1.11.0 (March 2026)
 - **เปลี่ยนค่าใช้จ่ายส่วนกลาง 13 รายการให้แยกตามอาคาร:**
   - ลบระบบ GLOBAL_SETTINGS (targetId=null) — เปลี่ยนเป็น SETTINGS + buildingId สำหรับทุกอาคาร
   - CT/YW/NANA กรอกแยกกัน ไม่แชร์ข้อมูลอีกต่อไป
