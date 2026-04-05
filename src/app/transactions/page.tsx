@@ -379,6 +379,7 @@ export default function TransactionsPage() {
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
   const aswOtherServiceExpense = perBuildingExpenses.aswOtherServiceExpense || 0
+  const siteminderExpense = perBuildingExpenses.siteminderExpense || 0
 
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
   const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
@@ -388,7 +389,8 @@ export default function TransactionsPage() {
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
-    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + socialSecurityExpensePerBuilding
+    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + socialSecurityExpensePerBuilding +
+    siteminderExpense
 
   // คำนวณยอดรวมรายจ่าย: เงินเดือนพนักงาน + รายจ่ายอื่นๆ + ค่าเช่าอาคาร + ค่า Coway + ค่าใช้จ่ายส่วนกลาง
   const salaryExpense = isEligibleForSalary ? (salarySummary?.salaryPerBuilding || 0) : (perBuildingExpenses.salaryExpense || 0)
@@ -416,7 +418,7 @@ export default function TransactionsPage() {
     'motorcycleMaintenanceExpense', 'maidTravelExpense',
     'cleaningSupplyExpense', 'foodExpense',
     'managerAdminSalaryIncome', 'managerAdminSalaryExpense', 'aswOtherServiceExpense',
-    'socialSecurityExpense',
+    'socialSecurityExpense', 'siteminderExpense',
   ]
 
   // ดึงประวัติค่าใช้จ่าย
@@ -1943,17 +1945,45 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
+                      {/* Site Minder Dynamic Revenue Plus - แสดงทุกอาคาร */}
+                      {selectedBuilding && (
+                        <TableRow className="bg-blue-100/50">
+                          <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name="Site Minder" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-xs md:text-sm font-medium text-blue-600">Site Minder Dynamic Revenue Plus</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="font-medium text-xs md:text-sm text-blue-600">{formatNumber(siteminderExpense)}</p>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'siteminderExpense', 'Site Minder Dynamic Revenue Plus')}>
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'siteminderExpense', 'Site Minder Dynamic Revenue Plus')}>
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'siteminderExpense', 'Site Minder Dynamic Revenue Plus')}>
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
-                    // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 12 รายการค่าใช้จ่ายส่วนกลาง (รวมประกันสังคม)
+                    // baseIndex = ค่าเช่าอาคาร + ค่า Coway + เงินเดือน + ค่าดูแลMAX + ค่าดูแลจราจร + ค่าขนส่ง + 12 รายการค่าใช้จ่ายส่วนกลาง (รวมประกันสังคม) + Site Minder
                     const hasSalaryRow = isEligibleForSalary ? (salaryCategory && salarySummary) : isFunnD
                     const hasGlobalItems = !!selectedBuilding
                     const hasSocialSecurity = isEligibleForSalary ? !!socialSecurityData : isFunnD
                     const baseIndex = (monthlyRent > 0 ? 1 : 0) + 1 + (hasSalaryRow ? 1 : 0) +
                       (maxCareExpensePerBuilding > 0 ? 1 : 0) + (trafficCareExpensePerBuilding > 0 ? 1 : 0) +
-                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (hasGlobalItems ? 11 : 0) + (hasSocialSecurity ? 1 : 0)
+                      (shippingExpensePerBuilding > 0 ? 1 : 0) + (hasGlobalItems ? 12 : 0) + (hasSocialSecurity ? 1 : 0)
                     return (
                       <TableRow
                         key={category.id}

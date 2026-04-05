@@ -279,6 +279,7 @@ async function calculateBuildingSummary(
   const managerAdminSalaryIncome = isEligibleForSalary ? (perBuildingTotals.managerAdminSalaryIncome || 0) : 0
   const managerAdminSalaryExpense = isFunnD ? (perBuildingTotals.managerAdminSalaryExpense || 0) : 0
   const aswOtherServiceExpense = isFunnD ? (perBuildingTotals.aswOtherServiceExpense || 0) : 0
+  const siteminderExpensePerBuilding = perBuildingTotals.siteminderExpense || 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({
@@ -296,7 +297,7 @@ async function calculateBuildingSummary(
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
     cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
-    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding
+    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + siteminderExpensePerBuilding
 
   // คำนวณรายรับ
   const incomeTransactions = transactions.filter(
@@ -390,6 +391,7 @@ async function calculateBuildingSummary(
   if (aswOtherServiceExpense > 0) {
     expenseByCategory['บริการอื่นๆจาก ASW'] = aswOtherServiceExpense
   }
+  expenseByCategory['Site Minder Dynamic Revenue Plus'] = siteminderExpensePerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense

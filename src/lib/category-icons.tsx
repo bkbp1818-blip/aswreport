@@ -82,6 +82,7 @@ const iconColors: Record<string, string> = {
   'รายจ่ายหน้างาน': 'text-[#F28482]',
   'เครื่องนอน': 'text-indigo-500',
   'ตกแต่งอาคาร': 'text-rose-500',
+  'Site Minder': 'text-[#2563EB]',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -224,6 +225,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('เครื่องนอน')) {
     return { Icon: Bed, color: iconColors['เครื่องนอน'] }
+  }
+  if (lowerName.includes('site minder') || lowerName.includes('siteminder')) {
+    return { Icon: Globe, color: iconColors['Site Minder'] }
   }
 
   // Default

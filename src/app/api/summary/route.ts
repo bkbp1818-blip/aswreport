@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
       foodExpense: summaries.reduce((sum, s) => sum + s.foodExpense, 0),
       cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
       socialSecurityExpense: summaries.reduce((sum, s) => sum + s.socialSecurityExpense, 0),
+      siteminderExpense: summaries.reduce((sum, s) => sum + s.siteminderExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
       incomeByChannel: totalIncomeByChannel,
@@ -286,6 +287,7 @@ async function calculateBuildingSummary(
   const managerAdminSalaryIncome = isEligibleForSalary ? (perBuildingTotals.managerAdminSalaryIncome || 0) : 0
   const managerAdminSalaryExpense = isFunnD ? (perBuildingTotals.managerAdminSalaryExpense || 0) : 0
   const aswOtherServiceExpense = isFunnD ? (perBuildingTotals.aswOtherServiceExpense || 0) : 0
+  const siteminderExpensePerBuilding = perBuildingTotals.siteminderExpense || 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
   const cowayHistory = await prisma.expenseHistory.findMany({
@@ -304,7 +306,7 @@ async function calculateBuildingSummary(
     cookieExpensePerBuilding + coffeeExpensePerBuilding + sugarExpensePerBuilding + coffeeMateExpensePerBuilding +
     fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
-    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding
+    cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + siteminderExpensePerBuilding
 
   // คำนวณรายรับ
   const incomeTransactions = transactions.filter(
@@ -423,6 +425,7 @@ async function calculateBuildingSummary(
   if (aswOtherServiceExpense > 0) {
     expenseByCategory['บริการอื่นๆจาก ASW'] = aswOtherServiceExpense
   }
+  expenseByCategory['Site Minder Dynamic Revenue Plus'] = siteminderExpensePerBuilding
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
@@ -474,6 +477,8 @@ async function calculateBuildingSummary(
     cowayWaterFilterExpense,
     // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
     socialSecurityExpense: socialSecurityPerBuilding,
+    // Site Minder Dynamic Revenue Plus
+    siteminderExpense: siteminderExpensePerBuilding,
     netProfit,
     amountToBePaid,
     incomeByChannel,
