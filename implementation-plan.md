@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.11.1 |
+| **Version** | 1.12.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -96,9 +96,12 @@
   - Co Van Kessel (สีส้ม orange)
   - ค่าทำความสะอาด (สีเขียว teal) — ทุกอาคาร ✨ NEW
   - รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet) — เฉพาะ CT/YW/NANA ✨ NEW
-- **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:** ✨ NEW
+- **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:**
   - รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet)
   - บริการอื่นๆจาก ASW (สีส้มอำพัน amber)
+- **รายจ่าย Site Minder Dynamic Revenue Plus — ทุกอาคาร:** ✨ NEW v1.12.0
+  - fieldName: `siteminderExpense` — สีน้ำเงิน blue (#2563EB)
+  - icon Globe, แสดงทุกอาคาร พร้อมปุ่มแก้ไข/เพิ่ม/ลด
 - **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (เห็น Direct Booking+Cash, รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus, Co Van Kessel) ✨ UPDATED
 - **การ์ดสรุปกำไร/ขาดทุน + กราฟแท่ง** แสดงด้านบนสุด (ซ่อนสำหรับ VIEWER) ✨ NEW
   - 3 ช่องสรุป: รวมรายรับ | รวมรายจ่าย | กำไร/ขาดทุน
@@ -111,11 +114,16 @@
 - แสดงเงินเดือนต่ออาคาร
 - สถานะ active/inactive
 
-### 4. ยอดค้างจ่ายคืน (`/reimbursements`) ✨ NEW
+### 4. ยอดค้างจ่ายคืน (`/reimbursements`)
 - ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
 - เพิ่ม/แก้ไข/ลบ/คืนเงิน/ยกเลิกคืนเงิน
 - **เลือกหลายอาคาร** — ยอดหารเฉลี่ยอัตโนมัติ (เช่น 3,000 ÷ 3 อาคาร = 1,000/อาคาร)
-- กรองตามอาคาร/เดือน/ปี
+- **ตัวกรองแบบ Collapsible Chip:** ✨ UPDATED v1.12.0
+  - ปุ่มกรองเรียงแถวเดียวแบบ pill: `[อาคาร]` `[เดือน]` `[เจ้าหนี้]` `[ปี]`
+  - กดปุ่มแล้วกาง panel ข้างล่างเป็น chip ให้แตะเลือกหลายรายการ
+  - เลือกแล้วปุ่มเปลี่ยนสีเขียวพร้อมแสดงจำนวน
+  - ปุ่ม "ล้างทั้งหมด" เมื่อมี filter active
+  - กรองฝั่ง client (ไม่ต้องเรียก API ใหม่ทุกครั้ง)
 - Summary Cards 3 ใบ: ยอดค้างจ่ายรวม (แดง) | ยอดคืนแล้ว (เขียว) | จำนวนรายการค้างจ่าย (เหลือง)
 - ตารางแสดง: วันที่ยืมจ่าย, อาคาร, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน, วันที่คืนเงิน, สถานะ
 - Badge สถานะ: สีแดง "ค้างจ่าย" / สีเขียว "คืนแล้ว"
@@ -196,6 +204,7 @@ Amount to Pay    = Management Fee + VAT
 - **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
 - **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
 - **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
+- **Site Minder Dynamic Revenue Plus** — ทุกอาคารกรอกแยกผ่าน ExpenseHistory ✨ NEW v1.12.0
 
 ---
 
@@ -217,7 +226,25 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.11.1 (Current - March 2026)
+### v1.12.0 (Current - April 2026)
+- **เพิ่มรายจ่าย Site Minder Dynamic Revenue Plus (ทุกอาคาร):**
+  - fieldName: `siteminderExpense` — สีน้ำเงิน blue (#2563EB), icon Globe
+  - แสดงในตารางรายจ่ายหน้ากรอกข้อมูล ทุกอาคาร พร้อมปุ่มแก้ไข/เพิ่ม/ลด
+  - เพิ่มใน `perBuildingSettingsFields`, `totalGlobalExpense`
+  - รวมใน totalExpense → ส่งผลต่อ grossProfit, netProfit
+  - อัปเดต Summary API และ Summary History API
+  - เพิ่ม icon+สี ใน `category-icons.tsx`
+  - ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`, `lib/category-icons.tsx`
+- **ปรับ UI ตัวกรองหน้ายอดค้างจ่ายคืน (`/reimbursements`):**
+  - เปลี่ยนจาก dropdown เป็น collapsible chip-style multi-select
+  - ปุ่มกรอง 3 ปุ่มเรียงแถวเดียว: อาคาร, เดือน, เจ้าหนี้ (+ dropdown ปี)
+  - กดปุ่มแล้วกาง panel ข้างล่าง แสดงตัวเลือกเป็น chip ให้แตะเลือกหลายรายการ
+  - เลือกแล้วปุ่มเปลี่ยนสีเขียวพร้อมแสดงจำนวนที่เลือก
+  - ปุ่ม "ล้างทั้งหมด" สีแดงเมื่อมี filter active
+  - กรองฝั่ง client (fetch ตาม year → filter อาคาร/เดือน/เจ้าหนี้ ใน browser)
+  - ไฟล์แก้ไข: `reimbursements/page.tsx`
+
+### v1.11.1 (March 2026)
 - **แก้ไข: ประกันสังคมไม่มีปุ่มแก้ไขสำหรับอาคาร CT/YW/NANA:**
   - เปลี่ยนจากระบบคำนวณอัตโนมัติ (SocialSecurityContribution ÷ 3) เป็นกรอกเองผ่าน ExpenseHistory เหมือนค่าใช้จ่ายอื่นๆ
   - เพิ่มปุ่มแก้ไข (ดินสอ), เพิ่ม (+), ลด (-) ให้แถวประกันสังคมของ CT/YW/NANA
