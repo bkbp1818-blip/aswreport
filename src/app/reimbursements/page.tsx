@@ -74,10 +74,11 @@ export default function ReimbursementsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Reimbursement | null>(null)
 
-  // Filter state
-  const [filterBuilding, setFilterBuilding] = useState<string>('all')
-  const [filterMonth, setFilterMonth] = useState<string>(currentMonth.toString())
+  // Filter state (checkbox multi-select)
+  const [filterBuildings, setFilterBuildings] = useState<string[]>([])
+  const [filterMonths, setFilterMonths] = useState<string[]>([currentMonth.toString()])
   const [filterYear, setFilterYear] = useState<string>(currentYear.toString())
+  const [filterCreditors, setFilterCreditors] = useState<string[]>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,21 +105,37 @@ export default function ReimbursementsPage() {
     }
   }
 
-  // โหลดรายการยอดค้างจ่ายคืน
+  // ข้อมูลดิบจาก API (ก่อน��รอง)
+  const [allReimbursements, setAllReimbursements] = useState<Reimbursement[]>([])
+
+  // โหลดรายการยอดค้างจ่ายคืน (fetch ตาม year แล้วกรองฝั่ง client)
   const loadReimbursements = async () => {
     try {
       const params = new URLSearchParams()
-      if (filterBuilding !== 'all') params.set('buildingId', filterBuilding)
-      if (filterMonth && filterMonth !== 'all') params.set('month', filterMonth)
       if (filterYear) params.set('year', filterYear)
 
       const res = await fetch(`/api/reimbursements?${params.toString()}`)
       const data = await res.json()
-      setReimbursements(data)
+      setAllReimbursements(data)
     } catch (error) {
       console.error('Error loading reimbursements:', error)
     }
   }
+
+  // กรองข้อมูลฝั่ง client (อาคาร, เดือน, ชื่อเจ้าหนี้)
+  useEffect(() => {
+    let filtered = allReimbursements
+    if (filterBuildings.length > 0) {
+      filtered = filtered.filter((r) => filterBuildings.includes(r.buildingId.toString()))
+    }
+    if (filterMonths.length > 0) {
+      filtered = filtered.filter((r) => filterMonths.includes(r.month.toString()))
+    }
+    if (filterCreditors.length > 0) {
+      filtered = filtered.filter((r) => filterCreditors.includes(r.creditorName))
+    }
+    setReimbursements(filtered)
+  }, [allReimbursements, filterBuildings, filterMonths, filterCreditors])
 
   useEffect(() => {
     loadBuildings().finally(() => setLoading(false))
@@ -128,7 +145,7 @@ export default function ReimbursementsPage() {
     if (!loading) {
       loadReimbursements()
     }
-  }, [filterBuilding, filterMonth, filterYear, loading])
+  }, [filterYear, loading])
 
   // Reset form
   const resetForm = () => {
@@ -512,39 +529,122 @@ export default function ReimbursementsPage() {
       {/* Filters */}
       <Card className="border-0 shadow-md">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* อาคาร - checkbox multi-select */}
             <div className="space-y-2">
-              <Label className="text-sm text-[#666]">อาคาร</Label>
-              <Select value={filterBuilding} onValueChange={setFilterBuilding}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกอาคาร</SelectItem>
-                  {buildings.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-[#666]">อาคาร</Label>
+                {filterBuildings.length > 0 && (
+                  <button
+                    className="text-xs text-[#84A59D] hover:underline"
+                    onClick={() => setFilterBuildings([])}
+                  >
+                    ล้าง
+                  </button>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1.5 bg-white">
+                {buildings.map((b) => (
+                  <div key={b.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`filter-building-${b.id}`}
+                      checked={filterBuildings.includes(b.id.toString())}
+                      onCheckedChange={(checked) => {
+                        setFilterBuildings((prev) =>
+                          checked
+                            ? [...prev, b.id.toString()]
+                            : prev.filter((id) => id !== b.id.toString())
+                        )
+                      }}
+                    />
+                    <label htmlFor={`filter-building-${b.id}`} className="text-sm cursor-pointer">
                       {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#999]">
+                {filterBuildings.length === 0 ? 'แสด��ทุกอาคาร' : `เลือก ${filterBuildings.length} อาคาร`}
+              </p>
             </div>
+
+            {/* เดือน - checkbox multi-select */}
             <div className="space-y-2">
-              <Label className="text-sm text-[#666]">เดือน</Label>
-              <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกเดือน</SelectItem>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={m.value.toString()}>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-[#666]">เดือน</Label>
+                {filterMonths.length > 0 && (
+                  <button
+                    className="text-xs text-[#84A59D] hover:underline"
+                    onClick={() => setFilterMonths([])}
+                  >
+                    ล้าง
+                  </button>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1.5 bg-white max-h-[200px] overflow-y-auto">
+                {MONTHS.map((m) => (
+                  <div key={m.value} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`filter-month-${m.value}`}
+                      checked={filterMonths.includes(m.value.toString())}
+                      onCheckedChange={(checked) => {
+                        setFilterMonths((prev) =>
+                          checked
+                            ? [...prev, m.value.toString()]
+                            : prev.filter((v) => v !== m.value.toString())
+                        )
+                      }}
+                    />
+                    <label htmlFor={`filter-month-${m.value}`} className="text-sm cursor-pointer">
                       {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#999]">
+                {filterMonths.length === 0 ? 'แสดงทุกเดือน' : `เลือก ${filterMonths.length} เดือน`}
+              </p>
             </div>
+
+            {/* ชื่อเจ้าหนี้ - checkbox multi-select */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-[#666]">ชื่อเจ้าหนี้</Label>
+                {filterCreditors.length > 0 && (
+                  <button
+                    className="text-xs text-[#84A59D] hover:underline"
+                    onClick={() => setFilterCreditors([])}
+                  >
+                    ล้าง
+                  </button>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1.5 bg-white">
+                {CREDITORS.map((c) => (
+                  <div key={c.value} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`filter-creditor-${c.value}`}
+                      checked={filterCreditors.includes(c.value)}
+                      onCheckedChange={(checked) => {
+                        setFilterCreditors((prev) =>
+                          checked
+                            ? [...prev, c.value]
+                            : prev.filter((v) => v !== c.value)
+                        )
+                      }}
+                    />
+                    <label htmlFor={`filter-creditor-${c.value}`} className="text-sm cursor-pointer">
+                      {c.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#999]">
+                {filterCreditors.length === 0 ? 'แสดงทุกคน' : `เลือก ${filterCreditors.length} คน`}
+              </p>
+            </div>
+
+            {/* ปี - ยังคงเป็น dropdown เดิม เ��ราะเลือก 1 ปีก็เพียงพอ */}
             <div className="space-y-2">
               <Label className="text-sm text-[#666]">ปี</Label>
               <Select value={filterYear} onValueChange={setFilterYear}>
