@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Plus, Pencil, Trash2, Loader2, HandCoins, CheckCircle, AlertCircle, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, HandCoins, CheckCircle, AlertCircle, RotateCcw, ChevronDown, Building2, CalendarDays, Users, X, Filter } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 
@@ -79,6 +79,8 @@ export default function ReimbursementsPage() {
   const [filterMonths, setFilterMonths] = useState<string[]>([currentMonth.toString()])
   const [filterYear, setFilterYear] = useState<string>(currentYear.toString())
   const [filterCreditors, setFilterCreditors] = useState<string[]>([])
+  // เปิด/ปิด panel ตัวกรอง
+  const [openFilter, setOpenFilter] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -528,24 +530,118 @@ export default function ReimbursementsPage() {
 
       {/* Filters */}
       <Card className="border-0 shadow-md">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* อาคาร - checkbox multi-select */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-[#666]">อาคาร</Label>
+        <CardContent className="pt-4 pb-4">
+          {/* แถวปุ่มตัวกรอง + ปี */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Filter className="h-4 w-4 text-[#999] hidden sm:block" />
+
+            {/* ปุ่ม: อาคาร */}
+            <button
+              onClick={() => setOpenFilter(openFilter === 'building' ? null : 'building')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                filterBuildings.length > 0
+                  ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                  : openFilter === 'building'
+                    ? 'bg-slate-100 border-slate-300 text-[#333]'
+                    : 'bg-white border-slate-200 text-[#666] hover:border-slate-300'
+              }`}
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              <span>อาคาร</span>
+              {filterBuildings.length > 0 && (
+                <span className="bg-white/30 text-xs px-1.5 py-0.5 rounded-full">{filterBuildings.length}</span>
+              )}
+              <ChevronDown className={`h-3 w-3 transition-transform ${openFilter === 'building' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* ปุ่ม: เดือน */}
+            <button
+              onClick={() => setOpenFilter(openFilter === 'month' ? null : 'month')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                filterMonths.length > 0
+                  ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                  : openFilter === 'month'
+                    ? 'bg-slate-100 border-slate-300 text-[#333]'
+                    : 'bg-white border-slate-200 text-[#666] hover:border-slate-300'
+              }`}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>เดือน</span>
+              {filterMonths.length > 0 && (
+                <span className="bg-white/30 text-xs px-1.5 py-0.5 rounded-full">{filterMonths.length}</span>
+              )}
+              <ChevronDown className={`h-3 w-3 transition-transform ${openFilter === 'month' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* ปุ่ม: เจ้าหนี้ */}
+            <button
+              onClick={() => setOpenFilter(openFilter === 'creditor' ? null : 'creditor')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                filterCreditors.length > 0
+                  ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                  : openFilter === 'creditor'
+                    ? 'bg-slate-100 border-slate-300 text-[#333]'
+                    : 'bg-white border-slate-200 text-[#666] hover:border-slate-300'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>เจ้าหนี้</span>
+              {filterCreditors.length > 0 && (
+                <span className="bg-white/30 text-xs px-1.5 py-0.5 rounded-full">{filterCreditors.length}</span>
+              )}
+              <ChevronDown className={`h-3 w-3 transition-transform ${openFilter === 'creditor' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* ปี dropdown */}
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-[90px] h-8 text-sm rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={y.toString()}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* ปุ่มล้างตัวกรองทั้งหมด */}
+            {(filterBuildings.length > 0 || filterMonths.length > 0 || filterCreditors.length > 0) && (
+              <button
+                onClick={() => {
+                  setFilterBuildings([])
+                  setFilterMonths([])
+                  setFilterCreditors([])
+                  setOpenFilter(null)
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+              >
+                <X className="h-3 w-3" />
+                ล้างทั้งหมด
+              </button>
+            )}
+          </div>
+
+          {/* Panel: อาคาร */}
+          {openFilter === 'building' && (
+            <div className="mt-3 p-3 rounded-lg border border-slate-200 bg-slate-50/50 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-[#666]">เลือกอาคาร {filterBuildings.length > 0 && <span className="text-[#84A59D]">({filterBuildings.length})</span>}</p>
                 {filterBuildings.length > 0 && (
-                  <button
-                    className="text-xs text-[#84A59D] hover:underline"
-                    onClick={() => setFilterBuildings([])}
-                  >
-                    ล้าง
-                  </button>
+                  <button className="text-xs text-[#84A59D] hover:underline" onClick={() => setFilterBuildings([])}>ล��าง</button>
                 )}
               </div>
-              <div className="rounded-md border p-3 space-y-1.5 bg-white">
+              <div className="flex flex-wrap gap-2">
                 {buildings.map((b) => (
-                  <div key={b.id} className="flex items-center gap-2">
+                  <label
+                    key={b.id}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer border transition-colors ${
+                      filterBuildings.includes(b.id.toString())
+                        ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                        : 'bg-white border-slate-200 text-[#666] hover:border-[#84A59D]/50'
+                    }`}
+                  >
                     <Checkbox
                       id={`filter-building-${b.id}`}
                       checked={filterBuildings.includes(b.id.toString())}
@@ -556,36 +652,36 @@ export default function ReimbursementsPage() {
                             : prev.filter((id) => id !== b.id.toString())
                         )
                       }}
+                      className="hidden"
                     />
-                    <label htmlFor={`filter-building-${b.id}`} className="text-sm cursor-pointer">
-                      {b.name}
-                    </label>
-                  </div>
+                    {filterBuildings.includes(b.id.toString()) && <CheckCircle className="h-3.5 w-3.5" />}
+                    {b.name}
+                  </label>
                 ))}
               </div>
-              <p className="text-[10px] text-[#999]">
-                {filterBuildings.length === 0 ? 'แสด��ทุกอาคาร' : `เลือก ${filterBuildings.length} อาคาร`}
-              </p>
             </div>
+          )}
 
-            {/* เดือน - checkbox multi-select */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-[#666]">เดือน</Label>
+          {/* Panel: เดือน */}
+          {openFilter === 'month' && (
+            <div className="mt-3 p-3 rounded-lg border border-slate-200 bg-slate-50/50 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-[#666]">เลือกเดือน {filterMonths.length > 0 && <span className="text-[#84A59D]">({filterMonths.length})</span>}</p>
                 {filterMonths.length > 0 && (
-                  <button
-                    className="text-xs text-[#84A59D] hover:underline"
-                    onClick={() => setFilterMonths([])}
-                  >
-                    ล้าง
-                  </button>
+                  <button className="text-xs text-[#84A59D] hover:underline" onClick={() => setFilterMonths([])}>ล้าง</button>
                 )}
               </div>
-              <div className="rounded-md border p-3 space-y-1.5 bg-white max-h-[200px] overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
                 {MONTHS.map((m) => (
-                  <div key={m.value} className="flex items-center gap-2">
+                  <label
+                    key={m.value}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer border transition-colors ${
+                      filterMonths.includes(m.value.toString())
+                        ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                        : 'bg-white border-slate-200 text-[#666] hover:border-[#84A59D]/50'
+                    }`}
+                  >
                     <Checkbox
-                      id={`filter-month-${m.value}`}
                       checked={filterMonths.includes(m.value.toString())}
                       onCheckedChange={(checked) => {
                         setFilterMonths((prev) =>
@@ -594,36 +690,36 @@ export default function ReimbursementsPage() {
                             : prev.filter((v) => v !== m.value.toString())
                         )
                       }}
+                      className="hidden"
                     />
-                    <label htmlFor={`filter-month-${m.value}`} className="text-sm cursor-pointer">
-                      {m.label}
-                    </label>
-                  </div>
+                    {filterMonths.includes(m.value.toString()) && <CheckCircle className="h-3.5 w-3.5" />}
+                    {m.label}
+                  </label>
                 ))}
               </div>
-              <p className="text-[10px] text-[#999]">
-                {filterMonths.length === 0 ? 'แสดงทุกเดือน' : `เลือก ${filterMonths.length} เดือน`}
-              </p>
             </div>
+          )}
 
-            {/* ชื่อเจ้าหนี้ - checkbox multi-select */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-[#666]">ชื่อเจ้าหนี้</Label>
+          {/* Panel: เจ้าหนี้ */}
+          {openFilter === 'creditor' && (
+            <div className="mt-3 p-3 rounded-lg border border-slate-200 bg-slate-50/50 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-[#666]">เลือกเจ้าหนี้ {filterCreditors.length > 0 && <span className="text-[#84A59D]">({filterCreditors.length})</span>}</p>
                 {filterCreditors.length > 0 && (
-                  <button
-                    className="text-xs text-[#84A59D] hover:underline"
-                    onClick={() => setFilterCreditors([])}
-                  >
-                    ล้าง
-                  </button>
+                  <button className="text-xs text-[#84A59D] hover:underline" onClick={() => setFilterCreditors([])}>ล้าง</button>
                 )}
               </div>
-              <div className="rounded-md border p-3 space-y-1.5 bg-white">
+              <div className="flex flex-wrap gap-2">
                 {CREDITORS.map((c) => (
-                  <div key={c.value} className="flex items-center gap-2">
+                  <label
+                    key={c.value}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer border transition-colors ${
+                      filterCreditors.includes(c.value)
+                        ? 'bg-[#84A59D] text-white border-[#84A59D]'
+                        : 'bg-white border-slate-200 text-[#666] hover:border-[#84A59D]/50'
+                    }`}
+                  >
                     <Checkbox
-                      id={`filter-creditor-${c.value}`}
                       checked={filterCreditors.includes(c.value)}
                       onCheckedChange={(checked) => {
                         setFilterCreditors((prev) =>
@@ -632,35 +728,15 @@ export default function ReimbursementsPage() {
                             : prev.filter((v) => v !== c.value)
                         )
                       }}
+                      className="hidden"
                     />
-                    <label htmlFor={`filter-creditor-${c.value}`} className="text-sm cursor-pointer">
-                      {c.label}
-                    </label>
-                  </div>
+                    {filterCreditors.includes(c.value) && <CheckCircle className="h-3.5 w-3.5" />}
+                    {c.label}
+                  </label>
                 ))}
               </div>
-              <p className="text-[10px] text-[#999]">
-                {filterCreditors.length === 0 ? 'แสดงทุกคน' : `เลือก ${filterCreditors.length} คน`}
-              </p>
             </div>
-
-            {/* ปี - ยังคงเป็น dropdown เดิม เ��ราะเลือก 1 ปีก็เพียงพอ */}
-            <div className="space-y-2">
-              <Label className="text-sm text-[#666]">ปี</Label>
-              <Select value={filterYear} onValueChange={setFilterYear}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={y.toString()}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
