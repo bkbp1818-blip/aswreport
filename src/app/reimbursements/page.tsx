@@ -838,38 +838,6 @@ export default function ReimbursementsPage() {
         </CardContent>
       </Card>
 
-      {/* Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <Card className="border-0 shadow-lg bg-[#333] text-white">
-          <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <span className="text-sm">
-              เลือก {selectedIds.size} รายการ
-              {' '}(รวม {formatNumber(pendingItems.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-white hover:bg-white/20"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                ยกเลิก
-              </Button>
-              <Button
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white"
-                disabled={bulkLoading}
-                onClick={handleBulkMarkReturned}
-              >
-                {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <CheckCircle className="mr-1 h-4 w-4" />
-                คืนเงินทั้งหมด
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Loading */}
       {loading ? (
         <Card className="border-0 shadow-md">
@@ -911,6 +879,38 @@ export default function ReimbursementsPage() {
                 <p className="text-xs text-white/70 mt-1">บาท ({pendingItems.length} รายการ)</p>
               </CardContent>
             </Card>
+
+            {/* Bulk Action Bar: ค้างจ่าย */}
+            {selectedIds.size > 0 && (
+              <Card className="border-0 shadow-lg bg-[#333] text-white">
+                <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <span className="text-sm">
+                    เลือก {selectedIds.size} รายการ
+                    {' '}(รวม {formatNumber(pendingItems.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-white hover:bg-white/20"
+                      onClick={() => setSelectedIds(new Set())}
+                    >
+                      ยกเลิก
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={bulkLoading}
+                      onClick={handleBulkMarkReturned}
+                    >
+                      {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <CheckCircle className="mr-1 h-4 w-4" />
+                      คืนเงินทั้งหมด
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {pendingItems.length === 0 ? (
               <Card className="border-0 shadow-md">
