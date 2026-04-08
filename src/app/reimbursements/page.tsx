@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -399,6 +399,15 @@ export default function ReimbursementsPage() {
   const returnedFilteredIds = returnedItems.map((r) => r.id)
   const allReturnedSelected = returnedFilteredIds.length > 0 && returnedFilteredIds.every((id) => selectedReturnedIds.has(id))
   const someReturnedSelected = returnedFilteredIds.some((id) => selectedReturnedIds.has(id))
+
+  // จัดกลุ่มรายการคืนแล้วตามวันที่คืนเงิน
+  const returnedGroups = returnedItems.reduce<Record<string, Reimbursement[]>>((groups, item) => {
+    const key = item.returnedDate ? item.returnedDate.split('T')[0] : 'no-date'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
+    return groups
+  }, {})
+  const sortedReturnedGroupKeys = Object.keys(returnedGroups).sort((a, b) => b.localeCompare(a))
 
   // Format วันที่
   const formatDate = (dateStr: string | null) => {
@@ -1105,69 +1114,87 @@ export default function ReimbursementsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {returnedItems.map((item) => (
-                        <TableRow key={item.id} className="bg-green-50/30">
-                          <TableCell className="w-[40px]">
-                            <Checkbox
-                              checked={selectedReturnedIds.has(item.id)}
-                              onCheckedChange={(checked) => {
-                                setSelectedReturnedIds((prev) => {
-                                  const next = new Set(prev)
-                                  if (checked) next.add(item.id)
-                                  else next.delete(item.id)
-                                  return next
-                                })
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatDate(item.returnedDate)}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {item.building.name}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {item.creditorName}
-                          </TableCell>
-                          <TableCell className="text-sm text-[#666]">
-                            {item.description || '-'}
-                          </TableCell>
-                          <TableCell className="text-sm font-semibold text-right">
-                            {formatNumber(Number(item.amount))}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-orange-500 hover:text-orange-600"
-                                onClick={() => handleUndoReturned(item)}
-                                title="ยกเลิกคืนเงิน"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
-                                onClick={() => handleEdit(item)}
-                                title="แก้ไข"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-red-500"
-                                onClick={() => handleDelete(item.id)}
-                                title="ลบ"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {sortedReturnedGroupKeys.map((dateKey) => {
+                        const groupItems = returnedGroups[dateKey]
+                        const groupTotal = groupItems.reduce((sum, r) => sum + Number(r.amount), 0)
+                        return (
+                          <React.Fragment key={dateKey}>
+                            {groupItems.map((item) => (
+                              <TableRow key={item.id} className="bg-green-50/30">
+                                <TableCell className="w-[40px]">
+                                  <Checkbox
+                                    checked={selectedReturnedIds.has(item.id)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedReturnedIds((prev) => {
+                                        const next = new Set(prev)
+                                        if (checked) next.add(item.id)
+                                        else next.delete(item.id)
+                                        return next
+                                      })
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {formatDate(item.returnedDate)}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {item.building.name}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {item.creditorName}
+                                </TableCell>
+                                <TableCell className="text-sm text-[#666]">
+                                  {item.description || '-'}
+                                </TableCell>
+                                <TableCell className="text-sm font-semibold text-right">
+                                  {formatNumber(Number(item.amount))}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-orange-500 hover:text-orange-600"
+                                      onClick={() => handleUndoReturned(item)}
+                                      title="ยกเลิกคืนเงิน"
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
+                                      onClick={() => handleEdit(item)}
+                                      title="แก้ไข"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-red-500"
+                                      onClick={() => handleDelete(item.id)}
+                                      title="ลบ"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {/* แถวสรุปยอดรวมของกลุ่ม */}
+                            <TableRow className="bg-[#84A59D]/10 border-b-2 border-[#84A59D]/30">
+                              <TableCell colSpan={5} className="text-sm font-medium text-[#84A59D]">
+                                คืนวันที่ {formatDate(dateKey === 'no-date' ? null : dateKey)} — {groupItems.length} รายการ
+                              </TableCell>
+                              <TableCell className="text-sm font-bold text-right text-[#84A59D]">
+                                {formatNumber(groupTotal)}
+                              </TableCell>
+                              <TableCell />
+                            </TableRow>
+                          </React.Fragment>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
