@@ -74,6 +74,7 @@ export default function ReimbursementsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Reimbursement | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [selectedReturnedIds, setSelectedReturnedIds] = useState<Set<number>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
 
   // Filter state (checkbox multi-select)
@@ -140,6 +141,7 @@ export default function ReimbursementsPage() {
     }
     setReimbursements(filtered)
     setSelectedIds(new Set())
+    setSelectedReturnedIds(new Set())
   }, [allReimbursements, filterBuildings, filterMonths, filterCreditors])
 
   useEffect(() => {
@@ -322,6 +324,47 @@ export default function ReimbursementsPage() {
     }
   }
 
+  // ยกเลิกคืนเงินหลายรายการพร้อมกัน (bulk undo)
+  const handleBulkUndoReturned = async () => {
+    const count = selectedReturnedIds.size
+    if (!confirm(`ยืนยันยกเลิกสถานะคืนเงินทั้ง ${count} รายการ?`)) return
+
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/reimbursements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedReturnedIds),
+          returnedDate: null,
+          isReturned: false,
+        }),
+      })
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          window.location.href = '/access/partner'
+          return
+        }
+        if (res.status === 403) {
+          alert('เฉพาะ Partner เท่านั้นที่สามารถจัดการข้อมูลได้')
+          return
+        }
+        throw new Error('Failed to bulk undo')
+      }
+
+      setSelectedReturnedIds(new Set())
+      await loadReimbursements()
+      alert(`ยกเลิกคืนเงิน ${count} รายการสำเร็จ`)
+    } catch (error) {
+      console.error('Error bulk undoing returned:', error)
+      alert('เกิดข้อผิดพลาด')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   // ลบรายการ
   const handleDelete = async (id: number) => {
     if (!confirm('คุณต้องการลบรายการนี้หรือไม่?')) {
@@ -347,10 +390,15 @@ export default function ReimbursementsPage() {
   const totalPending = pendingItems.reduce((sum, r) => sum + Number(r.amount), 0)
   const totalReturned = returnedItems.reduce((sum, r) => sum + Number(r.amount), 0)
 
-  // สำหรับ select all checkbox
+  // สำหรับ select all checkbox (ค้างจ่าย)
   const pendingFilteredIds = pendingItems.map((r) => r.id)
   const allPendingSelected = pendingFilteredIds.length > 0 && pendingFilteredIds.every((id) => selectedIds.has(id))
   const somePendingSelected = pendingFilteredIds.some((id) => selectedIds.has(id))
+
+  // สำหรับ select all checkbox (คืนแล้ว)
+  const returnedFilteredIds = returnedItems.map((r) => r.id)
+  const allReturnedSelected = returnedFilteredIds.length > 0 && returnedFilteredIds.every((id) => selectedReturnedIds.has(id))
+  const someReturnedSelected = returnedFilteredIds.some((id) => selectedReturnedIds.has(id))
 
   // Format วันที่
   const formatDate = (dateStr: string | null) => {
@@ -989,6 +1037,38 @@ export default function ReimbursementsPage() {
               </CardContent>
             </Card>
 
+            {/* Bulk Action Bar: คืนแล้ว */}
+            {selectedReturnedIds.size > 0 && (
+              <Card className="border-0 shadow-lg bg-[#333] text-white">
+                <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <span className="text-sm">
+                    เลือก {selectedReturnedIds.size} รายการ
+                    {' '}(รวม {formatNumber(returnedItems.filter((r) => selectedReturnedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-white hover:bg-white/20"
+                      onClick={() => setSelectedReturnedIds(new Set())}
+                    >
+                      ยกเลิก
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-orange-500 hover:bg-orange-600 text-white"
+                      disabled={bulkLoading}
+                      onClick={handleBulkUndoReturned}
+                    >
+                      {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <RotateCcw className="mr-1 h-4 w-4" />
+                      ยกเลิกคืนเงินทั้งหมด
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {returnedItems.length === 0 ? (
               <Card className="border-0 shadow-md">
                 <CardContent className="py-8">
@@ -1004,6 +1084,18 @@ export default function ReimbursementsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-green-50/50">
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={allReturnedSelected ? true : someReturnedSelected ? 'indeterminate' : false}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedReturnedIds(new Set(returnedFilteredIds))
+                              } else {
+                                setSelectedReturnedIds(new Set())
+                              }
+                            }}
+                          />
+                        </TableHead>
                         <TableHead className="text-[#333] font-semibold">วันที่คืนเงิน</TableHead>
                         <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
                         <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
@@ -1015,6 +1107,19 @@ export default function ReimbursementsPage() {
                     <TableBody>
                       {returnedItems.map((item) => (
                         <TableRow key={item.id} className="bg-green-50/30">
+                          <TableCell className="w-[40px]">
+                            <Checkbox
+                              checked={selectedReturnedIds.has(item.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedReturnedIds((prev) => {
+                                  const next = new Set(prev)
+                                  if (checked) next.add(item.id)
+                                  else next.delete(item.id)
+                                  return next
+                                })
+                              }}
+                            />
+                          </TableCell>
                           <TableCell className="text-sm">
                             {formatDate(item.returnedDate)}
                           </TableCell>
