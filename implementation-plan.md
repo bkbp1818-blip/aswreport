@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.13.0 |
+| **Version** | 1.13.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -102,6 +102,11 @@
 - **รายจ่าย Site Minder Dynamic Revenue Plus — ทุกอาคาร:** ✨ NEW v1.12.0
   - fieldName: `siteminderExpense` — สีน้ำเงิน blue (#2563EB)
   - icon Globe, แสดงทุกอาคาร พร้อมปุ่มแก้ไข/เพิ่ม/ลด
+- **รายจ่ายคืนยอดค้างจ่าย — ทุกอาคาร (read-only):** ✨ NEW v1.13.1
+  - ดึงยอดรวมจาก Reimbursement ที่ `isReturned=true` ตาม buildingId/month/year
+  - icon HandCoins สีส้ม (#F97316), แสดงเฉพาะเมื่อมียอดคืน > 0
+  - ไม่มีปุ่มแก้ไข (ข้อมูลมาจากหน้า `/reimbursements`)
+  - รวมเข้า totalExpense → ส่งผลต่อกำไร/ขาดทุน
 - **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (เห็น Direct Booking+Cash, รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus, Co Van Kessel) ✨ UPDATED
 - **การ์ดสรุปกำไร/ขาดทุน + กราฟแท่ง** แสดงด้านบนสุด (ซ่อนสำหรับ VIEWER) ✨ NEW
   - 3 ช่องสรุป: รวมรายรับ | รวมรายจ่าย | กำไร/ขาดทุน
@@ -236,7 +241,18 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.13.0 (Current - April 2026)
+### v1.13.1 (Current - April 2026)
+- **เพิ่มรายจ่าย "คืนยอดค้างจ่าย" ในหน้ากรอกข้อมูล (`/transactions`):**
+  - ดึงยอดรวม Reimbursement ที่คืนแล้ว (`isReturned=true`) ตาม buildingId/month/year (ใช้ month จากวันที่ยืมเงิน)
+  - แสดงเป็นแถวรายจ่ายสีส้ม read-only (ไม่มีปุ่มแก้ไข เพราะข้อมูลมาจากหน้า `/reimbursements`)
+  - แสดงเฉพาะเมื่อมียอดคืน > 0, ซ่อนเมื่อไม่มี
+  - รวมเข้า totalExpense → กระทบกำไร/ขาดทุน
+  - เพิ่ม `?summary=true` ใน GET `/api/reimbursements` สำหรับ aggregate query
+  - อัปเดต Summary API + Summary History API ให้รวมยอดคืนค้างจ่ายในการคำนวณ
+  - เพิ่ม icon HandCoins สีส้ม (#F97316) ใน `category-icons.tsx`
+  - ไฟล์แก้ไข: `api/reimbursements/route.ts`, `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`, `lib/category-icons.tsx`
+
+### v1.13.0 (April 2026)
 - **ปรับ Layout หน้ายอดค้างจ่ายคืน (`/reimbursements`) เป็น 2 คอลัมน์:**
   - แบ่งซ้าย-ขวา: ค้างจ่าย (แดง) | คืนแล้ว (เขียว) — แต่ละฝั่งมี Card สรุป + ตาราง
   - Summary Cards แสดงจำนวนรายการตาม filter ที่เลือก
