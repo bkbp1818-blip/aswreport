@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
       cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
       socialSecurityExpense: summaries.reduce((sum, s) => sum + s.socialSecurityExpense, 0),
       siteminderExpense: summaries.reduce((sum, s) => sum + s.siteminderExpense, 0),
+      reimbursementReturnExpense: summaries.reduce((sum, s) => sum + s.reimbursementReturnExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
       amountToBePaid: summaries.reduce((sum, s) => sum + s.amountToBePaid, 0),
       incomeByChannel: totalIncomeByChannel,
@@ -300,6 +301,13 @@ async function calculateBuildingSummary(
   }
   cowayWaterFilterExpense = Math.max(0, cowayWaterFilterExpense)
 
+  // ดึงยอดคืนค้างจ่ายจาก Reimbursement (เฉพาะที่คืนแล้ว)
+  const reimbursementResult = await prisma.reimbursement.aggregate({
+    where: { buildingId, month, year, isReturned: true },
+    _sum: { amount: true },
+  })
+  const reimbursementReturnExpense = Number(reimbursementResult._sum.amount) || 0
+
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
@@ -335,7 +343,7 @@ async function calculateBuildingSummary(
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
   // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense + reimbursementReturnExpense
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -426,6 +434,9 @@ async function calculateBuildingSummary(
     expenseByCategory['บริการอื่นๆจาก ASW'] = aswOtherServiceExpense
   }
   expenseByCategory['Site Minder Dynamic Revenue Plus'] = siteminderExpensePerBuilding
+  if (reimbursementReturnExpense > 0) {
+    expenseByCategory['คืนยอดค้างจ่าย'] = reimbursementReturnExpense
+  }
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
@@ -479,6 +490,7 @@ async function calculateBuildingSummary(
     socialSecurityExpense: socialSecurityPerBuilding,
     // Site Minder Dynamic Revenue Plus
     siteminderExpense: siteminderExpensePerBuilding,
+    reimbursementReturnExpense,
     netProfit,
     amountToBePaid,
     incomeByChannel,

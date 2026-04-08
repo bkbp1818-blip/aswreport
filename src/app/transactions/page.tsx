@@ -115,6 +115,7 @@ export default function TransactionsPage() {
   const [thaiBusTourIncome, setThaiBusTourIncome] = useState<number>(0)
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
   const [cleaningFeeIncome, setCleaningFeeIncome] = useState<number>(0)
+  const [reimbursementReturnExpense, setReimbursementReturnExpense] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
@@ -180,17 +181,20 @@ export default function TransactionsPage() {
         month: selectedMonth,
         year: selectedYear,
       })
-      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes] = await Promise.all([
+      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes, reimbursementRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
+        fetch(`/api/reimbursements?summary=true&buildingId=${selectedBuilding}&month=${selectedMonth}&year=${selectedYear}`),
       ])
 
       const historyData = await historyTotalsRes.json()
       const settings = await settingsRes.json()
       const socialSecurityDataRes = await socialSecurityRes.json()
       const settingsTotalsData = await settingsHistoryTotalsRes.json()
+      const reimbursementData = await reimbursementRes.json()
+      setReimbursementReturnExpense(reimbursementData.total || 0)
 
       // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
@@ -399,7 +403,7 @@ export default function TransactionsPage() {
     0
   )
   const cashExpenseAmount = cashExpenseCategory ? (transactionData[cashExpenseCategory.id] || 0) : 0
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + (isFunnD ? (managerAdminSalaryExpense + aswOtherServiceExpense) : 0)
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + reimbursementReturnExpense + (isFunnD ? (managerAdminSalaryExpense + aswOtherServiceExpense) : 0)
 
   // คำนวณกำไร/ขาดทุน
   const profit = totalIncome - totalExpense
@@ -1974,6 +1978,23 @@ export default function TransactionsPage() {
                         </TableRow>
                       )}
                     </>
+                  )}
+                  {/* คืนยอดค้างจ่าย - แสดงเมื่อมียอดคืนเงินแล้ว */}
+                  {selectedBuilding && reimbursementReturnExpense > 0 && (
+                    <TableRow className="bg-orange-100/50">
+                      <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <CategoryIcon name="คืนยอดค้างจ่าย" className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs md:text-sm font-medium text-orange-600">คืนยอดค้างจ่าย</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-2 md:px-4">
+                        <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(reimbursementReturnExpense)}</p>
+                      </TableCell>
+                    </TableRow>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {

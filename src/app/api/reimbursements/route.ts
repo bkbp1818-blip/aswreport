@@ -12,6 +12,25 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month')
     const year = searchParams.get('year')
 
+    // summary mode: คืนยอดรวมที่คืนแล้ว (ใช้ในหน้า transactions)
+    if (searchParams.get('summary') === 'true') {
+      const where: Record<string, unknown> = { isReturned: true }
+      if (buildingId) where.buildingId = parseInt(buildingId)
+      if (month) where.month = parseInt(month)
+      if (year) where.year = parseInt(year)
+
+      const result = await prisma.reimbursement.aggregate({
+        where,
+        _sum: { amount: true },
+        _count: true,
+      })
+
+      return NextResponse.json({
+        total: Number(result._sum.amount) || 0,
+        count: result._count,
+      })
+    }
+
     const where: Record<string, unknown> = {}
     if (buildingId) where.buildingId = parseInt(buildingId)
     if (month) where.month = parseInt(month)

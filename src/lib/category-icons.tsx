@@ -28,6 +28,7 @@ import {
   Truck,
   ShieldCheck,
   TrafficCone,
+  HandCoins,
   HeartPulse,
   AlertTriangle,
   Paintbrush,
@@ -83,6 +84,7 @@ const iconColors: Record<string, string> = {
   'เครื่องนอน': 'text-indigo-500',
   'ตกแต่งอาคาร': 'text-rose-500',
   'Site Minder': 'text-[#2563EB]',
+  'คืนยอดค้างจ่าย': 'text-[#F97316]',
 }
 
 // Function เพื่อหา icon ที่เหมาะสมจากชื่อ category
@@ -228,6 +230,9 @@ export function getCategoryIcon(name: string): { Icon: LucideIcon, color: string
   }
   if (lowerName.includes('site minder') || lowerName.includes('siteminder')) {
     return { Icon: Globe, color: iconColors['Site Minder'] }
+  }
+  if (lowerName.includes('คืนยอดค้างจ่าย') || lowerName.includes('reimbursement')) {
+    return { Icon: HandCoins, color: iconColors['คืนยอดค้างจ่าย'] }
   }
 
   // Default

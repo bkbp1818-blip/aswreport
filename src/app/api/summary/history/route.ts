@@ -292,6 +292,13 @@ async function calculateBuildingSummary(
   }
   cowayWaterFilterExpense = Math.max(0, cowayWaterFilterExpense)
 
+  // ดึงยอดคืนค้างจ่ายจาก Reimbursement (เฉพาะที่คืนแล้ว)
+  const reimbursementResult = await prisma.reimbursement.aggregate({
+    where: { buildingId, month, year, isReturned: true },
+    _sum: { amount: true },
+  })
+  const reimbursementReturnExpense = Number(reimbursementResult._sum.amount) || 0
+
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
@@ -320,7 +327,7 @@ async function calculateBuildingSummary(
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
   // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense + reimbursementReturnExpense
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -392,6 +399,9 @@ async function calculateBuildingSummary(
     expenseByCategory['บริการอื่นๆจาก ASW'] = aswOtherServiceExpense
   }
   expenseByCategory['Site Minder Dynamic Revenue Plus'] = siteminderExpensePerBuilding
+  if (reimbursementReturnExpense > 0) {
+    expenseByCategory['คืนยอดค้างจ่าย'] = reimbursementReturnExpense
+  }
 
   // คำนวณตามสูตร
   const grossProfit = totalIncome - totalExpense
