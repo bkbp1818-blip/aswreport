@@ -790,43 +790,6 @@ export default function ReimbursementsPage() {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-0 bg-gradient-to-br from-[#F28482] to-[#d96f6d] text-white shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">
-              ยอดค้างจ่ายรวม
-            </CardTitle>
-            <div className="rounded-full bg-white/20 p-1.5">
-              <AlertCircle className="h-4 w-4 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {formatNumber(totalPending)}
-            </div>
-            <p className="text-xs text-white/70 mt-1">บาท ({pendingItems.length} รายการ)</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">
-              ยอดที่คืนแล้ว
-            </CardTitle>
-            <div className="rounded-full bg-white/20 p-1.5">
-              <CheckCircle className="h-4 w-4 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {formatNumber(totalReturned)}
-            </div>
-            <p className="text-xs text-white/70 mt-1">บาท ({returnedItems.length} รายการ)</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
         <Card className="border-0 shadow-lg bg-[#333] text-white">
@@ -859,7 +822,7 @@ export default function ReimbursementsPage() {
         </Card>
       )}
 
-      {/* Table */}
+      {/* Loading */}
       {loading ? (
         <Card className="border-0 shadow-md">
           <CardContent className="py-12">
@@ -880,129 +843,233 @@ export default function ReimbursementsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-0 shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={allPendingSelected ? true : somePendingSelected ? 'indeterminate' : false}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedIds(new Set(pendingFilteredIds))
-                        } else {
-                          setSelectedIds(new Set())
-                        }
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead className="text-[#333] font-semibold">วันที่ยืมจ่าย</TableHead>
-                  <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
-                  <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
-                  <TableHead className="text-[#333] font-semibold">รายละเอียด</TableHead>
-                  <TableHead className="text-[#333] font-semibold text-right">จำนวนเงิน</TableHead>
-                  <TableHead className="text-[#333] font-semibold">วันที่คืนเงิน</TableHead>
-                  <TableHead className="text-[#333] font-semibold text-center">สถานะ</TableHead>
-                  <TableHead className="text-[#333] font-semibold text-center">จัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reimbursements.map((item) => (
-                  <TableRow key={item.id} className={item.isReturned ? 'bg-green-50/50' : ''}>
-                    <TableCell className="w-[40px]">
-                      {!item.isReturned ? (
-                        <Checkbox
-                          checked={selectedIds.has(item.id)}
-                          onCheckedChange={(checked) => {
-                            setSelectedIds((prev) => {
-                              const next = new Set(prev)
-                              if (checked) next.add(item.id)
-                              else next.delete(item.id)
-                              return next
-                            })
-                          }}
-                        />
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(item.paidDate)}
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {item.building.name}
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {item.creditorName}
-                    </TableCell>
-                    <TableCell className="text-sm text-[#666]">
-                      {item.description || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold text-right">
-                      {formatNumber(Number(item.amount))}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(item.returnedDate)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.isReturned ? (
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-200">
-                          คืนแล้ว
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-red-100 text-red-700 hover:bg-red-200">
-                          ค้างจ่าย
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        {item.isReturned ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-orange-500 hover:text-orange-600"
-                            onClick={() => handleUndoReturned(item)}
-                            title="ยกเลิกคืนเงิน"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-green-600 hover:text-green-700"
-                            onClick={() => handleMarkReturned(item)}
-                            title="คืนเงินแล้ว"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
-                          onClick={() => handleEdit(item)}
-                          title="แก้ไข"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-500 hover:text-red-500"
-                          onClick={() => handleDelete(item.id)}
-                          title="ลบ"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        /* Summary Cards + Tables: 2 คอลัมน์ซ้าย-ขวา (desktop) / ซ้อนบน-ล่าง (mobile) */
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* ซ้าย: ค้างจ่าย */}
+          <div className="space-y-4">
+            <Card className="border-0 bg-gradient-to-br from-[#F28482] to-[#d96f6d] text-white shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white/90">
+                  ยอดค้างจ่ายรวม
+                </CardTitle>
+                <div className="rounded-full bg-white/20 p-1.5">
+                  <AlertCircle className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">
+                  {formatNumber(totalPending)}
+                </div>
+                <p className="text-xs text-white/70 mt-1">บาท ({pendingItems.length} รายการ)</p>
+              </CardContent>
+            </Card>
+
+            {pendingItems.length === 0 ? (
+              <Card className="border-0 shadow-md">
+                <CardContent className="py-8">
+                  <div className="flex flex-col items-center justify-center text-[#666]">
+                    <CheckCircle className="h-8 w-8 mb-2 text-green-300" />
+                    <p className="text-sm">ไม่มีรายการค้างจ่าย</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-0 shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-red-50/50">
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={allPendingSelected ? true : somePendingSelected ? 'indeterminate' : false}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedIds(new Set(pendingFilteredIds))
+                              } else {
+                                setSelectedIds(new Set())
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead className="text-[#333] font-semibold">วันที่ยืมจ่าย</TableHead>
+                        <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
+                        <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
+                        <TableHead className="text-[#333] font-semibold">รายละเอียด</TableHead>
+                        <TableHead className="text-[#333] font-semibold text-right">จำนวนเงิน</TableHead>
+                        <TableHead className="text-[#333] font-semibold text-center">จัดการ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="w-[40px]">
+                            <Checkbox
+                              checked={selectedIds.has(item.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedIds((prev) => {
+                                  const next = new Set(prev)
+                                  if (checked) next.add(item.id)
+                                  else next.delete(item.id)
+                                  return next
+                                })
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {formatDate(item.paidDate)}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">
+                            {item.building.name}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">
+                            {item.creditorName}
+                          </TableCell>
+                          <TableCell className="text-sm text-[#666]">
+                            {item.description || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-semibold text-right">
+                            {formatNumber(Number(item.amount))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700"
+                                onClick={() => handleMarkReturned(item)}
+                                title="คืนเงินแล้ว"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
+                                onClick={() => handleEdit(item)}
+                                title="แก้ไข"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-red-500"
+                                onClick={() => handleDelete(item.id)}
+                                title="ลบ"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            )}
           </div>
-        </Card>
+
+          {/* ขวา: คืนแล้ว */}
+          <div className="space-y-4">
+            <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white/90">
+                  ยอดที่คืนแล้ว
+                </CardTitle>
+                <div className="rounded-full bg-white/20 p-1.5">
+                  <CheckCircle className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">
+                  {formatNumber(totalReturned)}
+                </div>
+                <p className="text-xs text-white/70 mt-1">บาท ({returnedItems.length} รายการ)</p>
+              </CardContent>
+            </Card>
+
+            {returnedItems.length === 0 ? (
+              <Card className="border-0 shadow-md">
+                <CardContent className="py-8">
+                  <div className="flex flex-col items-center justify-center text-[#666]">
+                    <HandCoins className="h-8 w-8 mb-2 text-slate-300" />
+                    <p className="text-sm">ยังไม่มีรายการที่คืนแล้ว</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-0 shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-green-50/50">
+                        <TableHead className="text-[#333] font-semibold">วันที่คืนเงิน</TableHead>
+                        <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
+                        <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
+                        <TableHead className="text-[#333] font-semibold">รายละเอียด</TableHead>
+                        <TableHead className="text-[#333] font-semibold text-right">จำนวนเงิน</TableHead>
+                        <TableHead className="text-[#333] font-semibold text-center">จัดการ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {returnedItems.map((item) => (
+                        <TableRow key={item.id} className="bg-green-50/30">
+                          <TableCell className="text-sm">
+                            {formatDate(item.returnedDate)}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">
+                            {item.building.name}
+                          </TableCell>
+                          <TableCell className="text-sm font-medium">
+                            {item.creditorName}
+                          </TableCell>
+                          <TableCell className="text-sm text-[#666]">
+                            {item.description || '-'}
+                          </TableCell>
+                          <TableCell className="text-sm font-semibold text-right">
+                            {formatNumber(Number(item.amount))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-orange-500 hover:text-orange-600"
+                                onClick={() => handleUndoReturned(item)}
+                                title="ยกเลิกคืนเงิน"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
+                                onClick={() => handleEdit(item)}
+                                title="แก้ไข"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-red-500"
+                                onClick={() => handleDelete(item.id)}
+                                title="ลบ"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
