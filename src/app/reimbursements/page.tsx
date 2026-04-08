@@ -77,6 +77,7 @@ export default function ReimbursementsPage() {
   const [selectedReturnedIds, setSelectedReturnedIds] = useState<Set<number>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
   const [bulkReturnDate, setBulkReturnDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [bulkEditReturnDate, setBulkEditReturnDate] = useState<string>('')
 
   // Filter state (checkbox multi-select)
   const [filterBuildings, setFilterBuildings] = useState<string[]>([])
@@ -363,6 +364,51 @@ export default function ReimbursementsPage() {
       alert(`ยกเลิกคืนเงิน ${count} รายการสำเร็จ`)
     } catch (error) {
       console.error('Error bulk undoing returned:', error)
+      alert('เกิดข้อผิดพลาด')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  // แก้ไขวันที่คืนเงินหลายรายการพร้อมกัน
+  const handleBulkEditReturnDate = async () => {
+    if (!bulkEditReturnDate) {
+      alert('กรุณาเลือกวันที่คืนเงินใหม่')
+      return
+    }
+    const count = selectedReturnedIds.size
+    if (!confirm(`ยืนยันเปลี่ยนวันที่คืนเงินทั้ง ${count} รายการ เป็น ${formatDate(bulkEditReturnDate)}?`)) return
+
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/reimbursements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedReturnedIds),
+          returnedDate: bulkEditReturnDate,
+        }),
+      })
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          window.location.href = '/access/partner'
+          return
+        }
+        if (res.status === 403) {
+          alert('เฉพาะ Partner เท่านั้นที่สามารถจัดการข้อมูลได้')
+          return
+        }
+        throw new Error('Failed to bulk edit date')
+      }
+
+      setSelectedReturnedIds(new Set())
+      setBulkEditReturnDate('')
+      await loadReimbursements()
+      alert(`แก้ไขวันที่คืนเงิน ${count} รายการสำเร็จ`)
+    } catch (error) {
+      console.error('Error bulk editing return date:', error)
       alert('เกิดข้อผิดพลาด')
     } finally {
       setBulkLoading(false)
@@ -1067,12 +1113,31 @@ export default function ReimbursementsPage() {
                     เลือก {selectedReturnedIds.size} รายการ
                     {' '}(รวม {formatNumber(returnedItems.filter((r) => selectedReturnedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-white/70">วันที่คืนใหม่:</label>
+                      <Input
+                        type="date"
+                        value={bulkEditReturnDate}
+                        onChange={(e) => setBulkEditReturnDate(e.target.value)}
+                        className="h-8 w-[150px] text-sm bg-white/10 border-white/30 text-white [color-scheme:dark]"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-[#84A59D] hover:bg-[#6b8a84] text-white"
+                      disabled={bulkLoading || !bulkEditReturnDate}
+                      onClick={handleBulkEditReturnDate}
+                    >
+                      {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <CalendarDays className="mr-1 h-4 w-4" />
+                      แก้ไขวันที่คืน
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="text-white hover:bg-white/20"
-                      onClick={() => setSelectedReturnedIds(new Set())}
+                      onClick={() => { setSelectedReturnedIds(new Set()); setBulkEditReturnDate('') }}
                     >
                       ยกเลิก
                     </Button>
@@ -1084,7 +1149,7 @@ export default function ReimbursementsPage() {
                     >
                       {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       <RotateCcw className="mr-1 h-4 w-4" />
-                      ยกเลิกคืนเงินทั้งหมด
+                      ยกเลิกคืนเงิน
                     </Button>
                   </div>
                 </CardContent>
