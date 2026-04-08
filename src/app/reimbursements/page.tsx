@@ -450,6 +450,15 @@ export default function ReimbursementsPage() {
   const allReturnedSelected = returnedFilteredIds.length > 0 && returnedFilteredIds.every((id) => selectedReturnedIds.has(id))
   const someReturnedSelected = returnedFilteredIds.some((id) => selectedReturnedIds.has(id))
 
+  // จัดกลุ่มรายการค้างจ่ายตามวันที่ยืมจ่าย
+  const pendingGroups = pendingItems.reduce<Record<string, Reimbursement[]>>((groups, item) => {
+    const key = item.paidDate ? item.paidDate.split('T')[0] : 'no-date'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
+    return groups
+  }, {})
+  const sortedPendingGroupKeys = Object.keys(pendingGroups).sort((a, b) => b.localeCompare(a))
+
   // จัดกลุ่มรายการคืนแล้วตามวันที่คืนเงิน
   const returnedGroups = returnedItems.reduce<Record<string, Reimbursement[]>>((groups, item) => {
     const key = item.returnedDate ? item.returnedDate.split('T')[0] : 'no-date'
@@ -1016,69 +1025,87 @@ export default function ReimbursementsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="w-[40px]">
-                            <Checkbox
-                              checked={selectedIds.has(item.id)}
-                              onCheckedChange={(checked) => {
-                                setSelectedIds((prev) => {
-                                  const next = new Set(prev)
-                                  if (checked) next.add(item.id)
-                                  else next.delete(item.id)
-                                  return next
-                                })
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatDate(item.paidDate)}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {item.building.name}
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">
-                            {item.creditorName}
-                          </TableCell>
-                          <TableCell className="text-sm text-[#666]">
-                            {item.description || '-'}
-                          </TableCell>
-                          <TableCell className="text-sm font-semibold text-right">
-                            {formatNumber(Number(item.amount))}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-green-600 hover:text-green-700"
-                                onClick={() => handleMarkReturned(item)}
-                                title="คืนเงินแล้ว"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
-                                onClick={() => handleEdit(item)}
-                                title="แก้ไข"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-red-500"
-                                onClick={() => handleDelete(item.id)}
-                                title="ลบ"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {sortedPendingGroupKeys.map((dateKey) => {
+                        const groupItems = pendingGroups[dateKey]
+                        const groupTotal = groupItems.reduce((sum, r) => sum + Number(r.amount), 0)
+                        return (
+                          <React.Fragment key={dateKey}>
+                            {groupItems.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="w-[40px]">
+                                  <Checkbox
+                                    checked={selectedIds.has(item.id)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedIds((prev) => {
+                                        const next = new Set(prev)
+                                        if (checked) next.add(item.id)
+                                        else next.delete(item.id)
+                                        return next
+                                      })
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {formatDate(item.paidDate)}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {item.building.name}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {item.creditorName}
+                                </TableCell>
+                                <TableCell className="text-sm text-[#666]">
+                                  {item.description || '-'}
+                                </TableCell>
+                                <TableCell className="text-sm font-semibold text-right">
+                                  {formatNumber(Number(item.amount))}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-green-600 hover:text-green-700"
+                                      onClick={() => handleMarkReturned(item)}
+                                      title="คืนเงินแล้ว"
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
+                                      onClick={() => handleEdit(item)}
+                                      title="แก้ไข"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-500 hover:text-red-500"
+                                      onClick={() => handleDelete(item.id)}
+                                      title="ลบ"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {/* แถวสรุปยอดรวมของกลุ่ม */}
+                            <TableRow className="bg-[#F28482]/10 border-b-2 border-[#F28482]/30">
+                              <TableCell colSpan={5} className="text-sm font-medium text-[#d96f6d]">
+                                ยืมจ่ายวันที่ {formatDate(dateKey === 'no-date' ? null : dateKey)} — {groupItems.length} รายการ
+                              </TableCell>
+                              <TableCell className="text-sm font-bold text-right text-[#d96f6d]">
+                                {formatNumber(groupTotal)}
+                              </TableCell>
+                              <TableCell />
+                            </TableRow>
+                          </React.Fragment>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
