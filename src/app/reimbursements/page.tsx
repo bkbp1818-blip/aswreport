@@ -73,6 +73,8 @@ export default function ReimbursementsPage() {
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Reimbursement | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   // Filter state (checkbox multi-select)
   const [filterBuildings, setFilterBuildings] = useState<string[]>([])
@@ -137,6 +139,7 @@ export default function ReimbursementsPage() {
       filtered = filtered.filter((r) => filterCreditors.includes(r.creditorName))
     }
     setReimbursements(filtered)
+    setSelectedIds(new Set())
   }, [allReimbursements, filterBuildings, filterMonths, filterCreditors])
 
   useEffect(() => {
@@ -277,6 +280,48 @@ export default function ReimbursementsPage() {
     }
   }
 
+  // คืนเงินหลายรายการพร้อมกัน (bulk)
+  const handleBulkMarkReturned = async () => {
+    const count = selectedIds.size
+    if (!confirm(`ยืนยันว่าคืนเงินทั้ง ${count} รายการแล้ว?`)) return
+
+    setBulkLoading(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const res = await fetch('/api/reimbursements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          returnedDate: today,
+          isReturned: true,
+        }),
+      })
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          window.location.href = '/access/partner'
+          return
+        }
+        if (res.status === 403) {
+          alert('เฉพาะ Partner เท่านั้นที่สามารถจัดการข้อมูลได้')
+          return
+        }
+        throw new Error('Failed to bulk update')
+      }
+
+      setSelectedIds(new Set())
+      await loadReimbursements()
+      alert(`คืนเงิน ${count} รายการสำเร็จ`)
+    } catch (error) {
+      console.error('Error bulk marking as returned:', error)
+      alert('เกิดข้อผิดพลาดในการคืนเงิน')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   // ลบรายการ
   const handleDelete = async (id: number) => {
     if (!confirm('คุณต้องการลบรายการนี้หรือไม่?')) {
@@ -301,6 +346,11 @@ export default function ReimbursementsPage() {
   const returnedItems = reimbursements.filter((r) => r.isReturned)
   const totalPending = pendingItems.reduce((sum, r) => sum + Number(r.amount), 0)
   const totalReturned = returnedItems.reduce((sum, r) => sum + Number(r.amount), 0)
+
+  // สำหรับ select all checkbox
+  const pendingFilteredIds = pendingItems.map((r) => r.id)
+  const allPendingSelected = pendingFilteredIds.length > 0 && pendingFilteredIds.every((id) => selectedIds.has(id))
+  const somePendingSelected = pendingFilteredIds.some((id) => selectedIds.has(id))
 
   // Format วันที่
   const formatDate = (dateStr: string | null) => {
@@ -741,7 +791,7 @@ export default function ReimbursementsPage() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card className="border-0 bg-gradient-to-br from-[#F28482] to-[#d96f6d] text-white shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-white/90">
@@ -755,7 +805,7 @@ export default function ReimbursementsPage() {
             <div className="text-2xl font-bold text-white">
               {formatNumber(totalPending)}
             </div>
-            <p className="text-xs text-white/70 mt-1">บาท</p>
+            <p className="text-xs text-white/70 mt-1">บาท ({pendingItems.length} รายการ)</p>
           </CardContent>
         </Card>
 
@@ -772,27 +822,42 @@ export default function ReimbursementsPage() {
             <div className="text-2xl font-bold text-white">
               {formatNumber(totalReturned)}
             </div>
-            <p className="text-xs text-white/70 mt-1">บาท</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 bg-gradient-to-br from-[#F6BD60] to-[#e5a84a] text-white shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white/90">
-              จำนวนรายการค้างจ่าย
-            </CardTitle>
-            <div className="rounded-full bg-white/20 p-1.5">
-              <HandCoins className="h-4 w-4 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {pendingItems.length}
-            </div>
-            <p className="text-xs text-white/70 mt-1">รายการ</p>
+            <p className="text-xs text-white/70 mt-1">บาท ({returnedItems.length} รายการ)</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <Card className="border-0 shadow-lg bg-[#333] text-white">
+          <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <span className="text-sm">
+              เลือก {selectedIds.size} รายการ
+              {' '}(รวม {formatNumber(pendingItems.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-white hover:bg-white/20"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                disabled={bulkLoading}
+                onClick={handleBulkMarkReturned}
+              >
+                {bulkLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <CheckCircle className="mr-1 h-4 w-4" />
+                คืนเงินทั้งหมด
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -820,6 +885,18 @@ export default function ReimbursementsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50">
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={allPendingSelected ? true : somePendingSelected ? 'indeterminate' : false}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedIds(new Set(pendingFilteredIds))
+                        } else {
+                          setSelectedIds(new Set())
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="text-[#333] font-semibold">วันที่ยืมจ่าย</TableHead>
                   <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
                   <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
@@ -833,6 +910,21 @@ export default function ReimbursementsPage() {
               <TableBody>
                 {reimbursements.map((item) => (
                   <TableRow key={item.id} className={item.isReturned ? 'bg-green-50/50' : ''}>
+                    <TableCell className="w-[40px]">
+                      {!item.isReturned ? (
+                        <Checkbox
+                          checked={selectedIds.has(item.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev)
+                              if (checked) next.add(item.id)
+                              else next.delete(item.id)
+                              return next
+                            })
+                          }}
+                        />
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-sm">
                       {formatDate(item.paidDate)}
                     </TableCell>

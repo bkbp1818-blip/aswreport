@@ -144,6 +144,44 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// PATCH - แก้ไขหลายรายการพร้อมกัน (bulk update: วันที่คืนเงิน + สถานะ)
+export async function PATCH(request: NextRequest) {
+  try {
+    await requirePartner()
+
+    const body = await request.json()
+    const { ids, returnedDate, isReturned } = body
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { error: 'กรุณาระบุรายการที่ต้องการแก้ไข' },
+        { status: 400 }
+      )
+    }
+
+    const data: Record<string, unknown> = {}
+    if (returnedDate !== undefined) data.returnedDate = returnedDate ? new Date(returnedDate) : null
+    if (isReturned !== undefined) data.isReturned = isReturned
+
+    const result = await prisma.reimbursement.updateMany({
+      where: { id: { in: ids.map((id: number) => Number(id)) } },
+      data,
+    })
+
+    return NextResponse.json({ success: true, count: result.count })
+  } catch (error) {
+    const authError = handleAuthError(error)
+    if (authError) {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
+    console.error('Error bulk updating reimbursements:', error)
+    return NextResponse.json(
+      { error: 'เกิดข้อผิดพลาดในการแก้ไขหลายรายการ' },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE - ลบรายการ
 export async function DELETE(request: NextRequest) {
   try {
