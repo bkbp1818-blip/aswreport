@@ -76,6 +76,7 @@ export default function ReimbursementsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [selectedReturnedIds, setSelectedReturnedIds] = useState<Set<number>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkReturnDate, setBulkReturnDate] = useState<string>(new Date().toISOString().split('T')[0])
 
   // Filter state (checkbox multi-select)
   const [filterBuildings, setFilterBuildings] = useState<string[]>([])
@@ -284,18 +285,21 @@ export default function ReimbursementsPage() {
 
   // คืนเงินหลายรายการพร้อมกัน (bulk)
   const handleBulkMarkReturned = async () => {
+    if (!bulkReturnDate) {
+      alert('กรุณาเลือกวันที่คืนเงิน')
+      return
+    }
     const count = selectedIds.size
-    if (!confirm(`ยืนยันว่าคืนเงินทั้ง ${count} รายการแล้ว?`)) return
+    if (!confirm(`ยืนยันว่าคืนเงินทั้ง ${count} รายการ วันที่ ${formatDate(bulkReturnDate)}?`)) return
 
     setBulkLoading(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
       const res = await fetch('/api/reimbursements', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ids: Array.from(selectedIds),
-          returnedDate: today,
+          returnedDate: bulkReturnDate,
           isReturned: true,
         }),
       })
@@ -897,7 +901,16 @@ export default function ReimbursementsPage() {
                     เลือก {selectedIds.size} รายการ
                     {' '}(รวม {formatNumber(pendingItems.filter((r) => selectedIds.has(r.id)).reduce((s, r) => s + Number(r.amount), 0))} บาท)
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs text-white/70">วันที่คืน:</label>
+                      <Input
+                        type="date"
+                        value={bulkReturnDate}
+                        onChange={(e) => setBulkReturnDate(e.target.value)}
+                        className="h-8 w-[150px] text-sm bg-white/10 border-white/30 text-white [color-scheme:dark]"
+                      />
+                    </div>
                     <Button
                       size="sm"
                       variant="ghost"
