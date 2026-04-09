@@ -99,6 +99,16 @@ interface ExpenseHistoryItem {
   createdAt: string
 }
 
+interface ReimbursementItem {
+  id: number
+  amount: number
+  creditorName: string
+  description: string | null
+  paidDate: string | null
+  returnedDate: string | null
+  building: { id: number; name: string; code: string }
+}
+
 export default function TransactionsPage() {
   const { isViewer } = useAccess()
   const [buildings, setBuildings] = useState<Building[]>([])
@@ -116,6 +126,8 @@ export default function TransactionsPage() {
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
   const [cleaningFeeIncome, setCleaningFeeIncome] = useState<number>(0)
   const [reimbursementReturnExpense, setReimbursementReturnExpense] = useState<number>(0)
+  const [returnedReimbursementItems, setReturnedReimbursementItems] = useState<ReimbursementItem[]>([])
+  const [pendingReimbursementItems, setPendingReimbursementItems] = useState<ReimbursementItem[]>([])
   const [loading, setLoading] = useState(true)
   const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [buildingSettings, setBuildingSettings] = useState<BuildingSettings | null>(null)
@@ -181,20 +193,26 @@ export default function TransactionsPage() {
         month: selectedMonth,
         year: selectedYear,
       })
-      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes, reimbursementRes] = await Promise.all([
+      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes, returnedItemsRes, pendingItemsRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
-        fetch(`/api/reimbursements?summary=true&buildingId=${selectedBuilding}&month=${selectedMonth}&year=${selectedYear}`),
+        fetch(`/api/reimbursements?details=returned&buildingId=${selectedBuilding}&returnedMonth=${selectedMonth}&returnedYear=${selectedYear}`),
+        fetch(`/api/reimbursements?details=pending&buildingId=${selectedBuilding}&paidMonth=${selectedMonth}&paidYear=${selectedYear}`),
       ])
 
       const historyData = await historyTotalsRes.json()
       const settings = await settingsRes.json()
       const socialSecurityDataRes = await socialSecurityRes.json()
       const settingsTotalsData = await settingsHistoryTotalsRes.json()
-      const reimbursementData = await reimbursementRes.json()
-      setReimbursementReturnExpense(reimbursementData.total || 0)
+      const returnedItemsData = await returnedItemsRes.json()
+      const returnedItems: ReimbursementItem[] = Array.isArray(returnedItemsData) ? returnedItemsData : []
+      setReturnedReimbursementItems(returnedItems)
+      setReimbursementReturnExpense(returnedItems.reduce((sum: number, item: ReimbursementItem) => sum + Number(item.amount), 0))
+
+      const pendingItemsData = await pendingItemsRes.json()
+      setPendingReimbursementItems(Array.isArray(pendingItemsData) ? pendingItemsData : [])
 
       // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
       const dataMap: Record<number, number> = {}
@@ -1979,22 +1997,31 @@ export default function TransactionsPage() {
                       )}
                     </>
                   )}
-                  {/* คืนยอดค้างจ่าย - แสดงเมื่อมียอดคืนเงินแล้ว */}
-                  {selectedBuilding && reimbursementReturnExpense > 0 && (
-                    <TableRow className="bg-orange-100/50">
-                      <TableCell className="font-medium px-2 md:px-4"></TableCell>
-                      <TableCell className="px-2 md:px-4">
-                        <div className="flex items-center gap-1 md:gap-2">
-                          <CategoryIcon name="คืนยอดค้างจ่าย" className="h-4 w-4 flex-shrink-0" />
-                          <div>
-                            <span className="text-xs md:text-sm font-medium text-orange-600">คืนยอดค้างจ่าย</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right px-2 md:px-4">
-                        <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(reimbursementReturnExpense)}</p>
-                      </TableCell>
-                    </TableRow>
+                  {/* คืนยอดค้างจ่าย - แสดงรายละเอียดแต่ละรายการ */}
+                  {selectedBuilding && returnedReimbursementItems.length > 0 && (
+                    <>
+                      {returnedReimbursementItems.map((item) => (
+                        <TableRow key={`reimb-${item.id}`} className="bg-orange-100/50">
+                          <TableCell className="font-medium px-2 md:px-4"></TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name="คืนยอดค้างจ่าย" className="h-4 w-4 flex-shrink-0" />
+                              <div>
+                                <span className="text-xs md:text-sm font-medium text-orange-600">
+                                  คืนยอดค้างจ่าย — {item.creditorName}
+                                </span>
+                                {item.description && (
+                                  <p className="text-[10px] md:text-xs text-orange-400">{item.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <p className="font-medium text-xs md:text-sm text-orange-600">{formatNumber(Number(item.amount))}</p>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
                   )}
                   {/* รายจ่ายอื่นๆ */}
                   {otherExpenseCategories.map((category, index) => {
@@ -2058,6 +2085,53 @@ export default function TransactionsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ยอดค้างจ่าย - แสดงรายการที่ยืมจ่ายในเดือนนี้ (ไม่รวมในรายจ่าย) */}
+        {selectedBuilding && pendingReimbursementItems.length > 0 && (
+          <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm md:text-base text-orange-700 flex items-center gap-2">
+                <CategoryIcon name="คืนยอดค้างจ่าย" className="h-4 w-4" />
+                ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)
+                <span className="text-xs font-normal text-orange-500">— ไม่รวมในรายจ่าย</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-orange-700 font-semibold text-xs">วันที่ยืมจ่าย</TableHead>
+                    <TableHead className="text-orange-700 font-semibold text-xs">ชื่อเจ้าหนี้</TableHead>
+                    <TableHead className="text-orange-700 font-semibold text-xs">รายละเอียด</TableHead>
+                    <TableHead className="text-orange-700 font-semibold text-xs text-right">จำนวนเงิน</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingReimbursementItems.map((item) => (
+                    <TableRow key={`pending-${item.id}`}>
+                      <TableCell className="text-xs md:text-sm">
+                        {item.paidDate ? new Date(item.paidDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                      </TableCell>
+                      <TableCell className="text-xs md:text-sm font-medium">{item.creditorName}</TableCell>
+                      <TableCell className="text-xs md:text-sm text-gray-600">{item.description || '-'}</TableCell>
+                      <TableCell className="text-xs md:text-sm font-semibold text-right">{formatNumber(Number(item.amount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <tfoot>
+                  <TableRow className="bg-orange-100/50">
+                    <TableCell colSpan={3} className="text-xs font-medium text-orange-700">
+                      รวมยอดค้างจ่าย ({pendingReimbursementItems.length} รายการ)
+                    </TableCell>
+                    <TableCell className="text-xs md:text-sm font-bold text-right text-orange-700">
+                      {formatNumber(pendingReimbursementItems.reduce((sum, item) => sum + Number(item.amount), 0))}
+                    </TableCell>
+                  </TableRow>
+                </tfoot>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
         </>
       )}
 

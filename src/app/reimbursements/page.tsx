@@ -1211,6 +1211,7 @@ export default function ReimbursementsPage() {
                           />
                         </TableHead>
                         <TableHead className="text-[#333] font-semibold">วันที่คืนเงิน</TableHead>
+                        <TableHead className="text-[#333] font-semibold">วันที่ยืมจ่าย</TableHead>
                         <TableHead className="text-[#333] font-semibold">อาคาร</TableHead>
                         <TableHead className="text-[#333] font-semibold">ชื่อเจ้าหนี้</TableHead>
                         <TableHead className="text-[#333] font-semibold">รายละเอียด</TableHead>
@@ -1241,6 +1242,9 @@ export default function ReimbursementsPage() {
                                 </TableCell>
                                 <TableCell className="text-sm">
                                   {formatDate(item.returnedDate)}
+                                </TableCell>
+                                <TableCell className="text-sm text-slate-500">
+                                  {formatDate(item.paidDate)}
                                 </TableCell>
                                 <TableCell className="text-sm font-medium">
                                   {item.building.name}
@@ -1289,7 +1293,7 @@ export default function ReimbursementsPage() {
                             ))}
                             {/* แถวสรุปยอดรวมของกลุ่ม */}
                             <TableRow className="bg-[#84A59D]/10 border-b-2 border-[#84A59D]/30">
-                              <TableCell colSpan={5} className="text-sm font-medium text-[#84A59D]">
+                              <TableCell colSpan={6} className="text-sm font-medium text-[#84A59D]">
                                 คืนวันที่ {formatDate(dateKey === 'no-date' ? null : dateKey)} — {groupItems.length} รายการ
                               </TableCell>
                               <TableCell className="text-sm font-bold text-right text-[#84A59D]">

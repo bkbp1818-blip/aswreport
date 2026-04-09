@@ -12,6 +12,58 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month')
     const year = searchParams.get('year')
 
+    // details mode: ดึงรายละเอียดยอดที่คืนแล้ว (ใช้ในหน้า transactions)
+    if (searchParams.get('details') === 'returned') {
+      const where: Record<string, unknown> = { isReturned: true }
+      if (buildingId) where.buildingId = parseInt(buildingId)
+
+      const returnedMonth = searchParams.get('returnedMonth')
+      const returnedYear = searchParams.get('returnedYear')
+      if (returnedMonth && returnedYear) {
+        const m = parseInt(returnedMonth)
+        const y = parseInt(returnedYear)
+        const startDate = new Date(Date.UTC(y, m - 1, 1))
+        const endDate = new Date(Date.UTC(y, m, 1))
+        where.returnedDate = { gte: startDate, lt: endDate }
+      }
+
+      const items = await prisma.reimbursement.findMany({
+        where,
+        include: {
+          building: { select: { id: true, name: true, code: true } },
+        },
+        orderBy: [{ returnedDate: 'desc' }, { createdAt: 'desc' }],
+      })
+
+      return NextResponse.json(items)
+    }
+
+    // details mode: ดึงรายการค้างจ่าย (ใช้ในหน้า transactions)
+    if (searchParams.get('details') === 'pending') {
+      const where: Record<string, unknown> = { isReturned: false }
+      if (buildingId) where.buildingId = parseInt(buildingId)
+
+      const paidMonth = searchParams.get('paidMonth')
+      const paidYear = searchParams.get('paidYear')
+      if (paidMonth && paidYear) {
+        const m = parseInt(paidMonth)
+        const y = parseInt(paidYear)
+        const startDate = new Date(Date.UTC(y, m - 1, 1))
+        const endDate = new Date(Date.UTC(y, m, 1))
+        where.paidDate = { gte: startDate, lt: endDate }
+      }
+
+      const items = await prisma.reimbursement.findMany({
+        where,
+        include: {
+          building: { select: { id: true, name: true, code: true } },
+        },
+        orderBy: [{ paidDate: 'desc' }, { createdAt: 'desc' }],
+      })
+
+      return NextResponse.json(items)
+    }
+
     // summary mode: คืนยอดรวมที่คืนแล้ว (ใช้ในหน้า transactions)
     if (searchParams.get('summary') === 'true') {
       const where: Record<string, unknown> = { isReturned: true }
