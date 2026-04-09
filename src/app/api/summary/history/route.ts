@@ -103,7 +103,7 @@ async function calculateBuildingSummary(
   // ดึงข้อมูล building และ settings
   const building = await prisma.building.findUnique({
     where: { id: buildingId },
-    include: { Settings: true },
+    include: { settings: true },
   })
 
   if (!building) {
@@ -120,7 +120,7 @@ async function calculateBuildingSummary(
     }
   }
 
-  const settings = building.Settings
+  const settings = building.settings
 
   // ดึง categories ทั้งหมด
   const categories = await prisma.category.findMany()

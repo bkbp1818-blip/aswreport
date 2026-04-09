@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where,
       include: {
-        Category: true,
-        Building: true,
+        category: true,
+        building: true,
       },
       orderBy: [
-        { Category: { type: 'asc' } },
-        { Category: { order: 'asc' } },
+        { category: { type: 'asc' } },
+        { category: { order: 'asc' } },
       ],
     })
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         note: note || null,
       },
       include: {
-        Category: true,
+        category: true,
       },
     })
 
