@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const buildings = await prisma.building.findMany({
       include: {
-        settings: true,
+        Settings: true,
       },
       orderBy: {
         id: 'asc',

@@ -11,13 +11,13 @@ export async function GET(request: NextRequest) {
     if (buildingId) {
       const settings = await prisma.settings.findUnique({
         where: { buildingId: parseInt(buildingId) },
-        include: { building: true },
+        include: { Building: true },
       })
       return NextResponse.json(settings)
     }
 
     const allSettings = await prisma.settings.findMany({
-      include: { building: true },
+      include: { Building: true },
       orderBy: { buildingId: 'asc' },
     })
     return NextResponse.json(allSettings)
@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest) {
         littleHotelierExpense: parseFloat(littleHotelierExpense) || 0,
         cowayWaterFilterExpense: parseFloat(cowayWaterFilterExpense) || 0,
       },
-      include: { building: true },
+      include: { Building: true },
     })
 
     return NextResponse.json(settings)

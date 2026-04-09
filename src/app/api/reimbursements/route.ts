@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const reimbursements = await prisma.reimbursement.findMany({
       where,
       include: {
-        building: { select: { id: true, name: true, code: true } },
+        Building: { select: { id: true, name: true, code: true } },
       },
       orderBy: [
         { isReturned: 'asc' },
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
             isReturned: false,
           },
           include: {
-            building: { select: { id: true, name: true, code: true } },
+            Building: { select: { id: true, name: true, code: true } },
           },
         })
       )
@@ -145,7 +145,7 @@ export async function PUT(request: NextRequest) {
       where: { id: parseInt(id) },
       data,
       include: {
-        building: { select: { id: true, name: true, code: true } },
+        Building: { select: { id: true, name: true, code: true } },
       },
     })
 

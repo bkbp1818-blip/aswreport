@@ -12,7 +12,7 @@ model Building {
   name          String
   code          String          @unique
   createdAt     DateTime        @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime        @updatedAt
   Reimbursement Reimbursement[]
   Settings      Settings?
   Transaction   Transaction[]
@@ -24,7 +24,7 @@ model Category {
   type        CategoryType
   order       Int           @default(0)
   createdAt   DateTime      @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime      @updatedAt
   Transaction Transaction[]
 }
 
@@ -37,7 +37,7 @@ model Employee {
   salary                     Decimal                      @default(0) @db.Decimal(15, 2)
   isActive                   Boolean                      @default(true)
   createdAt                  DateTime                     @default(now())
-  updatedAt                  DateTime
+  updatedAt                  DateTime                     @updatedAt
   SocialSecurityContribution SocialSecurityContribution[]
 }
 
@@ -62,7 +62,7 @@ model GlobalSettings {
   maxCareExpense               Decimal  @default(0) @db.Decimal(15, 2)
   trafficCareExpense           Decimal  @default(0) @db.Decimal(15, 2)
   createdAt                    DateTime @default(now())
-  updatedAt                    DateTime
+  updatedAt                    DateTime @updatedAt
   amenityExpense               Decimal  @default(0) @db.Decimal(15, 2)
   coffeeExpense                Decimal  @default(0) @db.Decimal(15, 2)
   cookieExpense                Decimal  @default(0) @db.Decimal(15, 2)
@@ -90,7 +90,7 @@ model Reimbursement {
   paidDate     DateTime?
   isReturned   Boolean   @default(false)
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime  @updatedAt
   returnedDate DateTime?
   Building     Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
@@ -105,7 +105,7 @@ model Settings {
   monthlyRent               Decimal  @default(0) @db.Decimal(15, 2)
   littleHotelierExpense     Decimal  @default(0) @db.Decimal(15, 2)
   createdAt                 DateTime @default(now())
-  updatedAt                 DateTime
+  updatedAt                 DateTime @updatedAt
   cowayWaterFilterExpense   Decimal  @default(0) @db.Decimal(15, 2)
   airportShuttleRentExpense Decimal  @default(0) @db.Decimal(15, 2)
   Building                  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
@@ -118,7 +118,7 @@ model SocialSecurityContribution {
   month      Int
   year       Int
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, month, year])
@@ -134,7 +134,7 @@ model Transaction {
   year       Int
   note       String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   Building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   Category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -151,7 +151,7 @@ model User {
   isActive     Boolean  @default(true)
   allowedMenus Json?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
 }
 
 enum CategoryType {
