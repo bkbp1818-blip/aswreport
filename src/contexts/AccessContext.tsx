@@ -71,6 +71,19 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         // ดึง role จาก user data โดยตรง
         const roleFromUser: Role = parsedUser.role === 'PARTNER' ? 'partner' : parsedUser.role === 'VIEWER' ? 'viewer' : 'staff'
         setRoleState(roleFromUser)
+
+        // ดึงข้อมูลล่าสุดจาก DB เพื่อ sync allowedMenus
+        fetch('/api/auth/me')
+          .then(res => res.ok ? res.json() : null)
+          .then(freshUser => {
+            if (freshUser) {
+              const updatedUser = { ...parsedUser, allowedMenus: freshUser.allowedMenus }
+              setUserState(updatedUser)
+              // อัพเดท cookie ด้วยข้อมูลใหม่
+              setCookie('access_user', encodeURIComponent(JSON.stringify(updatedUser)))
+            }
+          })
+          .catch(() => {})
       } catch (e) {
         console.error('Error parsing user cookie:', e)
       }
