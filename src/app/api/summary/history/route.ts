@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePartner, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงข้อมูลย้อนหลังหลายเดือน (ต้องเป็น Partner)
 export async function GET(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/')
 
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงประวัติการเพิ่ม/ลดค่าใช้จ่าย
 export async function GET(request: NextRequest) {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // ต้อง login
-    await requireAuth()
+    await requireMenuAccess('/settings')
 
     const body = await request.json()
     const {

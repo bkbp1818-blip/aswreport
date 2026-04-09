@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       username: user.username,
       name: user.name,
       role: user.role,
+      allowedMenus: user.allowedMenus as string[] | null,
     }
 
     // Set cookie สำหรับ authentication

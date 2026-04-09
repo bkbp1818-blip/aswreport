@@ -22,7 +22,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Loader2, Users, UserCheck, UserX, Eye, EyeOff } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Users, UserCheck, UserX, Eye, EyeOff, Shield } from 'lucide-react'
+import { MENU_ITEMS, PARTNER_ONLY_MENUS, DEFAULT_MENUS_BY_ROLE, getEffectiveMenus } from '@/lib/menu-permissions'
 
 interface User {
   id: number
@@ -30,6 +31,7 @@ interface User {
   name: string
   role: 'PARTNER' | 'STAFF' | 'VIEWER'
   isActive: boolean
+  allowedMenus: string[] | null
   createdAt: string
 }
 
@@ -59,6 +61,7 @@ export default function UsersPage() {
     password: '',
     name: '',
     role: 'STAFF' as 'PARTNER' | 'STAFF' | 'VIEWER',
+    allowedMenus: null as string[] | null,
   })
 
   // โหลดข้อมูล users
@@ -88,6 +91,7 @@ export default function UsersPage() {
       password: '',
       name: '',
       role: 'STAFF',
+      allowedMenus: null,
     })
     setEditingUser(null)
     setShowPassword(false)
@@ -101,8 +105,21 @@ export default function UsersPage() {
       password: '', // ไม่แสดง password เดิม
       name: user.name,
       role: user.role,
+      allowedMenus: user.allowedMenus,
     })
     setIsDialogOpen(true)
+  }
+
+  // Toggle เมนูใน allowedMenus
+  const handleMenuToggle = (menuKey: string, checked: boolean) => {
+    setFormData(prev => {
+      // ถ้ายังไม่เคยตั้ง allowedMenus → เริ่มจาก default ของ role
+      const current = prev.allowedMenus ?? DEFAULT_MENUS_BY_ROLE[prev.role] ?? []
+      const updated = checked
+        ? [...current, menuKey]
+        : current.filter(m => m !== menuKey)
+      return { ...prev, allowedMenus: updated }
+    })
   }
 
   // บันทึก user
@@ -125,9 +142,13 @@ export default function UsersPage() {
             id: editingUser.id,
             name: formData.name,
             role: formData.role,
+            allowedMenus: formData.role === 'PARTNER' ? null : formData.allowedMenus,
             ...(formData.password ? { password: formData.password } : {}),
           }
-        : formData
+        : {
+            ...formData,
+            allowedMenus: formData.role === 'PARTNER' ? null : formData.allowedMenus,
+          }
 
       const res = await fetch('/api/users', {
         method,
@@ -302,6 +323,7 @@ export default function UsersPage() {
                     setFormData((prev) => ({
                       ...prev,
                       role: value as 'PARTNER' | 'STAFF' | 'VIEWER',
+                      allowedMenus: null, // reset เมื่อเปลี่ยน role
                     }))
                   }
                 >
@@ -315,6 +337,37 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Menu permissions - แสดงเฉพาะเมื่อ role ไม่ใช่ PARTNER */}
+              {formData.role !== 'PARTNER' && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    สิทธิ์เข้าถึงเมนู
+                  </Label>
+                  <div className="space-y-2 rounded-lg border p-3 bg-slate-50">
+                    {MENU_ITEMS
+                      .filter(m => !PARTNER_ONLY_MENUS.includes(m.key))
+                      .map(menu => {
+                        const currentMenus = formData.allowedMenus ?? DEFAULT_MENUS_BY_ROLE[formData.role] ?? []
+                        const isChecked = currentMenus.includes(menu.key)
+                        return (
+                          <label key={menu.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white rounded px-2 py-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => handleMenuToggle(menu.key, e.target.checked)}
+                              className="rounded border-gray-300 text-[#84A59D] focus:ring-[#84A59D]"
+                            />
+                            {menu.label}
+                          </label>
+                        )
+                      })}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    เลือกเมนูที่ผู้ใช้สามารถเข้าถึงได้ (เมนู &quot;จัดการผู้ใช้&quot; สงวนสำหรับหุ้นส่วนเท่านั้น)
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
@@ -458,6 +511,18 @@ export default function UsersPage() {
                       <p className="text-sm text-slate-500 mt-1">
                         Username: <span className="font-mono">{user.username}</span>
                       </p>
+                      {user.role !== 'PARTNER' && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {getEffectiveMenus(user.role, user.allowedMenus).map(menuKey => {
+                            const menuItem = MENU_ITEMS.find(m => m.key === menuKey)
+                            return menuItem ? (
+                              <span key={menuKey} className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                                {menuItem.label}
+                              </span>
+                            ) : null
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -509,15 +574,13 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent className="text-sm text-[#666] space-y-2">
           <p>
-            <strong>หุ้นส่วน (Partner)</strong> - สามารถเข้าถึงได้ทุกหน้า รวมถึง Dashboard,
-            รายงาน, ตั้งค่า และจัดการผู้ใช้
+            <strong>หุ้นส่วน (Partner)</strong> - สามารถเข้าถึงได้ทุกหน้าเสมอ รวมถึงจัดการผู้ใช้
           </p>
           <p>
-            <strong>พนักงาน (Staff)</strong> - สามารถเข้าถึงได้เฉพาะหน้ากรอกข้อมูลรายรับ-รายจ่าย
+            <strong>พนักงาน (Staff) / ผู้ดู (Viewer)</strong> - สามารถกำหนดสิทธิ์เมนูเฉพาะคนได้ โดยคลิกแก้ไขแล้วเลือกเมนูที่ต้องการ
           </p>
           <p>
-            <strong>ผู้ดู (Viewer)</strong> - สามารถดูข้อมูลได้แต่ไม่สามารถเข้า Dashboard,
-            เงินเดือนพนักงาน, จัดการผู้ใช้
+            ถ้าไม่ได้ตั้งค่าสิทธิ์เมนู ระบบจะใช้ค่าเริ่มต้นตามบทบาท (กรอกข้อมูล + จัดการค่าใช้จ่ายส่วนกลาง)
           </p>
           <p className="text-orange-600">
             * การปิดใช้งานผู้ใช้จะทำให้ผู้ใช้นั้นไม่สามารถเข้าสู่ระบบได้

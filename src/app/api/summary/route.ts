@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงข้อมูลสรุป (ต้อง login)
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth()
+    await requireMenuAccess('/')
 
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')

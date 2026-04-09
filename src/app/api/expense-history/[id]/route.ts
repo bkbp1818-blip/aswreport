@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // DELETE - ลบรายการประวัติ
 export async function DELETE(
@@ -9,7 +9,7 @@ export async function DELETE(
 ) {
   try {
     // ต้อง login
-    await requireAuth()
+    await requireMenuAccess('/settings')
 
     const { id } = await params
     const historyId = parseInt(id)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requirePartner, getAuthUser, handleAuthError } from '@/lib/auth'
+import { validateAllowedMenus, PARTNER_ONLY_MENUS } from '@/lib/menu-permissions'
 import bcrypt from 'bcryptjs'
 
 // GET - ดึงรายการ users ทั้งหมด (ต้องเป็น Partner)
@@ -15,6 +16,7 @@ export async function GET() {
         name: true,
         role: true,
         isActive: true,
+        allowedMenus: true,
         createdAt: true,
       },
       orderBy: [
@@ -43,13 +45,23 @@ export async function POST(request: NextRequest) {
     await requirePartner()
 
     const body = await request.json()
-    const { username, password, name, role } = body
+    const { username, password, name, role, allowedMenus } = body
 
     if (!username || !password || !name || !role) {
       return NextResponse.json(
         { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' },
         { status: 400 }
       )
+    }
+
+    // Validate allowedMenus ถ้ามีค่า
+    if (allowedMenus !== undefined && allowedMenus !== null) {
+      if (!validateAllowedMenus(allowedMenus)) {
+        return NextResponse.json(
+          { error: 'ข้อมูลสิทธิ์เมนูไม่ถูกต้อง' },
+          { status: 400 }
+        )
+      }
     }
 
     // เช็คว่า username ซ้ำหรือไม่
@@ -67,12 +79,21 @@ export async function POST(request: NextRequest) {
     // Hash password ก่อน save
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    // กรอง partner-only menus ออกสำหรับ non-partner
+    let finalMenus = allowedMenus ?? null
+    if (role !== 'PARTNER' && finalMenus) {
+      finalMenus = finalMenus.filter((m: string) => !PARTNER_ONLY_MENUS.includes(m))
+    }
+    // PARTNER ไม่ต้องเก็บ allowedMenus (ได้ทุกเมนูเสมอ)
+    if (role === 'PARTNER') finalMenus = null
+
     const user = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
         name,
         role,
+        allowedMenus: finalMenus,
       },
       select: {
         id: true,
@@ -80,6 +101,7 @@ export async function POST(request: NextRequest) {
         name: true,
         role: true,
         isActive: true,
+        allowedMenus: true,
       },
     })
 
@@ -103,7 +125,7 @@ export async function PUT(request: NextRequest) {
     await requirePartner()
 
     const body = await request.json()
-    const { id, name, role, password, isActive } = body
+    const { id, name, role, password, isActive, allowedMenus } = body
 
     if (!id) {
       return NextResponse.json(
@@ -112,11 +134,38 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Validate allowedMenus ถ้ามีค่า
+    if (allowedMenus !== undefined && allowedMenus !== null) {
+      if (!validateAllowedMenus(allowedMenus)) {
+        return NextResponse.json(
+          { error: 'ข้อมูลสิทธิ์เมนูไม่ถูกต้อง' },
+          { status: 400 }
+        )
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
     if (role !== undefined) updateData.role = role
     if (isActive !== undefined) updateData.isActive = isActive
+
+    // จัดการ allowedMenus
+    if (allowedMenus !== undefined) {
+      const targetRole = role || (await prisma.user.findUnique({ where: { id: parseInt(id) }, select: { role: true } }))?.role
+      if (targetRole === 'PARTNER') {
+        updateData.allowedMenus = null // PARTNER ได้ทุกเมนูเสมอ
+      } else if (allowedMenus === null) {
+        updateData.allowedMenus = null
+      } else {
+        updateData.allowedMenus = allowedMenus.filter((m: string) => !PARTNER_ONLY_MENUS.includes(m))
+      }
+    }
+
+    // ถ้าเปลี่ยน role → reset allowedMenus เป็น null (ใช้ default)
+    if (role !== undefined && allowedMenus === undefined) {
+      updateData.allowedMenus = null
+    }
 
     // Hash password ถ้ามีการเปลี่ยน
     if (password) {
@@ -132,6 +181,7 @@ export async function PUT(request: NextRequest) {
         name: true,
         role: true,
         isActive: true,
+        allowedMenus: true,
       }
     })
 

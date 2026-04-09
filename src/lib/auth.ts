@@ -1,11 +1,13 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { getEffectiveMenus } from '@/lib/menu-permissions'
 
 export interface AuthUser {
   id: number
   username: string
   name: string
   role: 'PARTNER' | 'STAFF' | 'VIEWER'
+  allowedMenus: string[] | null
 }
 
 /**
@@ -26,7 +28,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     // ตรวจสอบว่า user ยังมีอยู่ใน DB และ isActive
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, username: true, name: true, role: true, isActive: true }
+      select: { id: true, username: true, name: true, role: true, isActive: true, allowedMenus: true }
     })
 
     if (!dbUser || !dbUser.isActive) {
@@ -37,7 +39,8 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       id: dbUser.id,
       username: dbUser.username,
       name: dbUser.name,
-      role: dbUser.role
+      role: dbUser.role,
+      allowedMenus: dbUser.allowedMenus as string[] | null,
     }
   } catch {
     return null
@@ -62,6 +65,21 @@ export async function requirePartner(): Promise<AuthUser> {
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getAuthUser()
   if (!user) throw new Error('Unauthorized')
+  return user
+}
+
+/**
+ * ตรวจสอบว่า user มีสิทธิ์เข้าถึงเมนู (route) ที่ระบุหรือไม่
+ * @throws Error ถ้าไม่ได้ login หรือไม่มีสิทธิ์
+ */
+export async function requireMenuAccess(menuKey: string): Promise<AuthUser> {
+  const user = await getAuthUser()
+  if (!user) throw new Error('Unauthorized')
+  if (user.role === 'PARTNER') return user
+
+  const effectiveMenus = getEffectiveMenus(user.role, user.allowedMenus)
+  if (!effectiveMenus.includes(menuKey)) throw new Error('Forbidden')
+
   return user
 }
 

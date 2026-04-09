@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงรายการ transactions
 export async function GET(request: NextRequest) {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 // POST - สร้างหรืออัปเดต transaction (ต้อง login)
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth()
+    await requireMenuAccess('/transactions')
 
     const body = await request.json()
     const { buildingId, categoryId, amount, month, year, note } = body
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 // PUT - อัปเดตหลายรายการพร้อมกัน (bulk update) (ต้อง login)
 export async function PUT(request: NextRequest) {
   try {
-    await requireAuth()
+    await requireMenuAccess('/transactions')
 
     const body = await request.json()
     const { transactions } = body

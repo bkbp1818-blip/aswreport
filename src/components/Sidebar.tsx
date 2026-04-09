@@ -43,19 +43,19 @@ const formatDateTime = (date: Date) => {
 }
 
 const allNavigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, partnerOnly: true, viewerHidden: true },
-  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt, partnerOnly: false, viewerHidden: false },
-  { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users, partnerOnly: true, viewerHidden: true },
-  { name: 'ยอดค้างจ่ายคืน', href: '/reimbursements', icon: HandCoins, partnerOnly: true, viewerHidden: true },
-  { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog, partnerOnly: true, viewerHidden: true },
-  { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings, partnerOnly: false, viewerHidden: false },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt },
+  { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users },
+  { name: 'ยอดค้างจ่ายคืน', href: '/reimbursements', icon: HandCoins },
+  { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog },
+  { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
-  const { role, user, isPartner, isViewer, logout } = useAccess()
+  const { role, user, isPartner, isViewer, logout, effectiveMenus } = useAccess()
 
   const toggleMenu = () => setIsOpen(!isOpen)
   const closeMenu = () => setIsOpen(false)
@@ -72,11 +72,10 @@ export function Sidebar() {
 
   const dateTime = currentTime ? formatDateTime(currentTime) : null
 
-  // กรอง navigation ตาม role
+  // กรอง navigation ตามสิทธิ์เมนูของผู้ใช้
   const navigation = allNavigation.filter(item => {
     if (isPartner) return true // Partner เห็นทุกเมนู
-    if (isViewer) return !item.viewerHidden // Viewer เห็นเฉพาะเมนูที่ไม่ถูกซ่อน
-    return !item.partnerOnly // Staff เห็นเฉพาะเมนูที่ไม่ใช่ partnerOnly
+    return effectiveMenus.includes(item.href)
   })
 
   return (

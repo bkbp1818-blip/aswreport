@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePartner, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงการตั้งค่า
 export async function GET(request: NextRequest) {
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 // PUT - อัปเดตการตั้งค่า (ต้องเป็น Partner)
 export async function PUT(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/settings')
 
     const body = await request.json()
     const {

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Position } from '@prisma/client'
-import { requirePartner, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงรายชื่อพนักงานทั้งหมด (ต้องเป็น Partner)
 export async function GET() {
   try {
-    await requirePartner()
+    await requireMenuAccess('/employees')
 
     const employees = await prisma.employee.findMany({
       orderBy: [
@@ -31,7 +31,7 @@ export async function GET() {
 // POST - เพิ่มพนักงานใหม่ (ต้องเป็น Partner)
 export async function POST(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/employees')
 
     const body = await request.json()
     const { firstName, lastName, nickname, position, salary } = body
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 // PUT - แก้ไขข้อมูลพนักงาน (ต้องเป็น Partner)
 export async function PUT(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/employees')
 
     const body = await request.json()
     const { id, firstName, lastName, nickname, position, salary, isActive } = body
@@ -112,7 +112,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - ลบพนักงาน (ต้องเป็น Partner)
 export async function DELETE(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/employees')
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

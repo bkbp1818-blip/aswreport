@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requirePartner, handleAuthError } from '@/lib/auth'
+import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงรายการยอดค้างจ่ายคืน (filter ตาม buildingId, month, year)
 export async function GET(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/reimbursements')
 
     const { searchParams } = new URL(request.url)
     const buildingId = searchParams.get('buildingId')
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 // POST - เพิ่มรายการใหม่ (รองรับหลายอาคาร หารเฉลี่ย)
 export async function POST(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/reimbursements')
 
     const body = await request.json()
     const { amount, buildingIds, month, year, creditorName, description, paidDate, returnedDate } = body
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 // PUT - แก้ไขรายการ / เปลี่ยนสถานะเป็น "คืนแล้ว"
 export async function PUT(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/reimbursements')
 
     const body = await request.json()
     const { id, amount, buildingId, month, year, creditorName, description, paidDate, returnedDate, isReturned } = body
@@ -166,7 +166,7 @@ export async function PUT(request: NextRequest) {
 // PATCH - แก้ไขหลายรายการพร้อมกัน (bulk update: วันที่คืนเงิน + สถานะ)
 export async function PATCH(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/reimbursements')
 
     const body = await request.json()
     const { ids, returnedDate, isReturned } = body
@@ -204,7 +204,7 @@ export async function PATCH(request: NextRequest) {
 // DELETE - ลบรายการ
 export async function DELETE(request: NextRequest) {
   try {
-    await requirePartner()
+    await requireMenuAccess('/reimbursements')
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

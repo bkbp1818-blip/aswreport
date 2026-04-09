@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { getEffectiveMenus } from '@/lib/menu-permissions'
 
 export type Role = 'partner' | 'staff' | 'viewer' | null
 
@@ -10,6 +11,7 @@ export interface User {
   username: string
   name: string
   role: 'PARTNER' | 'STAFF' | 'VIEWER'
+  allowedMenus?: string[] | null
 }
 
 interface AccessContextType {
@@ -24,6 +26,8 @@ interface AccessContextType {
   isPartner: boolean
   isStaff: boolean
   isViewer: boolean
+  effectiveMenus: string[]
+  hasMenuAccess: (path: string) => boolean
 }
 
 const AccessContext = createContext<AccessContextType | undefined>(undefined)
@@ -81,6 +85,17 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
+  // คำนวณเมนูที่ผู้ใช้เข้าถึงได้จริง
+  const effectiveMenus = useMemo(() => {
+    if (!user) return []
+    return getEffectiveMenus(user.role, user.allowedMenus ?? null)
+  }, [user])
+
+  const hasMenuAccess = (path: string): boolean => {
+    if (role === 'partner') return true
+    return effectiveMenus.includes(path)
+  }
+
   // ตรวจสอบสิทธิ์และ redirect
   useEffect(() => {
     if (isLoading) return
@@ -94,26 +109,20 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // ถ้าเป็น staff และพยายามเข้าหน้าอื่น → redirect ไป transactions
-    if (role === 'staff') {
-      const allowedPaths = ['/transactions', '/settings']
-      const isAllowed = allowedPaths.some(path => pathname === path || pathname?.startsWith(path + '/'))
+    // Partner เข้าได้ทุกหน้า
+    if (role === 'partner') return
 
-      if (!isAllowed) {
-        router.replace('/transactions')
-      }
+    // ตรวจสอบสิทธิ์เมนูตาม effectiveMenus
+    const hasAccess = effectiveMenus.some(
+      menuPath => pathname === menuPath || pathname?.startsWith(menuPath + '/')
+    )
+
+    if (!hasAccess) {
+      // redirect ไปเมนูแรกที่เข้าถึงได้ หรือ /transactions ถ้าไม่มีเลย
+      const fallback = effectiveMenus[0] || '/transactions'
+      router.replace(fallback)
     }
-
-    // ถ้าเป็น viewer และพยายามเข้าหน้าที่ห้าม → redirect ไป transactions
-    if (role === 'viewer') {
-      const blockedPaths = ['/', '/users', '/employees', '/reimbursements']
-      const isBlocked = blockedPaths.some(path => pathname === path)
-
-      if (isBlocked) {
-        router.replace('/transactions')
-      }
-    }
-  }, [role, pathname, isLoading, router])
+  }, [role, pathname, isLoading, router, effectiveMenus])
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole)
@@ -160,6 +169,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     isPartner: role === 'partner',
     isStaff: role === 'staff',
     isViewer: role === 'viewer',
+    effectiveMenus,
+    hasMenuAccess,
   }
 
   return (

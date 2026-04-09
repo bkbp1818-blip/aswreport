@@ -7,35 +7,124 @@ datasource db {
   provider = "postgresql"
 }
 
-// อาคาร
 model Building {
-  id           Int           @id @default(autoincrement())
-  name         String
-  code         String        @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions   Transaction[]
-  settings       Settings?
-  reimbursements Reimbursement[]
+  id            Int             @id @default(autoincrement())
+  name          String
+  code          String          @unique
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  Reimbursement Reimbursement[]
+  Settings      Settings?
+  Transaction   Transaction[]
 }
 
-// หมวดหมู่รายรับ-รายจ่าย
 model Category {
-  id           Int           @id @default(autoincrement())
-  name         String
-  type         CategoryType
-  order        Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
+  id          Int           @id @default(autoincrement())
+  name        String
+  type        CategoryType
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  Transaction Transaction[]
 }
 
-enum CategoryType {
-  INCOME
-  EXPENSE
+model Employee {
+  id                         Int                          @id @default(autoincrement())
+  firstName                  String
+  lastName                   String
+  nickname                   String?
+  position                   Position
+  salary                     Decimal                      @default(0) @db.Decimal(15, 2)
+  isActive                   Boolean                      @default(true)
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime
+  SocialSecurityContribution SocialSecurityContribution[]
 }
 
-// รายการรายรับ-รายจ่าย
+model ExpenseHistory {
+  id          Int      @id @default(autoincrement())
+  targetType  String
+  targetId    Int?
+  fieldName   String
+  fieldLabel  String
+  actionType  String
+  amount      Decimal  @db.Decimal(15, 2)
+  description String
+  month       Int
+  year        Int
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId, fieldName, month, year])
+}
+
+model GlobalSettings {
+  id                           Int      @id @default(autoincrement())
+  maxCareExpense               Decimal  @default(0) @db.Decimal(15, 2)
+  trafficCareExpense           Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime
+  amenityExpense               Decimal  @default(0) @db.Decimal(15, 2)
+  coffeeExpense                Decimal  @default(0) @db.Decimal(15, 2)
+  cookieExpense                Decimal  @default(0) @db.Decimal(15, 2)
+  fuelExpense                  Decimal  @default(0) @db.Decimal(15, 2)
+  maidTravelExpense            Decimal  @default(0) @db.Decimal(15, 2)
+  motorcycleMaintenanceExpense Decimal  @default(0) @db.Decimal(15, 2)
+  parkingExpense               Decimal  @default(0) @db.Decimal(15, 2)
+  waterBottleExpense           Decimal  @default(0) @db.Decimal(15, 2)
+  shippingExpense              Decimal  @default(0) @db.Decimal(15, 2)
+  cleaningSupplyExpense        Decimal  @default(0) @db.Decimal(15, 2)
+  laundryDetergentExpense      Decimal  @default(0) @db.Decimal(15, 2)
+  foodExpense                  Decimal  @default(0) @db.Decimal(15, 2)
+  coffeeMateExpense            Decimal  @default(0) @db.Decimal(15, 2)
+  sugarExpense                 Decimal  @default(0) @db.Decimal(15, 2)
+}
+
+model Reimbursement {
+  id           Int       @id @default(autoincrement())
+  amount       Decimal   @default(0) @db.Decimal(15, 2)
+  buildingId   Int
+  month        Int
+  year         Int
+  creditorName String
+  description  String?
+  paidDate     DateTime?
+  isReturned   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  returnedDate DateTime?
+  Building     Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId, month, year])
+}
+
+model Settings {
+  id                        Int      @id @default(autoincrement())
+  buildingId                Int      @unique
+  managementFeePercent      Decimal  @default(13.5) @db.Decimal(5, 2)
+  vatPercent                Decimal  @default(7) @db.Decimal(5, 2)
+  monthlyRent               Decimal  @default(0) @db.Decimal(15, 2)
+  littleHotelierExpense     Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime
+  cowayWaterFilterExpense   Decimal  @default(0) @db.Decimal(15, 2)
+  airportShuttleRentExpense Decimal  @default(0) @db.Decimal(15, 2)
+  Building                  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+}
+
+model SocialSecurityContribution {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  amount     Decimal  @default(0) @db.Decimal(15, 2)
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, month, year])
+  @@index([month, year])
+}
+
 model Transaction {
   id         Int      @id @default(autoincrement())
   buildingId Int
@@ -45,144 +134,39 @@ model Transaction {
   year       Int
   note       String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime
+  Building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  Category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([buildingId, categoryId, month, year])
   @@index([buildingId, month, year])
 }
 
-// ตั้งค่าแต่ละอาคาร
-model Settings {
-  id                      Int      @id @default(autoincrement())
-  buildingId              Int      @unique
-  managementFeePercent    Decimal  @default(13.5) @db.Decimal(5, 2)
-  vatPercent              Decimal  @default(7) @db.Decimal(5, 2)
-  monthlyRent             Decimal  @default(0) @db.Decimal(15, 2)
-  littleHotelierExpense   Decimal  @default(0) @db.Decimal(15, 2)
-  cowayWaterFilterExpense   Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าเครื่องกรองน้ำ Coway
-  airportShuttleRentExpense Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่า รถรับส่งสนามบิน
-  createdAt                 DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-}
-
-// ตั้งค่าส่วนกลาง (ใช้ร่วมกันทุกอาคาร)
-model GlobalSettings {
-  id                           Int      @id @default(autoincrement())
-  maxCareExpense               Decimal  @default(0) @db.Decimal(15, 2) // ค่าดูแลMAX
-  trafficCareExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่าดูแลจราจร
-  shippingExpense              Decimal  @default(0) @db.Decimal(15, 2) // ค่าขนส่งสินค้า (หาร 3 อาคาร)
-  amenityExpense               Decimal  @default(0) @db.Decimal(15, 2) // ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)
-  waterBottleExpense           Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำเปล่า
-  cookieExpense                Decimal  @default(0) @db.Decimal(15, 2) // ค่าขนมคุ้กกี้
-  coffeeExpense                Decimal  @default(0) @db.Decimal(15, 2) // ค่ากาแฟซอง
-  sugarExpense                 Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำตาลซอง
-  coffeeMateExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่าคอฟฟี่เมท
-  fuelExpense                  Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำมันรถมอเตอร์ไซค์
-  parkingExpense               Decimal  @default(0) @db.Decimal(15, 2) // ค่าเช่าที่จอดรถมอเตอร์ไซค์
-  motorcycleMaintenanceExpense Decimal  @default(0) @db.Decimal(15, 2) // ค่าซ่อมบำรุงรถมอเตอร์ไซค์
-  maidTravelExpense            Decimal  @default(0) @db.Decimal(15, 2) // ค่าเดินทางแม่บ้าน
-  cleaningSupplyExpense        Decimal  @default(0) @db.Decimal(15, 2) // ค่าอุปกรณ์ทำความสะอาด
-  laundryDetergentExpense      Decimal  @default(0) @db.Decimal(15, 2) // ค่าน้ำยาสำหรับซักผ้า
-  foodExpense                  Decimal  @default(0) @db.Decimal(15, 2) // ค่าอาหาร
-  createdAt                    DateTime @default(now())
-  updatedAt                    DateTime @updatedAt
-}
-
-// ตำแหน่งพนักงาน
-enum Position {
-  MAID       // แม่บ้าน
-  MANAGER    // ผู้จัดการ
-  PARTNER    // หุ้นส่วน
-}
-
-// ประเภทผู้ใช้งานระบบ
-enum UserRole {
-  PARTNER    // หุ้นส่วน - เห็นทุกหน้า
-  STAFF      // พนักงาน - เห็นแค่หน้ากรอกข้อมูล
-  VIEWER     // ผู้ดู - เห็นทุกอย่างยกเว้น Dashboard, เงินเดือน, จัดการผู้ใช้, ค่าเช่าอาคาร
-}
-
-// ผู้ใช้งานระบบ
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String   // เก็บเป็น plain text (ระบบภายใน)
-  name      String   // ชื่อแสดง
-  role      UserRole
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  password     String
+  name         String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  allowedMenus Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
 }
 
-// พนักงาน
-model Employee {
-  id        Int      @id @default(autoincrement())
-  firstName String   // ชื่อ
-  lastName  String   // นามสกุล
-  nickname  String?  // ชื่อเล่น
-  position  Position // ตำแหน่ง
-  salary    Decimal  @default(0) @db.Decimal(15, 2) // เงินเดือน
-  isActive  Boolean  @default(true) // ยังทำงานอยู่หรือไม่
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  socialSecurityContributions SocialSecurityContribution[]
+enum CategoryType {
+  INCOME
+  EXPENSE
 }
 
-// เงินสมทบประกันสังคม (นายจ้างจ่าย)
-model SocialSecurityContribution {
-  id         Int      @id @default(autoincrement())
-  employeeId Int      // รหัสพนักงาน
-  amount     Decimal  @default(0) @db.Decimal(15, 2) // จำนวนเงินสมทบ
-  month      Int      // เดือน (1-12)
-  year       Int      // ปี
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@unique([employeeId, month, year])
-  @@index([month, year])
+enum Position {
+  MAID
+  MANAGER
+  PARTNER
 }
 
-// ประวัติการเพิ่ม/ลดค่าใช้จ่าย
-model ExpenseHistory {
-  id          Int      @id @default(autoincrement())
-  targetType  String   // "SETTINGS" หรือ "GLOBAL_SETTINGS"
-  targetId    Int?     // buildingId (สำหรับ Settings) หรือ null (สำหรับ GlobalSettings)
-  fieldName   String   // ชื่อ field เช่น "monthlyRent", "maxCareExpense"
-  fieldLabel  String   // ชื่อที่แสดง เช่น "ค่าเช่าอาคาร", "ค่าดูแล MAX"
-  actionType  String   // "ADD" หรือ "SUBTRACT"
-  amount      Decimal  @db.Decimal(15, 2) // จำนวนเงินที่เพิ่ม/ลด
-  description String   // รายละเอียด เช่น "ค่าฉีดปลวก", "ค่าซ่อมแอร์"
-  month       Int      // เดือน (1-12)
-  year        Int      // ปี (เช่น 2025)
-  createdAt   DateTime @default(now())
-
-  @@index([targetType, targetId, fieldName, month, year])
-}
-
-// ยอดค้างจ่ายคืน (Reimbursement)
-model Reimbursement {
-  id           Int       @id @default(autoincrement())
-  amount       Decimal   @default(0) @db.Decimal(15, 2)
-  buildingId   Int
-  month        Int       // เดือน (1-12)
-  year         Int       // ปี ค.ศ. (เช่น 2026)
-  creditorName String    // ชื่อคนที่ต้องคืนให้
-  description  String?   // หมายเหตุ/รายละเอียด
-  paidDate     DateTime? // วันที่ยืมจ่ายเงิน
-  returnedDate DateTime? // วันที่คืนเงิน
-  isReturned   Boolean   @default(false) // คืนแล้วหรือยัง
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-
-  @@index([buildingId, month, year])
+enum UserRole {
+  PARTNER
+  STAFF
+  VIEWER
 }
