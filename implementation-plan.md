@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.13.1 |
+| **Version** | 1.14.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -49,13 +49,13 @@
 | partner1 | 1234 | หุ้นส่วน 1 |
 | partner2 | 1234 | หุ้นส่วน 2 |
 
-### พนักงาน (STAFF) - เข้าถึงได้หน้ากรอกข้อมูล และจัดการค่าใช้จ่ายส่วนกลาง
+### พนักงาน (STAFF) - เข้าถึงได้ตามสิทธิ์เมนูที่กำหนด ✨ UPDATED v1.14.0
 
-| Username | Password | ชื่อ |
-|----------|----------|------|
-| aswjj | jj123 | JJ |
-| staff1 | 1234 | พนักงาน 1 |
-| staff2 | 1234 | พนักงาน 2 |
+| Username | Password | ชื่อ | สิทธิ์เมนู |
+|----------|----------|------|-----------|
+| aswjj | jj123 | JJ | กรอกข้อมูล, ยอดค้างจ่ายคืน |
+| staff1 | 1234 | พนักงาน 1 | ค่าเริ่มต้น (กรอกข้อมูล, ตั้งค่า) |
+| staff2 | 1234 | พนักงาน 2 | ค่าเริ่มต้น (กรอกข้อมูล, ตั้งค่า) |
 
 ### ผู้ดู (VIEWER) - เห็นทุกอย่างยกเว้น Dashboard, เงินเดือน, จัดการผู้ใช้, ค่าเช่าอาคาร, ประกันสังคม, OTA channels ✨ UPDATED
 
@@ -102,11 +102,22 @@
 - **รายจ่าย Site Minder Dynamic Revenue Plus — ทุกอาคาร:** ✨ NEW v1.12.0
   - fieldName: `siteminderExpense` — สีน้ำเงิน blue (#2563EB)
   - icon Globe, แสดงทุกอาคาร พร้อมปุ่มแก้ไข/เพิ่ม/ลด
-- **รายจ่ายคืนยอดค้างจ่าย — ทุกอาคาร (read-only):** ✨ NEW v1.13.1
-  - ดึงยอดรวมจาก Reimbursement ที่ `isReturned=true` ตาม buildingId/month/year
-  - icon HandCoins สีส้ม (#F97316), แสดงเฉพาะเมื่อมียอดคืน > 0
+- **รายจ่ายคืนยอดค้างจ่าย — ทุกอาคาร (read-only):** ✨ UPDATED v1.14.0
+  - ดึงรายละเอียดจาก Reimbursement ที่ `isReturned=true` ตาม buildingId + paidDate เดือน/ปี
+  - แสดงยอดรวมในตารางรายจ่าย (1 แถวสรุป) + ตารางรายละเอียดแยก Card สีเขียว
   - ไม่มีปุ่มแก้ไข (ข้อมูลมาจากหน้า `/reimbursements`)
   - รวมเข้า totalExpense → ส่งผลต่อกำไร/ขาดทุน
+- **ตาราง "คืนยอดค้างจ่ายแล้ว" (Card สีเขียว):** ✨ NEW v1.14.0
+  - แสดงรายละเอียดแต่ละรายการ: วันที่ยืมจ่าย, วันที่คืนเงิน, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน
+  - อ้างอิงตาม paidDate (วันที่ยืมจ่าย) ให้ตรงเดือน
+  - รวมในรายจ่ายแล้ว
+- **ตาราง "ยอดค้างจ่ายที่ยังไม่จ่ายคืน" (Card สีส้ม):** ✨ NEW v1.14.0
+  - แสดงรายการที่ยังไม่คืน: วันที่ยืมจ่าย, ชื่อเจ้าหนี้, รายละเอียด, จำนวนเงิน
+  - อ้างอิงตาม paidDate (วันที่ยืมจ่าย) ให้ตรงเดือน
+  - ไม่รวมในรายจ่าย (แสดงข้อมูลอย่างเดียว)
+- **การ์ดสรุปยอดค้างจ่าย + ยอดที่คืนแล้ว:** ✨ NEW v1.14.0
+  - การ์ดสีส้ม: ยอดค้างจ่าย (จำนวนรายการ — ไม่รวมในรายจ่าย)
+  - การ์ดสีเขียว: ยอดที่คืนแล้ว (จำนวนรายการ — รวมในรายจ่ายแล้ว)
 - **VIEWER role:** ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (เห็น Direct Booking+Cash, รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus, Co Van Kessel) ✨ UPDATED
 - **การ์ดสรุปกำไร/ขาดทุน + กราฟแท่ง** แสดงด้านบนสุด (ซ่อนสำหรับ VIEWER) ✨ NEW
   - 3 ช่องสรุป: รวมรายรับ | รวมรายจ่าย | กำไร/ขาดทุน
@@ -140,13 +151,18 @@
   - Bulk Action Bar แสดงจำนวนที่เลือก + ยอดรวม
 - **จัดกลุ่มตามวันที่ + แถวสรุปยอด:** ✨ NEW v1.13.0
   - ตารางค้างจ่าย: จัดกลุ่มตามวันที่ยืมจ่าย + แถวสรุปท้ายกลุ่ม (สีแดงอ่อน)
-  - ตารางคืนแล้ว: จัดกลุ่มตามวันที่คืนเงิน + แถวสรุปท้ายกลุ่ม (สีเขียวอ่อน)
+  - ตารางคืนแล้ว: จัดกลุ่มตามวันที่คืนเงิน + คอลัมน์วันที่ยืมจ่าย + แถวสรุปท้ายกลุ่ม (สีเขียวอ่อน) ✨ UPDATED v1.14.0
   - แต่ละกลุ่มแสดง: วันที่ + จำนวนรายการ + ยอดรวม
 - **เฉพาะ PARTNER** (Staff/Viewer เข้าไม่ได้)
 
 ### 5. จัดการผู้ใช้ (`/users`)
 - เพิ่ม/แก้ไข/ลบ ผู้ใช้
-- กำหนด role (PARTNER/STAFF)
+- กำหนด role (PARTNER/STAFF/VIEWER)
+- **จัดการสิทธิ์เมนูรายผู้ใช้** — PARTNER เปิด/ปิดเมนูให้ STAFF/VIEWER ด้วย checkbox ✨ NEW v1.14.0
+  - PARTNER เข้าได้ทุกเมนูเสมอ (ไม่สามารถจำกัดได้)
+  - เมนู "จัดการผู้ใช้" สงวนสำหรับ PARTNER เท่านั้น
+  - ถ้าไม่ได้ตั้งค่า → ใช้ค่าเริ่มต้นตาม role (กรอกข้อมูล + ตั้งค่า)
+  - สิทธิ์อัพเดทอัตโนมัติโดยไม่ต้อง logout/login ใหม่ (`/api/auth/me`)
 - เปิด/ปิด บัญชี
 
 ### 6. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
@@ -195,7 +211,8 @@
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
 | `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ | - |
 | `/api/social-security` | GET, POST | จัดการเงินสมทบประกันสังคม ✨ | Auth |
-| `/api/reimbursements` | GET, POST, PUT, PATCH, DELETE | จัดการยอดค้างจ่ายคืน (PATCH = bulk update) ✨ | Partner |
+| `/api/auth/me` | GET | ดึงข้อมูล user ปัจจุบันจาก DB (refresh allowedMenus) ✨ v1.14.0 | Auth |
+| `/api/reimbursements` | GET, POST, PUT, PATCH, DELETE | จัดการยอดค้างจ่ายคืน (PATCH = bulk, GET: summary/details=returned/details=pending) ✨ | Partner |
 | `/api/categories/add-payment-channels` | POST | เพิ่ม categories ใหม่ ✨ | - |
 
 ---
@@ -241,7 +258,28 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.13.1 (Current - April 2026)
+### v1.14.0 (Current - April 2026)
+- **ระบบจัดการสิทธิ์เมนูรายผู้ใช้ (Per-User Menu Permissions):**
+  - เพิ่ม `allowedMenus Json?` ใน User model → PARTNER เปิด/ปิดเมนูให้ STAFF/VIEWER ด้วย checkbox
+  - PARTNER เข้าได้ทุกเมนูเสมอ, เมนู "จัดการผู้ใช้" สงวนสำหรับ PARTNER
+  - ถ้าไม่ตั้งค่า → ใช้ค่าเริ่มต้นตาม role (กรอกข้อมูล + ตั้งค่า)
+  - เพิ่ม `/api/auth/me` endpoint + AccessContext auto-refresh จาก DB → สิทธิ์อัพเดทโดยไม่ต้อง re-login
+  - เปลี่ยน API route guards จาก `requirePartner()`/`requireAuth()` เป็น `requireMenuAccess(menuKey)`
+  - เพิ่ม `src/lib/menu-permissions.ts` — ค่าคงที่เมนู, ฟังก์ชันคำนวณสิทธิ์
+  - ไฟล์แก้ไข: `prisma/schema.prisma`, `lib/auth.ts`, `lib/menu-permissions.ts` (ใหม่), `api/auth/login/route.ts`, `api/auth/me/route.ts` (ใหม่), `api/users/route.ts`, `contexts/AccessContext.tsx`, `components/Sidebar.tsx`, `app/users/page.tsx`, API routes ทั้งหมด
+- **แสดงรายละเอียดยอดค้างจ่าย/คืนแล้วในหน้ากรอกข้อมูล (`/transactions`):**
+  - เพิ่ม API `?details=returned` (filter ตาม paidDate เดือน/ปี) + `?details=pending` (filter ตาม paidDate เดือน/ปี)
+  - ตาราง "คืนยอดค้างจ่ายแล้ว" (Card สีเขียว) — วันที่ยืมจ่าย, วันที่คืนเงิน, เจ้าหนี้, รายละเอียด, จำนวนเงิน → รวมในรายจ่าย
+  - ตาราง "ยอดค้างจ่ายที่ยังไม่จ่ายคืน" (Card สีส้ม) — วันที่ยืมจ่าย, เจ้าหนี้, รายละเอียด, จำนวนเงิน → ไม่รวมในรายจ่าย
+  - การ์ดสรุป 2 ใบ: ยอดค้างจ่าย (สีส้ม) + ยอดที่คืนแล้ว (สีเขียว)
+  - แถวสรุปยอดคืนในตารางรายจ่าย (อ้างอิงตาม paidDate ไม่ใช่ returnedDate)
+  - ไฟล์แก้ไข: `api/reimbursements/route.ts`, `app/transactions/page.tsx`
+- **เพิ่มคอลัมน์ "วันที่ยืมจ่าย" ในตารางคืนแล้วหน้ายอดค้างจ่ายคืน (`/reimbursements`):**
+  - ไฟล์แก้ไข: `app/reimbursements/page.tsx`
+- **แก้ Prisma schema — เพิ่ม `@updatedAt` ให้ทุก model + เปลี่ยน relation fields เป็น camelCase:**
+  - ไฟล์แก้ไข: `prisma/schema.prisma`, API routes ทั้งหมด
+
+### v1.13.1 (April 2026)
 - **เพิ่มรายจ่าย "คืนยอดค้างจ่าย" ในหน้ากรอกข้อมูล (`/transactions`):**
   - ดึงยอดรวม Reimbursement ที่คืนแล้ว (`isReturned=true`) ตาม buildingId/month/year (ใช้ month จากวันที่ยืมเงิน)
   - แสดงเป็นแถวรายจ่ายสีส้ม read-only (ไม่มีปุ่มแก้ไข เพราะข้อมูลมาจากหน้า `/reimbursements`)
