@@ -2133,6 +2133,7 @@ export default function TransactionsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-green-700 font-semibold text-xs">วันที่ยืมจ่าย</TableHead>
+                    <TableHead className="text-green-700 font-semibold text-xs">วันที่คืนเงิน</TableHead>
                     <TableHead className="text-green-700 font-semibold text-xs">ชื่อเจ้าหนี้</TableHead>
                     <TableHead className="text-green-700 font-semibold text-xs">รายละเอียด</TableHead>
                     <TableHead className="text-green-700 font-semibold text-xs text-right">จำนวนเงิน</TableHead>
@@ -2144,6 +2145,9 @@ export default function TransactionsPage() {
                       <TableCell className="text-xs md:text-sm">
                         {item.paidDate ? new Date(item.paidDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                       </TableCell>
+                      <TableCell className="text-xs md:text-sm">
+                        {item.returnedDate ? new Date(item.returnedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                      </TableCell>
                       <TableCell className="text-xs md:text-sm font-medium">{item.creditorName}</TableCell>
                       <TableCell className="text-xs md:text-sm text-gray-600">{item.description || '-'}</TableCell>
                       <TableCell className="text-xs md:text-sm font-semibold text-right">{formatNumber(Number(item.amount))}</TableCell>
@@ -2152,7 +2156,7 @@ export default function TransactionsPage() {
                 </TableBody>
                 <tfoot>
                   <TableRow className="bg-green-100/50">
-                    <TableCell colSpan={3} className="text-xs font-medium text-green-700">
+                    <TableCell colSpan={4} className="text-xs font-medium text-green-700">
                       รวมยอดที่คืนแล้ว ({returnedReimbursementItems.length} รายการ)
                     </TableCell>
                     <TableCell className="text-xs md:text-sm font-bold text-right text-green-700">
