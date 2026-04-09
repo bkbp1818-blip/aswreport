@@ -198,7 +198,7 @@ export default function TransactionsPage() {
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
-        fetch(`/api/reimbursements?details=returned&buildingId=${selectedBuilding}&returnedMonth=${selectedMonth}&returnedYear=${selectedYear}`),
+        fetch(`/api/reimbursements?details=returned&buildingId=${selectedBuilding}&paidMonth=${selectedMonth}&paidYear=${selectedYear}`),
         fetch(`/api/reimbursements?details=pending&buildingId=${selectedBuilding}&paidMonth=${selectedMonth}&paidYear=${selectedYear}`),
       ])
 
@@ -787,6 +787,46 @@ export default function TransactionsPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* การ์ดสรุปยอดค้างจ่าย + ยอดที่คืนแล้ว */}
+        {selectedBuilding && (pendingReimbursementItems.length > 0 || returnedReimbursementItems.length > 0) && (
+          <div className="grid gap-3 md:gap-4 grid-cols-2 mb-4">
+            {/* การ์ดยอดค้างจ่าย */}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-100">
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="rounded-full bg-orange-200 p-1.5">
+                    <CategoryIcon name="คืนยอดค้างจ่าย" className="h-3.5 w-3.5 text-orange-600" />
+                  </div>
+                  <p className="text-[10px] md:text-xs text-orange-600 font-medium">ยอดค้างจ่าย</p>
+                </div>
+                <p className="text-lg md:text-xl font-bold text-orange-700">
+                  {formatNumber(pendingReimbursementItems.reduce((sum, item) => sum + Number(item.amount), 0))}
+                </p>
+                <p className="text-[10px] md:text-xs text-orange-500 mt-0.5">
+                  {pendingReimbursementItems.length} รายการ — ไม่รวมในรายจ่าย
+                </p>
+              </CardContent>
+            </Card>
+            {/* การ์ดยอดที่คืนแล้ว */}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-100">
+              <CardContent className="p-3 md:p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="rounded-full bg-green-200 p-1.5">
+                    <CategoryIcon name="คืนยอดค้างจ่าย" className="h-3.5 w-3.5 text-green-600" />
+                  </div>
+                  <p className="text-[10px] md:text-xs text-green-600 font-medium">ยอดที่คืนแล้ว</p>
+                </div>
+                <p className="text-lg md:text-xl font-bold text-green-700">
+                  {formatNumber(reimbursementReturnExpense)}
+                </p>
+                <p className="text-[10px] md:text-xs text-green-500 mt-0.5">
+                  {returnedReimbursementItems.length} รายการ — รวมในรายจ่ายแล้ว
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
