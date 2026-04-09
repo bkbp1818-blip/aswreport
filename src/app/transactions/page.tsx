@@ -2132,7 +2132,7 @@ export default function TransactionsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm md:text-base text-orange-700 flex items-center gap-2">
                 <CategoryIcon name="คืนยอดค้างจ่าย" className="h-4 w-4" />
-                ยอดค้างจ่ายที่คืนแล้วเงินแล้ว (ยืมจ่ายเดือนนี้)
+                ยอดค้างจ่ายที่ยังไม่จ่ายคืน (ยืมจ่ายเดือนนี้)
                 <span className="text-xs font-normal text-orange-500">— ไม่รวมในรายจ่าย</span>
               </CardTitle>
             </CardHeader>
