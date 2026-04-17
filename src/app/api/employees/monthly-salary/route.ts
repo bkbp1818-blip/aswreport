@@ -79,66 +79,63 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - บันทึกหรืออัปเดตเงินเดือนรายเดือน
+// POST - บันทึกหรืออัปเดตเงินเดือนรายเดือน (รองรับทั้ง single และ batch)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { employeeId, salary, month, year } = body
 
-    if (!employeeId || salary === undefined || !month || !year) {
+    // รองรับ batch: { items: [...], month, year }
+    // หรือ single: { employeeId, salary, month, year }
+    const isBatch = Array.isArray(body.items)
+    const items = isBatch
+      ? body.items as { employeeId: number; salary: number }[]
+      : [{ employeeId: body.employeeId, salary: body.salary }]
+    const month = parseInt(isBatch ? body.month : body.month)
+    const year = parseInt(isBatch ? body.year : body.year)
+
+    if (!month || !year || items.length === 0) {
       return NextResponse.json(
         { error: 'กรุณาระบุข้อมูลให้ครบถ้วน' },
         { status: 400 }
       )
     }
 
-    // ตรวจสอบว่ามีอยู่แล้วหรือไม่
-    const existing = await prisma.monthlySalary.findUnique({
-      where: {
-        employeeId_month_year: {
-          employeeId: parseInt(employeeId),
-          month: parseInt(month),
-          year: parseInt(year),
-        },
-      },
-    })
+    // บันทึกทีละรายการ
+    for (const item of items) {
+      const empId = parseInt(String(item.employeeId))
+      const salaryVal = parseFloat(String(item.salary))
 
-    let monthlySalary
-
-    if (existing) {
-      if (parseFloat(salary) === 0) {
-        // ถ้าจำนวนเป็น 0 ให้ลบออก (กลับไปใช้ค่า default)
-        await prisma.monthlySalary.delete({
-          where: { id: existing.id },
-        })
-        monthlySalary = null
-      } else {
-        monthlySalary = await prisma.monthlySalary.update({
-          where: { id: existing.id },
-          data: { salary: parseFloat(salary) },
-        })
-      }
-    } else if (parseFloat(salary) > 0) {
-      // สร้างใหม่ (เฉพาะถ้าจำนวนมากกว่า 0)
-      monthlySalary = await prisma.monthlySalary.create({
-        data: {
-          employeeId: parseInt(employeeId),
-          salary: parseFloat(salary),
-          month: parseInt(month),
-          year: parseInt(year),
+      const existing = await prisma.monthlySalary.findUnique({
+        where: {
+          employeeId_month_year: {
+            employeeId: empId,
+            month,
+            year,
+          },
         },
       })
+
+      if (existing) {
+        if (salaryVal === 0) {
+          await prisma.monthlySalary.delete({ where: { id: existing.id } })
+        } else {
+          await prisma.monthlySalary.update({
+            where: { id: existing.id },
+            data: { salary: salaryVal },
+          })
+        }
+      } else if (salaryVal > 0) {
+        await prisma.monthlySalary.create({
+          data: { employeeId: empId, salary: salaryVal, month, year },
+        })
+      }
     }
 
     // ดึงยอดรวมใหม่
     const allMonthlySalaries = await prisma.monthlySalary.findMany({
-      where: {
-        month: parseInt(month),
-        year: parseInt(year),
-      },
+      where: { month, year },
     })
 
-    // ดึงพนักงานทั้งหมดเพื่อคำนวณ effective salary
     const employees = await prisma.employee.findMany({
       where: { isActive: true },
     })
@@ -152,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      monthlySalary,
+      savedCount: items.length,
       totalSalary,
       salaryPerBuilding,
     })

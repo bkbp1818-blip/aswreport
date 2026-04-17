@@ -114,7 +114,7 @@ export default function EmployeesPage() {
   const [monthlySalaryData, setMonthlySalaryData] = useState<MonthlySalaryData | null>(null)
   const [loadingMonthly, setLoadingMonthly] = useState(false)
   const [editingMonthlySalary, setEditingMonthlySalary] = useState<Record<number, string>>({})
-  const [savingMonthlySalary, setSavingMonthlySalary] = useState<number | null>(null)
+  const [savingAllMonthlySalary, setSavingAllMonthlySalary] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -166,19 +166,23 @@ export default function EmployeesPage() {
     }
   }
 
-  // บันทึกเงินเดือนรายเดือนของพนักงานคนหน��่ง
-  const handleSaveMonthlySalary = async (employeeId: number) => {
-    const salaryValue = editingMonthlySalary[employeeId]
-    if (salaryValue === undefined) return
+  // บันทึกเงินเดือนรายเดือนทั้งหมดที่แก้ไข (batch save)
+  const handleSaveAllMonthlySalary = async () => {
+    const editedIds = Object.keys(editingMonthlySalary)
+    if (editedIds.length === 0) return
 
-    setSavingMonthlySalary(employeeId)
+    setSavingAllMonthlySalary(true)
     try {
+      const items = editedIds.map((id) => ({
+        employeeId: parseInt(id),
+        salary: parseFloat(editingMonthlySalary[parseInt(id)]) || 0,
+      }))
+
       const res = await fetch('/api/employees/monthly-salary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employeeId,
-          salary: parseFloat(salaryValue) || 0,
+          items,
           month: parseInt(selectedMonth),
           year: parseInt(selectedYear),
         }),
@@ -190,17 +194,12 @@ export default function EmployeesPage() {
 
       // โหลดข้อมูลใหม่
       await loadMonthlySalary()
-      // ลบ editing state ของคนนี้
-      setEditingMonthlySalary((prev) => {
-        const next = { ...prev }
-        delete next[employeeId]
-        return next
-      })
+      alert(`บันทึกเงินเดือนรายเดือนสำเร็จ ${items.length} รายการ`)
     } catch (error) {
       console.error('Error saving monthly salary:', error)
       alert('เกิดข้อผิดพลาดในการบันทึกเงินเดือนรายเดือน')
     } finally {
-      setSavingMonthlySalary(null)
+      setSavingAllMonthlySalary(false)
     }
   }
 
@@ -773,14 +772,13 @@ export default function EmployeesPage() {
                       <TableHead>ตำแหน่ง</TableHead>
                       <TableHead className="text-right">เงินเดือนเริ่มต้น</TableHead>
                       <TableHead className="text-right">เงินเดือนเดือนนี้</TableHead>
-                      <TableHead className="w-[80px] text-center">บันทึก</TableHead>
+                      <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {monthlySalaryData.employees.map((emp, index) => {
                       const isEditing = editingMonthlySalary[emp.id] !== undefined
                       const hasMonthlyOverride = emp.monthlySalary !== null
-                      const isSaving = savingMonthlySalary === emp.id
 
                       return (
                         <TableRow key={emp.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
@@ -803,47 +801,34 @@ export default function EmployeesPage() {
                             {formatNumber(emp.salary)} บาท
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Input
-                                type="number"
-                                className="w-[140px] text-right"
-                                placeholder={String(emp.salary)}
-                                value={
-                                  isEditing
-                                    ? editingMonthlySalary[emp.id]
-                                    : hasMonthlyOverride
-                                      ? String(emp.monthlySalary)
-                                      : ''
-                                }
-                                onChange={(e) =>
-                                  setEditingMonthlySalary((prev) => ({
-                                    ...prev,
-                                    [emp.id]: e.target.value,
-                                  }))
-                                }
-                              />
-                              {!hasMonthlyOverride && !isEditing && (
-                                <span className="text-xs text-slate-400 whitespace-nowrap">ค่าเริ่มต้น</span>
-                              )}
-                              {hasMonthlyOverride && !isEditing && (
-                                <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                              )}
-                            </div>
+                            <Input
+                              type="number"
+                              className="w-[140px] text-right ml-auto"
+                              placeholder={String(emp.salary)}
+                              value={
+                                isEditing
+                                  ? editingMonthlySalary[emp.id]
+                                  : hasMonthlyOverride
+                                    ? String(emp.monthlySalary)
+                                    : ''
+                              }
+                              onChange={(e) =>
+                                setEditingMonthlySalary((prev) => ({
+                                  ...prev,
+                                  [emp.id]: e.target.value,
+                                }))
+                              }
+                            />
                           </TableCell>
                           <TableCell className="text-center">
+                            {!hasMonthlyOverride && !isEditing && (
+                              <span className="text-xs text-slate-400 whitespace-nowrap">ค่าเริ่มต้น</span>
+                            )}
+                            {hasMonthlyOverride && !isEditing && (
+                              <Check className="h-4 w-4 text-green-500" />
+                            )}
                             {isEditing && (
-                              <Button
-                                size="sm"
-                                className="bg-[#84A59D] hover:bg-[#6b8a84] h-8 px-3"
-                                onClick={() => handleSaveMonthlySalary(emp.id)}
-                                disabled={isSaving}
-                              >
-                                {isSaving ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Save className="h-3 w-3" />
-                                )}
-                              </Button>
+                              <Pencil className="h-4 w-4 text-[#F6BD60]" />
                             )}
                           </TableCell>
                         </TableRow>
@@ -851,6 +836,31 @@ export default function EmployeesPage() {
                     })}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* ปุ่มบันทึกทั้งหมด */}
+              <div className="flex items-center justify-between p-4 border-t bg-slate-50">
+                <div className="text-sm text-slate-500">
+                  {Object.keys(editingMonthlySalary).length > 0 ? (
+                    <span className="text-[#F6BD60] font-medium">
+                      แก้ไขแล้ว {Object.keys(editingMonthlySalary).length} รายการ (ยังไม่ได้บันทึก)
+                    </span>
+                  ) : (
+                    <span>กรอกเงินเดือนในช่อง แล้วกดบันทึกทั้งหมด</span>
+                  )}
+                </div>
+                <Button
+                  className="bg-[#84A59D] hover:bg-[#6b8a84]"
+                  onClick={handleSaveAllMonthlySalary}
+                  disabled={savingAllMonthlySalary || Object.keys(editingMonthlySalary).length === 0}
+                >
+                  {savingAllMonthlySalary ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  บันทึกทั้งหมด
+                </Button>
               </div>
             </>
           ) : (
