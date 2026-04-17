@@ -725,281 +725,208 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Monthly Salary Section */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="bg-gradient-to-r from-[#457b9d] to-[#1d3557] text-white rounded-t-lg">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
-            <div>
-              <CardTitle className="text-white">
-                กรอกเงินเดือนรายเดือน — {MONTHS.find((m) => m.value === parseInt(selectedMonth))?.label} {selectedYear}
-              </CardTitle>
-              <CardDescription className="text-white/70">
-                ตั้งเงินเดือนแต่ละคนแยกตามเดือน (ถ้าไม่กรอก จะใช้ค่าเริ่มต้นจากข้อมูลพนักงาน)
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loadingMonthly ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#457b9d]" />
-              <span className="ml-2 text-[#666]">กำลังโหลดข้อมูล...</span>
-            </div>
-          ) : monthlySalaryData && monthlySalaryData.employees.length > 0 ? (
-            <>
-              {/* Employee salary table */}
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead>ชื่อ-นามสกุล</TableHead>
-                      <TableHead>ตำแหน่ง</TableHead>
-                      <TableHead className="text-right">เงินเดือนเริ่มต้น</TableHead>
-                      <TableHead className="text-right">เงินเดือนเดือนนี้</TableHead>
-                      <TableHead className="w-[60px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {monthlySalaryData.employees.map((emp, index) => {
-                      const isEditing = editingMonthlySalary[emp.id] !== undefined
-                      const hasMonthlyOverride = emp.monthlySalary !== null
-
-                      return (
-                        <TableRow key={emp.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <TableCell className="text-slate-500">{index + 1}</TableCell>
-                          <TableCell>
-                            <span className="font-medium">{emp.firstName} {emp.lastName}</span>
-                            {emp.nickname && (
-                              <span className="text-sm text-slate-500 ml-1">({emp.nickname})</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className="text-white"
-                              style={{ backgroundColor: positionColors[emp.position] }}
-                            >
-                              {positionIcons[emp.position]} {positionLabels[emp.position]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right text-slate-500">
-                            {formatNumber(emp.salary)} บาท
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              className="w-[140px] text-right ml-auto"
-                              placeholder={String(emp.salary)}
-                              value={
-                                isEditing
-                                  ? editingMonthlySalary[emp.id]
-                                  : hasMonthlyOverride
-                                    ? String(emp.monthlySalary)
-                                    : ''
-                              }
-                              onChange={(e) =>
-                                setEditingMonthlySalary((prev) => ({
-                                  ...prev,
-                                  [emp.id]: e.target.value,
-                                }))
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {!hasMonthlyOverride && !isEditing && (
-                              <span className="text-xs text-slate-400 whitespace-nowrap">ค่าเริ่มต้น</span>
-                            )}
-                            {hasMonthlyOverride && !isEditing && (
-                              <Check className="h-4 w-4 text-green-500" />
-                            )}
-                            {isEditing && (
-                              <Pencil className="h-4 w-4 text-[#F6BD60]" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+      {/* Monthly Salary + Social Security — ซ้าย-ขวา */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ซ้าย: กรอกเงินเดือนรายเดือน */}
+        <Card className="border-0 shadow-md">
+          <CardHeader className="bg-gradient-to-r from-[#457b9d] to-[#1d3557] text-white rounded-t-lg py-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 flex-shrink-0" />
+              <div>
+                <CardTitle className="text-white text-sm md:text-base">
+                  กรอกเงินเดือนรายเดือน
+                </CardTitle>
+                <CardDescription className="text-white/70 text-xs">
+                  ถ้าไม่กรอก จะใช้ค่าเริ่มต้น
+                </CardDescription>
               </div>
-
-              {/* ปุ่มบันทึกทั้งหมด */}
-              <div className="flex items-center justify-between p-4 border-t bg-slate-50">
-                <div className="text-sm text-slate-500">
-                  {Object.keys(editingMonthlySalary).length > 0 ? (
-                    <span className="text-[#F6BD60] font-medium">
-                      แก้ไขแล้ว {Object.keys(editingMonthlySalary).length} รายการ (ยังไม่ได้บันทึก)
-                    </span>
-                  ) : (
-                    <span>กรอกเงินเดือนในช่อง แล้วกดบันทึกทั้งหมด</span>
-                  )}
-                </div>
-                <Button
-                  className="bg-[#84A59D] hover:bg-[#6b8a84]"
-                  onClick={handleSaveAllMonthlySalary}
-                  disabled={savingAllMonthlySalary || Object.keys(editingMonthlySalary).length === 0}
-                >
-                  {savingAllMonthlySalary ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  บันทึกทั้งหมด
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-[#666]">
-              <Users className="h-12 w-12 mb-4 text-slate-300" />
-              <p>ยังไม่มีพนักงานที่ใช้งานอยู่</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loadingMonthly ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-[#457b9d]" />
+              </div>
+            ) : monthlySalaryData && monthlySalaryData.employees.length > 0 ? (
+              <>
+                {/* Summary */}
+                <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b text-xs">
+                  <span className="text-slate-500">รวม: <span className="font-bold text-[#1d3557]">{formatNumber(monthlySalaryData.totalSalary)}</span></span>
+                  <span className="text-slate-500">ต่ออาคาร: <span className="font-bold text-[#457b9d]">{formatNumber(monthlySalaryData.salaryPerBuilding)}</span></span>
+                </div>
 
-      {/* Social Security Section */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="bg-gradient-to-r from-[#F28482] to-[#d96f6d] text-white rounded-t-lg">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            <div>
-              <CardTitle className="text-white">
-                กรอกประกันสังคม — {MONTHS.find((m) => m.value === parseInt(selectedMonth))?.label} {selectedYear}
-              </CardTitle>
-              <CardDescription className="text-white/70">
-                กรอกเงินสมทบประกันสังคมแต่ละคนตามเดือน (ยอดรวมจะถูกหาร 3 อาคาร แสดงที่หน้ากรอกข้อมูลอัตโนมัติ)
-              </CardDescription>
+                {/* Employee list */}
+                <div className="divide-y">
+                  {monthlySalaryData.employees.map((emp, index) => {
+                    const isEditing = editingMonthlySalary[emp.id] !== undefined
+                    const hasMonthlyOverride = emp.monthlySalary !== null
+
+                    return (
+                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#333] truncate">
+                            {emp.firstName} {emp.lastName}
+                          </p>
+                        </div>
+                        <Input
+                          type="number"
+                          className="w-[110px] h-8 text-right text-sm"
+                          placeholder={String(emp.salary)}
+                          value={
+                            isEditing
+                              ? editingMonthlySalary[emp.id]
+                              : hasMonthlyOverride
+                                ? String(emp.monthlySalary)
+                                : ''
+                          }
+                          onChange={(e) =>
+                            setEditingMonthlySalary((prev) => ({
+                              ...prev,
+                              [emp.id]: e.target.value,
+                            }))
+                          }
+                        />
+                        <div className="w-5 flex-shrink-0">
+                          {hasMonthlyOverride && !isEditing && <Check className="h-4 w-4 text-green-500" />}
+                          {isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Save button */}
+                <div className="flex items-center justify-between p-3 border-t bg-slate-50">
+                  <div className="text-xs text-slate-500">
+                    {Object.keys(editingMonthlySalary).length > 0 ? (
+                      <span className="text-[#F6BD60] font-medium">
+                        แก้ไข {Object.keys(editingMonthlySalary).length} รายการ
+                      </span>
+                    ) : (
+                      <span>กรอกแล้วกดบันทึก</span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-[#84A59D] hover:bg-[#6b8a84]"
+                    onClick={handleSaveAllMonthlySalary}
+                    disabled={savingAllMonthlySalary || Object.keys(editingMonthlySalary).length === 0}
+                  >
+                    {savingAllMonthlySalary ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="mr-1 h-3 w-3" />
+                    )}
+                    บันทึก
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-sm text-[#666]">
+                ยังไม่มีพนักงาน
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ขวา: กรอกประกันสังคม */}
+        <Card className="border-0 shadow-md">
+          <CardHeader className="bg-gradient-to-r from-[#F28482] to-[#d96f6d] text-white rounded-t-lg py-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 flex-shrink-0" />
+              <div>
+                <CardTitle className="text-white text-sm md:text-base">
+                  กรอกประกันสังคม
+                </CardTitle>
+                <CardDescription className="text-white/70 text-xs">
+                  ยอดรวมหาร 3 อาคาร แสดงที่หน้ากรอกข้อมูลอัตโนมัติ
+                </CardDescription>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {socialSecurityData && socialSecurityData.employees.length > 0 ? (
-            <>
-              {/* Summary */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-pink-50/50 border-b">
-                <div>
-                  <p className="text-xs text-slate-500">ประกันสังคมรวม</p>
-                  <p className="text-lg font-bold text-[#F28482]">
-                    {formatNumber(socialSecurityData.totalAmount)} บาท
-                  </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {socialSecurityData && socialSecurityData.employees.length > 0 ? (
+              <>
+                {/* Summary */}
+                <div className="flex items-center justify-between px-4 py-2 bg-pink-50/50 border-b text-xs">
+                  <span className="text-slate-500">รวม: <span className="font-bold text-[#F28482]">{formatNumber(socialSecurityData.totalAmount)}</span></span>
+                  <span className="text-slate-500">ต่ออาคาร: <span className="font-bold text-[#d96f6d]">{formatNumber(socialSecurityData.amountPerBuilding)}</span></span>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">ต่ออาคาร (÷{socialSecurityData.buildingCount})</p>
-                  <p className="text-lg font-bold text-[#d96f6d]">
-                    {formatNumber(socialSecurityData.amountPerBuilding)} บาท
-                  </p>
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <p className="text-xs text-slate-500">เดือน/ปี</p>
-                  <p className="text-lg font-bold text-[#84A59D]">
-                    {MONTHS.find((m) => m.value === socialSecurityData.month)?.label} {socialSecurityData.year}
-                  </p>
-                </div>
-              </div>
 
-              {/* Employee table */}
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead>ชื่อ-นามสกุล</TableHead>
-                      <TableHead>ตำแหน่ง</TableHead>
-                      <TableHead className="text-right">ประกันสังคม (บาท)</TableHead>
-                      <TableHead className="w-[60px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {socialSecurityData.employees.map((emp, index) => {
-                      const isEditing = editingSocialSecurity[emp.id] !== undefined
-                      const hasValue = emp.amount > 0
+                {/* Employee list */}
+                <div className="divide-y">
+                  {socialSecurityData.employees.map((emp, index) => {
+                    const isEditing = editingSocialSecurity[emp.id] !== undefined
+                    const hasValue = emp.amount > 0
 
-                      return (
-                        <TableRow key={emp.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <TableCell className="text-slate-500">{index + 1}</TableCell>
-                          <TableCell>
-                            <span className="font-medium">{emp.firstName} {emp.lastName}</span>
-                            {emp.nickname && (
-                              <span className="text-sm text-slate-500 ml-1">({emp.nickname})</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className="text-white"
-                              style={{ backgroundColor: positionColors[emp.position] }}
-                            >
-                              {positionIcons[emp.position]} {positionLabels[emp.position]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              className="w-[140px] text-right ml-auto"
-                              placeholder="0"
-                              value={
-                                isEditing
-                                  ? editingSocialSecurity[emp.id]
-                                  : hasValue
-                                    ? String(emp.amount)
-                                    : ''
-                              }
-                              onChange={(e) =>
-                                setEditingSocialSecurity((prev) => ({
-                                  ...prev,
-                                  [emp.id]: e.target.value,
-                                }))
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {hasValue && !isEditing && (
-                              <Check className="h-4 w-4 text-green-500" />
-                            )}
-                            {isEditing && (
-                              <Pencil className="h-4 w-4 text-[#F6BD60]" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Save button */}
-              <div className="flex items-center justify-between p-4 border-t bg-slate-50">
-                <div className="text-sm text-slate-500">
-                  {Object.keys(editingSocialSecurity).length > 0 ? (
-                    <span className="text-[#F6BD60] font-medium">
-                      แก้ไขแล้ว {Object.keys(editingSocialSecurity).length} รายการ (ยังไม่ได้บันทึก)
-                    </span>
-                  ) : (
-                    <span>กรอกยอดประกันสังคมในช่อง แล้วกดบันทึกทั้งหมด</span>
-                  )}
+                    return (
+                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#333] truncate">
+                            {emp.firstName} {emp.lastName}
+                          </p>
+                        </div>
+                        <Input
+                          type="number"
+                          className="w-[110px] h-8 text-right text-sm"
+                          placeholder="0"
+                          value={
+                            isEditing
+                              ? editingSocialSecurity[emp.id]
+                              : hasValue
+                                ? String(emp.amount)
+                                : ''
+                          }
+                          onChange={(e) =>
+                            setEditingSocialSecurity((prev) => ({
+                              ...prev,
+                              [emp.id]: e.target.value,
+                            }))
+                          }
+                        />
+                        <div className="w-5 flex-shrink-0">
+                          {hasValue && !isEditing && <Check className="h-4 w-4 text-green-500" />}
+                          {isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                <Button
-                  className="bg-[#F28482] hover:bg-[#d96f6d]"
-                  onClick={handleSaveAllSocialSecurity}
-                  disabled={savingAllSocialSecurity || Object.keys(editingSocialSecurity).length === 0}
-                >
-                  {savingAllSocialSecurity ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  บันทึกทั้งหมด
-                </Button>
+
+                {/* Save button */}
+                <div className="flex items-center justify-between p-3 border-t bg-slate-50">
+                  <div className="text-xs text-slate-500">
+                    {Object.keys(editingSocialSecurity).length > 0 ? (
+                      <span className="text-[#F6BD60] font-medium">
+                        แก้ไข {Object.keys(editingSocialSecurity).length} รายการ
+                      </span>
+                    ) : (
+                      <span>กรอกแล้วกดบันทึก</span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-[#F28482] hover:bg-[#d96f6d]"
+                    onClick={handleSaveAllSocialSecurity}
+                    disabled={savingAllSocialSecurity || Object.keys(editingSocialSecurity).length === 0}
+                  >
+                    {savingAllSocialSecurity ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="mr-1 h-3 w-3" />
+                    )}
+                    บันทึก
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-sm text-[#666]">
+                ยังไม่มีพนักงาน
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-[#666]">
-              <Users className="h-12 w-12 mb-4 text-slate-300" />
-              <p>ยังไม่มีพนักงานที่ใช้งานอยู่</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Info Card */}
       <Card className="border-0 shadow-md bg-[#F6BD60]/10 border-[#F6BD60]">
