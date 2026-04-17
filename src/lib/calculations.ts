@@ -1,6 +1,17 @@
 // ฟังก์ชันคำนวณสูตรต่างๆ
 import { MONTHS } from '@/lib/utils'
 
+// อัตราเงินสมทบประกันสังคม (ฝั่งนายจ้าง)
+export const SOCIAL_SECURITY_RATE = 0.05 // 5%
+export const SOCIAL_SECURITY_MAX = 750 // สูงสุด 750 บาท/คน/เดือน
+export const SOCIAL_SECURITY_SALARY_CAP = 15000 // เพดานเงินเดือน
+
+// คำนวณเงินสมทบประกันสังคมของพนักงาน 1 คน
+export function calculateSocialSecurity(salary: number): number {
+  if (salary <= 0) return 0
+  return Math.min(salary * SOCIAL_SECURITY_RATE, SOCIAL_SECURITY_MAX)
+}
+
 export interface FinancialSummary {
   totalIncome: number
   totalExpense: number

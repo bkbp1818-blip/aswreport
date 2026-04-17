@@ -32,7 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check, ShieldCheck, ToggleLeft, ToggleRight } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
-import { generateYears } from '@/lib/calculations'
+import { generateYears, calculateSocialSecurity } from '@/lib/calculations'
 
 interface Employee {
   id: number
@@ -129,7 +129,7 @@ export default function EmployeesPage() {
 
   // Social security state
   const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
-  const [editingSocialSecurity, setEditingSocialSecurity] = useState<Record<number, string>>({})
+  const [ssToggles, setSsToggles] = useState<Record<number, boolean>>({}) // true = เปิด, false = ปิด, undefined = ยังไม่แก้
   const [savingAllSocialSecurity, setSavingAllSocialSecurity] = useState(false)
 
   // Form state
@@ -235,27 +235,32 @@ export default function EmployeesPage() {
       const res = await fetch(`/api/social-security?month=${m}&year=${y}`)
       const data = await res.json()
       setSocialSecurityData(data)
-      setEditingSocialSecurity({})
+      setSsToggles({})
     } catch (error) {
       console.error('Error loading social security:', error)
     }
   }
 
-  // บันทึกประกันสังคมทั้งหมดที่แก้ไข (batch save)
+  // บันทึกประกันสังคมทั้งหมดที่แก้ไข (toggle)
   const handleSaveAllSocialSecurity = async () => {
-    const editedIds = Object.keys(editingSocialSecurity)
+    const editedIds = Object.keys(ssToggles)
     if (editedIds.length === 0) return
 
     setSavingAllSocialSecurity(true)
     try {
-      // บันทึกทีละรายการ (social-security API รับ single item)
       for (const id of editedIds) {
+        const empId = parseInt(id)
+        const isOn = ssToggles[empId]
+        // ถ้าเปิด → คำนวณจาก effectiveSalary, ถ้าปิด → 0
+        const msEmp = monthlySalaryData?.employees.find((e) => e.id === empId)
+        const amount = isOn && msEmp ? calculateSocialSecurity(msEmp.effectiveSalary) : 0
+
         const res = await fetch('/api/social-security', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            employeeId: parseInt(id),
-            amount: parseFloat(editingSocialSecurity[parseInt(id)]) || 0,
+            employeeId: empId,
+            amount,
             month: parseInt(selectedMonth),
             year: parseInt(selectedYear),
           }),
@@ -890,64 +895,97 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
 
-        {/* ขวา: กรอกประกันสังคม */}
+        {/* ขวา: ประกันสังคม (คำนวณ auto จากเงินเดือน) */}
         <Card className="border-0 shadow-md">
           <CardHeader className="bg-gradient-to-r from-[#F28482] to-[#d96f6d] text-white rounded-t-lg py-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 flex-shrink-0" />
               <div>
                 <CardTitle className="text-white text-sm md:text-base">
-                  กรอกประกันสังคม
+                  เงินสมทบประกันสังคม (นายจ้าง)
                 </CardTitle>
                 <CardDescription className="text-white/70 text-xs">
-                  ยอดรวมหาร 3 อาคาร แสดงที่หน้ากรอกข้อมูลอัตโนมัติ
+                  คำนวณ auto 5% ของเงินเดือน (สูงสุด 750 บาท) หาร 3 อาคาร
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {socialSecurityData && socialSecurityData.employees.length > 0 ? (
+            {socialSecurityData && socialSecurityData.employees.length > 0 && monthlySalaryData ? (
               <>
-                {/* Summary */}
-                <div className="flex items-center justify-between px-4 py-2 bg-pink-50/50 border-b text-xs">
-                  <span className="text-slate-500">รวม: <span className="font-bold text-[#F28482]">{formatNumber(socialSecurityData.totalAmount)}</span></span>
-                  <span className="text-slate-500">ต่ออาคาร: <span className="font-bold text-[#d96f6d]">{formatNumber(socialSecurityData.amountPerBuilding)}</span></span>
-                </div>
+                {/* Summary — แสดงยอดที่บันทึกแล้ว + ยอด preview ถ้ามี toggle ที่ยังไม่บันทึก */}
+                {(() => {
+                  // คำนวณ preview total รวม toggle ที่ยังไม่ได้บันทึก
+                  let previewTotal = 0
+                  socialSecurityData.employees.forEach((emp) => {
+                    const msEmp = monthlySalaryData.employees.find((e) => e.id === emp.id)
+                    const calcAmount = msEmp ? calculateSocialSecurity(msEmp.effectiveSalary) : 0
+                    if (ssToggles[emp.id] !== undefined) {
+                      // มี toggle → ใช้ค่า toggle
+                      previewTotal += ssToggles[emp.id] ? calcAmount : 0
+                    } else {
+                      // ไม่มี toggle → ใช้ค่าจาก DB
+                      previewTotal += emp.amount
+                    }
+                  })
+                  return (
+                    <div className="flex items-center justify-between px-4 py-2 bg-pink-50/50 border-b text-xs">
+                      <span className="text-slate-500">รวม: <span className="font-bold text-[#F28482]">{formatNumber(previewTotal)}</span></span>
+                      <span className="text-slate-500">ต่ออาคาร: <span className="font-bold text-[#d96f6d]">{formatNumber(previewTotal / 3)}</span></span>
+                    </div>
+                  )
+                })()}
 
                 {/* Employee list */}
                 <div className="divide-y">
                   {socialSecurityData.employees.map((emp, index) => {
-                    const isEditing = editingSocialSecurity[emp.id] !== undefined
-                    const hasValue = emp.amount > 0
+                    const msEmp = monthlySalaryData.employees.find((e) => e.id === emp.id)
+                    const effectiveSalary = msEmp?.effectiveSalary || 0
+                    const calcAmount = calculateSocialSecurity(effectiveSalary)
+
+                    // สถานะปัจจุบัน: เปิดอยู่ถ้ามี amount > 0 ใน DB
+                    const savedIsOn = emp.amount > 0
+                    // สถานะ toggle: ถ้ายังไม่แก้ → ใช้ค่าจาก DB
+                    const isOn = ssToggles[emp.id] !== undefined ? ssToggles[emp.id] : savedIsOn
+                    const hasToggled = ssToggles[emp.id] !== undefined
+                    const displayAmount = isOn ? calcAmount : 0
 
                     return (
-                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${!isOn ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        {/* Toggle */}
+                        <button
+                          type="button"
+                          className="flex-shrink-0"
+                          title={isOn ? 'ปิดประกันสังคม (ลาออก/ไม่จ่าย)' : 'เปิดประกันสังคม'}
+                          onClick={() => {
+                            setSsToggles((prev) => ({ ...prev, [emp.id]: !isOn }))
+                          }}
+                        >
+                          {isOn ? (
+                            <ToggleRight className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <ToggleLeft className="h-5 w-5 text-red-400" />
+                          )}
+                        </button>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#333] truncate">
+                          <p className={`text-sm font-medium truncate ${!isOn ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
                             {emp.firstName} {emp.lastName}
                           </p>
+                          {!isOn && (
+                            <p className="text-[10px] text-red-400">ไม่จ่ายเดือนนี้</p>
+                          )}
                         </div>
-                        <Input
-                          type="number"
-                          className="w-[110px] h-8 text-right text-sm"
-                          placeholder="0"
-                          value={
-                            isEditing
-                              ? editingSocialSecurity[emp.id]
-                              : hasValue
-                                ? String(emp.amount)
-                                : ''
-                          }
-                          onChange={(e) =>
-                            setEditingSocialSecurity((prev) => ({
-                              ...prev,
-                              [emp.id]: e.target.value,
-                            }))
-                          }
-                        />
+                        <div className="text-right flex-shrink-0">
+                          <p className={`text-sm font-semibold ${!isOn ? 'text-slate-300' : 'text-[#F28482]'}`}>
+                            {formatNumber(displayAmount)}
+                          </p>
+                          {isOn && effectiveSalary > 0 && (
+                            <p className="text-[10px] text-slate-400">5% × {formatNumber(effectiveSalary)}</p>
+                          )}
+                        </div>
                         <div className="w-5 flex-shrink-0">
-                          {hasValue && !isEditing && <Check className="h-4 w-4 text-green-500" />}
-                          {isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                          {hasToggled && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                          {!hasToggled && savedIsOn && <Check className="h-4 w-4 text-green-500" />}
                         </div>
                       </div>
                     )
@@ -957,19 +995,19 @@ export default function EmployeesPage() {
                 {/* Save button */}
                 <div className="flex items-center justify-between p-3 border-t bg-slate-50">
                   <div className="text-xs text-slate-500">
-                    {Object.keys(editingSocialSecurity).length > 0 ? (
+                    {Object.keys(ssToggles).length > 0 ? (
                       <span className="text-[#F6BD60] font-medium">
-                        แก้ไข {Object.keys(editingSocialSecurity).length} รายการ
+                        แก้ไข {Object.keys(ssToggles).length} รายการ
                       </span>
                     ) : (
-                      <span>กรอกแล้วกดบันทึก</span>
+                      <span>กด toggle เปิด/ปิด แล้วกดบันทึก</span>
                     )}
                   </div>
                   <Button
                     size="sm"
                     className="bg-[#F28482] hover:bg-[#d96f6d]"
                     onClick={handleSaveAllSocialSecurity}
-                    disabled={savingAllSocialSecurity || Object.keys(editingSocialSecurity).length === 0}
+                    disabled={savingAllSocialSecurity || Object.keys(ssToggles).length === 0}
                   >
                     {savingAllSocialSecurity ? (
                       <Loader2 className="mr-1 h-3 w-3 animate-spin" />
