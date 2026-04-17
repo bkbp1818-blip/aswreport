@@ -20,8 +20,8 @@ async function main() {
   const newBuildings = await Promise.all([
     prisma.building.upsert({
       where: { code: 'FUNNLP' },
-      update: {},
-      create: { name: 'Funn D - ลาดพร้าว 149', code: 'FUNNLP' },
+      update: { name: 'Funn D - ลาดพร้าว 21' },
+      create: { name: 'Funn D - ลาดพร้าว 21', code: 'FUNNLP' },
     }),
     prisma.building.upsert({
       where: { code: 'FUNNS81' },
