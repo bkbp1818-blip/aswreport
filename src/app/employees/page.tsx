@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check, ShieldCheck } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 
@@ -76,6 +76,25 @@ interface MonthlySalaryData {
   year: number
 }
 
+interface SocialSecurityEmployee {
+  id: number
+  firstName: string
+  lastName: string
+  nickname: string | null
+  position: 'MAID' | 'MANAGER' | 'PARTNER'
+  contributionId: number | null
+  amount: number
+}
+
+interface SocialSecurityData {
+  employees: SocialSecurityEmployee[]
+  totalAmount: number
+  amountPerBuilding: number
+  buildingCount: number
+  month: number
+  year: number
+}
+
 const positionLabels: Record<string, string> = {
   MAID: 'แม่บ้าน',
   MANAGER: 'ผู้จัดการ',
@@ -107,6 +126,11 @@ export default function EmployeesPage() {
   const [loadingMonthly, setLoadingMonthly] = useState(false)
   const [editingMonthlySalary, setEditingMonthlySalary] = useState<Record<number, string>>({})
   const [savingAllMonthlySalary, setSavingAllMonthlySalary] = useState(false)
+
+  // Social security state
+  const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
+  const [editingSocialSecurity, setEditingSocialSecurity] = useState<Record<number, string>>({})
+  const [savingAllSocialSecurity, setSavingAllSocialSecurity] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -184,14 +208,61 @@ export default function EmployeesPage() {
     }
   }
 
+  // โหลดประกันสังคม
+  const loadSocialSecurity = async (month?: string, year?: string) => {
+    const m = month || selectedMonth
+    const y = year || selectedYear
+    try {
+      const res = await fetch(`/api/social-security?month=${m}&year=${y}`)
+      const data = await res.json()
+      setSocialSecurityData(data)
+      setEditingSocialSecurity({})
+    } catch (error) {
+      console.error('Error loading social security:', error)
+    }
+  }
+
+  // บันทึกประกันสังคมทั้งหมดที่แก้ไข (batch save)
+  const handleSaveAllSocialSecurity = async () => {
+    const editedIds = Object.keys(editingSocialSecurity)
+    if (editedIds.length === 0) return
+
+    setSavingAllSocialSecurity(true)
+    try {
+      // บันทึกทีละรายการ (social-security API รับ single item)
+      for (const id of editedIds) {
+        const res = await fetch('/api/social-security', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            employeeId: parseInt(id),
+            amount: parseFloat(editingSocialSecurity[parseInt(id)]) || 0,
+            month: parseInt(selectedMonth),
+            year: parseInt(selectedYear),
+          }),
+        })
+        if (!res.ok) throw new Error('Failed to save')
+      }
+
+      await loadSocialSecurity()
+      alert(`บันทึกประกันสังคมสำเร็จ ${editedIds.length} รายการ`)
+    } catch (error) {
+      console.error('Error saving social security:', error)
+      alert('เกิดข้อผิดพลาดในการบันทึกประกันสังคม')
+    } finally {
+      setSavingAllSocialSecurity(false)
+    }
+  }
+
   useEffect(() => {
-    Promise.all([loadEmployees(), loadMonthlySalary()])
+    Promise.all([loadEmployees(), loadMonthlySalary(), loadSocialSecurity()])
       .finally(() => setLoading(false))
   }, [])
 
-  // โหลดเงินเดือนรายเดือนใหม่เมื่อเปลี่ยนเดือน/ปี
+  // โหลดข้อมูลใหม่เมื่อเปลี่ยนเดือน/ปี
   useEffect(() => {
     loadMonthlySalary()
+    loadSocialSecurity()
   }, [selectedMonth, selectedYear])
 
   // Reset form
@@ -770,6 +841,149 @@ export default function EmployeesPage() {
                   disabled={savingAllMonthlySalary || Object.keys(editingMonthlySalary).length === 0}
                 >
                   {savingAllMonthlySalary ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  บันทึกทั้งหมด
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-[#666]">
+              <Users className="h-12 w-12 mb-4 text-slate-300" />
+              <p>ยังไม่มีพนักงานที่ใช้งานอยู่</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Social Security Section */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-[#F28482] to-[#d96f6d] text-white rounded-t-lg">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            <div>
+              <CardTitle className="text-white">
+                กรอกประกันสังคม — {MONTHS.find((m) => m.value === parseInt(selectedMonth))?.label} {selectedYear}
+              </CardTitle>
+              <CardDescription className="text-white/70">
+                กรอกเงินสมทบประกันสังคมแต่ละคนตามเดือน (ยอดรวมจะถูกหาร 3 อาคาร แสดงที่หน้ากรอกข้อมูลอัตโนมัติ)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {socialSecurityData && socialSecurityData.employees.length > 0 ? (
+            <>
+              {/* Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-pink-50/50 border-b">
+                <div>
+                  <p className="text-xs text-slate-500">ประกันสังคมรวม</p>
+                  <p className="text-lg font-bold text-[#F28482]">
+                    {formatNumber(socialSecurityData.totalAmount)} บาท
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">ต่ออาคาร (÷{socialSecurityData.buildingCount})</p>
+                  <p className="text-lg font-bold text-[#d96f6d]">
+                    {formatNumber(socialSecurityData.amountPerBuilding)} บาท
+                  </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-xs text-slate-500">เดือน/ปี</p>
+                  <p className="text-lg font-bold text-[#84A59D]">
+                    {MONTHS.find((m) => m.value === socialSecurityData.month)?.label} {socialSecurityData.year}
+                  </p>
+                </div>
+              </div>
+
+              {/* Employee table */}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">#</TableHead>
+                      <TableHead>ชื่อ-นามสกุล</TableHead>
+                      <TableHead>ตำแหน่ง</TableHead>
+                      <TableHead className="text-right">ประกันสังคม (บาท)</TableHead>
+                      <TableHead className="w-[60px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {socialSecurityData.employees.map((emp, index) => {
+                      const isEditing = editingSocialSecurity[emp.id] !== undefined
+                      const hasValue = emp.amount > 0
+
+                      return (
+                        <TableRow key={emp.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <TableCell className="text-slate-500">{index + 1}</TableCell>
+                          <TableCell>
+                            <span className="font-medium">{emp.firstName} {emp.lastName}</span>
+                            {emp.nickname && (
+                              <span className="text-sm text-slate-500 ml-1">({emp.nickname})</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className="text-white"
+                              style={{ backgroundColor: positionColors[emp.position] }}
+                            >
+                              {positionIcons[emp.position]} {positionLabels[emp.position]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              className="w-[140px] text-right ml-auto"
+                              placeholder="0"
+                              value={
+                                isEditing
+                                  ? editingSocialSecurity[emp.id]
+                                  : hasValue
+                                    ? String(emp.amount)
+                                    : ''
+                              }
+                              onChange={(e) =>
+                                setEditingSocialSecurity((prev) => ({
+                                  ...prev,
+                                  [emp.id]: e.target.value,
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {hasValue && !isEditing && (
+                              <Check className="h-4 w-4 text-green-500" />
+                            )}
+                            {isEditing && (
+                              <Pencil className="h-4 w-4 text-[#F6BD60]" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Save button */}
+              <div className="flex items-center justify-between p-4 border-t bg-slate-50">
+                <div className="text-sm text-slate-500">
+                  {Object.keys(editingSocialSecurity).length > 0 ? (
+                    <span className="text-[#F6BD60] font-medium">
+                      แก้ไขแล้ว {Object.keys(editingSocialSecurity).length} รายการ (ยังไม่ได้บันทึก)
+                    </span>
+                  ) : (
+                    <span>กรอกยอดประกันสังคมในช่อง แล้วกดบันทึกทั้งหมด</span>
+                  )}
+                </div>
+                <Button
+                  className="bg-[#F28482] hover:bg-[#d96f6d]"
+                  onClick={handleSaveAllSocialSecurity}
+                  disabled={savingAllSocialSecurity || Object.keys(editingSocialSecurity).length === 0}
+                >
+                  {savingAllSocialSecurity ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="mr-2 h-4 w-4" />

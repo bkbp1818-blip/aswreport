@@ -264,8 +264,10 @@ async function calculateBuildingSummary(
     perBuildingTotals[key] = Math.max(0, perBuildingTotals[key])
   }
 
-  // เงินสมทบประกันสังคม: ใช้ค่าจาก ExpenseHistory (ทุกอาคาร)
-  socialSecurityPerBuilding = perBuildingTotals.socialSecurityExpense || 0
+  // เงินสมทบประกันสังคม: CT/YW/NANA ใช้ SocialSecurityContribution ÷ 3, Funn D ใช้ ExpenseHistory
+  socialSecurityPerBuilding = isEligibleForSalary
+    ? totalSocialSecurity / socialSecurityDivisor
+    : (perBuildingTotals.socialSecurityExpense || 0)
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
   const maxCareExpensePerBuilding = perBuildingTotals.maxCareExpense || 0

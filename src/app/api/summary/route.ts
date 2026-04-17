@@ -263,7 +263,8 @@ async function calculateBuildingSummary(
     ? totalSalary / salaryDivisor
     : (perBuildingTotals.salaryExpense || 0)
 
-  // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
+  // ดึงข้อมูลเงินสมทบประกันสังคม
+  // CT/YW/NANA: ใช้ SocialSecurityContribution ÷ 3, Funn D: ใช้ ExpenseHistory
   const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({
     where: { month, year },
   })
@@ -272,7 +273,9 @@ async function calculateBuildingSummary(
     0
   )
   const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
-  const socialSecurityPerBuilding = perBuildingTotals.socialSecurityExpense || 0
+  const socialSecurityPerBuilding = isEligibleForSalary
+    ? totalSocialSecurity / socialSecurityDivisor
+    : (perBuildingTotals.socialSecurityExpense || 0)
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
   const maxCareExpensePerBuilding = perBuildingTotals.maxCareExpense || 0

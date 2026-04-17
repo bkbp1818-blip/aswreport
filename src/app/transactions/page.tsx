@@ -400,8 +400,10 @@ export default function TransactionsPage() {
   const cleaningSupplyExpensePerBuilding = perBuildingExpenses.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = perBuildingExpenses.foodExpense || 0
 
-  // เงินสมทบประกันสังคม: ทุกอาคารกรอกเองผ่าน ExpenseHistory
-  const socialSecurityExpensePerBuilding = perBuildingExpenses.socialSecurityExpense || 0
+  // เงินสมทบประกันสังคม: CT/YW/NANA ดึงจาก social-security API ÷ 3, Funn D กรอกเองผ่าน ExpenseHistory
+  const socialSecurityExpensePerBuilding = isEligibleForSalary
+    ? (socialSecurityData?.amountPerBuilding || 0)
+    : (perBuildingExpenses.socialSecurityExpense || 0)
 
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
@@ -1892,8 +1894,8 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* เงินสมทบประกันสังคม - CT/YW/NANA: กรอกเองผ่าน ExpenseHistory */}
-                      {!isViewer && isEligibleForSalary && (
+                      {/* เงินสมทบประกันสังคม - CT/YW/NANA: ดึงจากหน้าเงินเดือนพนักงานอัตโนมัติ (read-only) */}
+                      {isEligibleForSalary && (
                         <TableRow className="bg-pink-100/50">
                           <TableCell className="font-medium px-2 md:px-4">
                             {(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) +
@@ -1905,22 +1907,12 @@ export default function TransactionsPage() {
                               <CategoryIcon name="ประกันสังคม" className="h-4 w-4 flex-shrink-0" />
                               <div>
                                 <span className="text-xs md:text-sm font-medium text-pink-600">ประกันสังคม</span>
+                                <span className="text-[10px] md:text-xs text-pink-400 ml-1">(จากหน้าเงินเดือน)</span>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
-                            <div className="flex items-center justify-end gap-1">
-                              <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'socialSecurityExpense', 'ประกันสังคม')}>
-                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'socialSecurityExpense', 'ประกันสังคม')}>
-                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'socialSecurityExpense', 'ประกันสังคม')}>
-                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
-                            </div>
+                            <p className="font-medium text-xs md:text-sm text-pink-600">{formatNumber(socialSecurityExpensePerBuilding)}</p>
                           </TableCell>
                         </TableRow>
                       )}
