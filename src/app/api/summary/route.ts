@@ -154,7 +154,8 @@ async function calculateBuildingSummary(
   let airportShuttleRentIncome = 0
   let thaiBusTourIncome = 0
   let coVanKesselIncome = 0
-  let cleaningFeeIncome = 0
+  let fdExtraLadpraoIncome = 0
+  let fdExtraSukhumvitIncome = 0
   for (const item of expenseHistory) {
     // ถ้าเป็น special income fields ให้เก็บแยก
     if (item.fieldName === 'airportShuttleRentIncome') {
@@ -184,12 +185,21 @@ async function calculateBuildingSummary(
       }
       continue
     }
-    if (item.fieldName === 'cleaningFeeIncome') {
+    if (item.fieldName === 'fdExtraLadpraoIncome') {
       const amount = Number(item.amount)
       if (item.actionType === 'ADD') {
-        cleaningFeeIncome += amount
+        fdExtraLadpraoIncome += amount
       } else {
-        cleaningFeeIncome -= amount
+        fdExtraLadpraoIncome -= amount
+      }
+      continue
+    }
+    if (item.fieldName === 'fdExtraSukhumvitIncome') {
+      const amount = Number(item.amount)
+      if (item.actionType === 'ADD') {
+        fdExtraSukhumvitIncome += amount
+      } else {
+        fdExtraSukhumvitIncome -= amount
       }
       continue
     }
@@ -208,7 +218,8 @@ async function calculateBuildingSummary(
   airportShuttleRentIncome = Math.max(0, airportShuttleRentIncome)
   thaiBusTourIncome = Math.max(0, thaiBusTourIncome)
   coVanKesselIncome = Math.max(0, coVanKesselIncome)
-  cleaningFeeIncome = Math.max(0, cleaningFeeIncome)
+  fdExtraLadpraoIncome = Math.max(0, fdExtraLadpraoIncome)
+  fdExtraSukhumvitIncome = Math.max(0, fdExtraSukhumvitIncome)
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
   }
@@ -343,7 +354,7 @@ async function calculateBuildingSummary(
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + cleaningFeeIncome + managerAdminSalaryIncome
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + fdExtraLadpraoIncome + fdExtraSukhumvitIncome + managerAdminSalaryIncome
 
   // คำนวณรายได้ค่าเช่า (สำหรับ Management Fee)
   // เฉพาะหมวดหมู่ที่มีคำว่า "ค่าเช่า" เท่านั้น (ไม่รวมค่าอาหาร, รับส่งสนามบิน, ทัวร์, Thai bus, Co van)
@@ -379,8 +390,11 @@ async function calculateBuildingSummary(
   if (coVanKesselIncome > 0) {
     incomeByChannel['Co Van Kessel'] = coVanKesselIncome
   }
-  if (cleaningFeeIncome > 0) {
-    incomeByChannel['ค่าทำความสะอาด'] = cleaningFeeIncome
+  if (fdExtraLadpraoIncome > 0) {
+    incomeByChannel['งานเสริม FD ลาดพร้าว 21'] = fdExtraLadpraoIncome
+  }
+  if (fdExtraSukhumvitIncome > 0) {
+    incomeByChannel['งานเสริม FD สุขุมวิท 81'] = fdExtraSukhumvitIncome
   }
   if (managerAdminSalaryIncome > 0) {
     incomeByChannel['รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryIncome
