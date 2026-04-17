@@ -788,7 +788,7 @@ export default function EmployeesPage() {
 
                 {/* Employee list */}
                 <div className="divide-y">
-                  {monthlySalaryData.employees.map((emp, index) => {
+                  {[...monthlySalaryData.employees].sort((a, b) => b.effectiveSalary - a.effectiveSalary).map((emp, index) => {
                     const isEditing = editingMonthlySalary[emp.id] !== undefined
                     const hasMonthlyOverride = emp.monthlySalary !== null
                     // "ปิดเงินเดือน" = มี record แต่ค่า = 0
@@ -942,7 +942,11 @@ export default function EmployeesPage() {
 
                 {/* Employee list */}
                 <div className="divide-y">
-                  {socialSecurityData.employees.map((emp, index) => {
+                  {[...socialSecurityData.employees].sort((a, b) => {
+                    const salA = monthlySalaryData.employees.find((e) => e.id === a.id)?.effectiveSalary || 0
+                    const salB = monthlySalaryData.employees.find((e) => e.id === b.id)?.effectiveSalary || 0
+                    return salB - salA
+                  }).map((emp, index) => {
                     const msEmp = monthlySalaryData.employees.find((e) => e.id === emp.id)
                     const effectiveSalary = msEmp?.effectiveSalary || 0
                     const calcAmount = calculateSocialSecurity(effectiveSalary)
