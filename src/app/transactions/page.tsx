@@ -82,6 +82,8 @@ interface BuildingSettings {
 interface SocialSecurityData {
   totalAmount: number
   amountPerBuilding: number
+  calculatedTotal: number
+  calculatedPerBuilding: number
   buildingCount: number
 }
 
@@ -278,7 +280,9 @@ export default function TransactionsPage() {
         setSocialSecurityData({
           totalAmount: socialSecurityDataRes.totalAmount || 0,
           amountPerBuilding: socialSecurityDataRes.amountPerBuilding || 0,
-          buildingCount: socialSecurityDataRes.buildingCount || 5,
+          calculatedTotal: socialSecurityDataRes.calculatedTotal || 0,
+          calculatedPerBuilding: socialSecurityDataRes.calculatedPerBuilding || 0,
+          buildingCount: socialSecurityDataRes.buildingCount || 3,
         })
       }
     } catch (err) {
@@ -400,9 +404,9 @@ export default function TransactionsPage() {
   const cleaningSupplyExpensePerBuilding = perBuildingExpenses.cleaningSupplyExpense || 0
   const foodExpensePerBuilding = perBuildingExpenses.foodExpense || 0
 
-  // เงินสมทบประกันสังคม: CT/YW/NANA ดึงจาก social-security API ÷ 3, Funn D กรอกเองผ่าน ExpenseHistory
+  // เงินสมทบประกันสังคม: CT/YW/NANA คำนวณ auto จาก effectiveSalary ÷ 3, Funn D กรอกเองผ่าน ExpenseHistory
   const socialSecurityExpensePerBuilding = isEligibleForSalary
-    ? (socialSecurityData?.amountPerBuilding || 0)
+    ? (socialSecurityData?.calculatedPerBuilding || 0)
     : (perBuildingExpenses.socialSecurityExpense || 0)
 
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0

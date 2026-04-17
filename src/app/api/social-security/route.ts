@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { calculateSocialSecurity } from '@/lib/calculations'
 
 // GET - ดึงข้อมูลเงินสมทบประกันสังคมตามเดือน/ปี พร้อมรายชื่อพนักงาน
 export async function GET(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // คำนวณยอดรวมและหาร 3 อาคาร (Chinatown, Yaowarat 103, NANA)
+    // คำนวณยอดรวมจาก DB
     const totalAmount = contributions.reduce(
       (sum, c) => sum + Number(c.amount),
       0
@@ -54,10 +55,30 @@ export async function GET(request: NextRequest) {
     const buildingCount = 3
     const amountPerBuilding = totalAmount / buildingCount
 
+    // คำนวณยอดรวมจาก effectiveSalary (auto) สำหรับพนักงานที่มี contribution > 0
+    const monthlySalaries = await prisma.monthlySalary.findMany({
+      where: { month: parseInt(month), year: parseInt(year) },
+    })
+    const allEmployees = await prisma.employee.findMany({
+      where: { isActive: true },
+    })
+    const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
+
+    let calculatedTotal = 0
+    employeesWithContributions.forEach((emp) => {
+      if (emp.amount > 0) {
+        const effectiveSalary = msMap.get(emp.id) ?? Number(allEmployees.find((e) => e.id === emp.id)?.salary || 0)
+        calculatedTotal += calculateSocialSecurity(effectiveSalary)
+      }
+    })
+    const calculatedPerBuilding = calculatedTotal / buildingCount
+
     return NextResponse.json({
       employees: employeesWithContributions,
       totalAmount,
       amountPerBuilding,
+      calculatedTotal,
+      calculatedPerBuilding,
       buildingCount,
       month: parseInt(month),
       year: parseInt(year),

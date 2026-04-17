@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireMenuAccess, handleAuthError } from '@/lib/auth'
+import { calculateSocialSecurity } from '@/lib/calculations'
 
 // GET - ดึงข้อมูลย้อนหลังหลายเดือน (ต้องเป็น Partner)
 export async function GET(request: NextRequest) {
@@ -264,9 +265,18 @@ async function calculateBuildingSummary(
     perBuildingTotals[key] = Math.max(0, perBuildingTotals[key])
   }
 
-  // เงินสมทบประกันสังคม: CT/YW/NANA ใช้ SocialSecurityContribution ÷ 3, Funn D ใช้ ExpenseHistory
+  // เงินสมทบประกันสังคม: CT/YW/NANA คำนวณ auto จาก effectiveSalary, Funn D ใช้ ExpenseHistory
+  const ssContribMap = new Map(socialSecurityContributions.map((c) => [c.employeeId, Number(c.amount)]))
+  let calculatedSocialSecurityTotal = 0
+  for (const emp of employees) {
+    const ssAmount = ssContribMap.get(emp.id) || 0
+    if (ssAmount > 0) {
+      const effectiveSalary = msMap.get(emp.id) ?? Number(emp.salary)
+      calculatedSocialSecurityTotal += calculateSocialSecurity(effectiveSalary)
+    }
+  }
   socialSecurityPerBuilding = isEligibleForSalary
-    ? totalSocialSecurity / socialSecurityDivisor
+    ? calculatedSocialSecurityTotal / socialSecurityDivisor
     : (perBuildingTotals.socialSecurityExpense || 0)
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)

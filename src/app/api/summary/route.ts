@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireMenuAccess, handleAuthError } from '@/lib/auth'
+import { calculateSocialSecurity } from '@/lib/calculations'
 
 // GET - ดึงข้อมูลสรุป (ต้อง login)
 export async function GET(request: NextRequest) {
@@ -264,17 +265,25 @@ async function calculateBuildingSummary(
     : (perBuildingTotals.salaryExpense || 0)
 
   // ดึงข้อมูลเงินสมทบประกันสังคม
-  // CT/YW/NANA: ใช้ SocialSecurityContribution ÷ 3, Funn D: ใช้ ExpenseHistory
+  // CT/YW/NANA: คำนวณ auto จาก effectiveSalary (5%, max 875), Funn D: ใช้ ExpenseHistory
   const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({
     where: { month, year },
   })
-  const totalSocialSecurity = socialSecurityContributions.reduce(
-    (sum, c) => sum + Number(c.amount),
-    0
-  )
-  const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
+  const socialSecurityDivisor = 3
+
+  // คำนวณ auto จาก effectiveSalary สำหรับพนักงานที่มี contribution > 0
+  let calculatedSocialSecurityTotal = 0
+  const ssContribMap = new Map(socialSecurityContributions.map((c) => [c.employeeId, Number(c.amount)]))
+  for (const emp of employees) {
+    const ssAmount = ssContribMap.get(emp.id) || 0
+    if (ssAmount > 0) {
+      const effectiveSalary = msMap.get(emp.id) ?? Number(emp.salary)
+      calculatedSocialSecurityTotal += calculateSocialSecurity(effectiveSalary)
+    }
+  }
+
   const socialSecurityPerBuilding = isEligibleForSalary
-    ? totalSocialSecurity / socialSecurityDivisor
+    ? calculatedSocialSecurityTotal / socialSecurityDivisor
     : (perBuildingTotals.socialSecurityExpense || 0)
 
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingTotals)
