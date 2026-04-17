@@ -421,7 +421,7 @@ export default function TransactionsPage() {
   const siteminderExpense = perBuildingExpenses.siteminderExpense || 0
 
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
-  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + fdExtraLadpraoIncome + fdExtraSukhumvitIncome + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
+  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + (isEligibleForSalary ? (fdExtraLadpraoIncome + fdExtraSukhumvitIncome) : 0) + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
@@ -1212,8 +1212,8 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 6: งานเสริม FD */}
-              {(
+              {/* กลุ่ม 6: งานเสริม FD - เฉพาะ CT/YW/NANA */}
+              {isEligibleForSalary && (
                 <>
                   <div className="bg-teal-500/10 px-4 py-2 border-y border-teal-500/20">
                     <div className="flex justify-between items-center">
