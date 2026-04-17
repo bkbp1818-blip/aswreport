@@ -565,79 +565,84 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* Summary Cards — ใช้ข้อมูลจาก monthlySalaryData ตามเดือนที่เลือก */}
+      {/* Summary Cards */}
       {monthlySalaryData && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white/90">
-                จำนวนพนักงาน
-              </CardTitle>
-              <div className="rounded-full bg-white/20 p-1.5">
-                <Users className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {monthlySalaryData.employees.length} คน
-              </div>
-            </CardContent>
-          </Card>
+        (() => {
+          // คำนวณประกันสังคมรวม real-time
+          let ssTotalCalc = 0
+          if (socialSecurityData && monthlySalaryData) {
+            socialSecurityData.employees.forEach((emp) => {
+              const msEmp = monthlySalaryData.employees.find((e) => e.id === emp.id)
+              const calcAmount = msEmp ? calculateSocialSecurity(msEmp.effectiveSalary) : 0
+              const savedIsOn = emp.amount > 0
+              const isOn = ssToggles[emp.id] !== undefined ? ssToggles[emp.id] : savedIsOn
+              ssTotalCalc += isOn ? calcAmount : 0
+            })
+          }
+          const ssPerBuilding = ssTotalCalc / 3
 
-          <Card className="border-0 bg-gradient-to-br from-[#F6BD60] to-[#e5a84a] text-white shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white/90">
-                เงินเดือนรวม
-              </CardTitle>
-              <div className="rounded-full bg-white/20 p-1.5">
-                <Calculator className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {formatNumber(monthlySalaryData.totalSalary)}
-              </div>
-              <p className="text-xs text-white/70 mt-1">
-                {MONTHS.find((m) => m.value === monthlySalaryData.month)?.label} {monthlySalaryData.year}
-              </p>
-            </CardContent>
-          </Card>
+          return (
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+              {/* แถว 1: เงินเดือน */}
+              <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white/90">
+                    จำนวนพนักงาน
+                  </CardTitle>
+                  <div className="rounded-full bg-white/20 p-1.5">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {monthlySalaryData.employees.length} คน
+                  </div>
+                  <p className="text-xs text-white/70 mt-1">
+                    {MONTHS.find((m) => m.value === monthlySalaryData.month)?.label} {monthlySalaryData.year}
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-0 bg-gradient-to-br from-[#F28482] to-[#d96f6d] text-white shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white/90">
-                จำนวนอาคาร
-              </CardTitle>
-              <div className="rounded-full bg-white/20 p-1.5">
-                <span className="text-white text-xs font-bold">x{monthlySalaryData.buildingCount}</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {monthlySalaryData.buildingCount} อาคาร
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="border-0 bg-gradient-to-br from-[#F6BD60] to-[#e5a84a] text-white shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white/90">
+                    เงินเดือนรวม
+                  </CardTitle>
+                  <div className="rounded-full bg-white/20 p-1.5">
+                    <Calculator className="h-4 w-4 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {formatNumber(monthlySalaryData.totalSalary)}
+                  </div>
+                  <p className="text-xs text-white/70 mt-1">
+                    ต่ออาคาร (÷{monthlySalaryData.buildingCount}): {formatNumber(monthlySalaryData.salaryPerBuilding)}
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-l-4 border-l-[#84A59D] bg-gradient-to-r from-[#84A59D]/10 to-white shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#84A59D]">
-                เงินเดือนต่ออาคาร
-              </CardTitle>
-              <div className="rounded-full bg-[#84A59D]/20 p-1.5">
-                <Calculator className="h-4 w-4 text-[#84A59D]" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#84A59D]">
-                {formatNumber(monthlySalaryData.salaryPerBuilding)}
-              </div>
-              <p className="text-xs text-[#666] mt-1">
-                = {formatNumber(monthlySalaryData.totalSalary)} ÷ {monthlySalaryData.buildingCount}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="border-0 bg-gradient-to-br from-[#F28482] to-[#d96f6d] text-white shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white/90">
+                    ประกันสังคมรวม
+                  </CardTitle>
+                  <div className="rounded-full bg-white/20 p-1.5">
+                    <ShieldCheck className="h-4 w-4 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {formatNumber(ssTotalCalc)}
+                  </div>
+                  <p className="text-xs text-white/70 mt-1">
+                    ต่ออาคาร (÷3): {formatNumber(ssPerBuilding)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        })()
       )}
 
       {/* Employee List - แยกตามกลุ่ม (read-only แสดงเงินเดือนตามเดือนที่เลือก) */}
