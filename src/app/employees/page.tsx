@@ -905,7 +905,7 @@ export default function EmployeesPage() {
                   เงินสมทบประกันสังคม (นายจ้าง)
                 </CardTitle>
                 <CardDescription className="text-white/70 text-xs">
-                  คำนวณ auto 5% ของเงินเดือน (สูงสุด 750 บาท) หาร 3 อาคาร
+                  คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท) หาร 3 อาคาร
                 </CardDescription>
               </div>
             </div>

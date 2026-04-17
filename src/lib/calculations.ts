@@ -1,10 +1,13 @@
 // ฟังก์ชันคำนวณสูตรต่างๆ
 import { MONTHS } from '@/lib/utils'
 
-// อัตราเงินสมทบประกันสังคม (ฝั่งนายจ้าง)
+// อัตราเงินสมทบประกันสังคม (ฝั่งนายจ้าง) — ตามกฎหมายใหม่ มีผล 1 ม.ค. 2569
+// ระยะที่ 1: 2569-2571 → เพดาน 17,500 บาท, สมทบสูงสุด 875 บาท
+// ระยะที่ 2: 2572-2574 → เพดาน 20,000 บาท, สมทบสูงสุด 1,000 บาท
+// ระยะที่ 3: 2575 เป็นต้นไป → เพดาน 23,000 บาท, สมทบสูงสุด 1,150 บาท
 export const SOCIAL_SECURITY_RATE = 0.05 // 5%
-export const SOCIAL_SECURITY_MAX = 750 // สูงสุด 750 บาท/คน/เดือน
-export const SOCIAL_SECURITY_SALARY_CAP = 15000 // เพดานเงินเดือน
+export const SOCIAL_SECURITY_SALARY_CAP = 17500 // เพดานเงินเดือน (2569-2571)
+export const SOCIAL_SECURITY_MAX = 875 // สูงสุด 875 บาท/คน/เดือน (2569-2571)
 
 // คำนวณเงินสมทบประกันสังคมของพนักงาน 1 คน
 export function calculateSocialSecurity(salary: number): number {
