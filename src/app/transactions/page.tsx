@@ -159,7 +159,7 @@ export default function TransactionsPage() {
     Promise.all([
       fetch('/api/buildings').then((res) => res.json()),
       fetch('/api/categories').then((res) => res.json()),
-      fetch('/api/employees/salary-summary').then((res) => res.json()),
+      fetch(`/api/employees/salary-summary?month=${selectedMonth}&year=${selectedYear}`).then((res) => res.json()),
     ])
       .then(([buildingsData, categoriesData, salaryData]) => {
         setBuildings(buildingsData)
@@ -193,13 +193,14 @@ export default function TransactionsPage() {
         month: selectedMonth,
         year: selectedYear,
       })
-      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes, returnedItemsRes, pendingItemsRes] = await Promise.all([
+      const [historyTotalsRes, settingsRes, socialSecurityRes, settingsHistoryTotalsRes, returnedItemsRes, pendingItemsRes, salarySummaryRes] = await Promise.all([
         fetch(`/api/expense-history/totals?${historyParams}`),
         fetch(`/api/settings?buildingId=${selectedBuilding}`),
         fetch(`/api/social-security?month=${selectedMonth}&year=${selectedYear}`),
         fetch(`/api/expense-history/totals?${settingsHistoryParams}`),
         fetch(`/api/reimbursements?details=returned&buildingId=${selectedBuilding}&paidMonth=${selectedMonth}&paidYear=${selectedYear}`),
         fetch(`/api/reimbursements?details=pending&buildingId=${selectedBuilding}&paidMonth=${selectedMonth}&paidYear=${selectedYear}`),
+        fetch(`/api/employees/salary-summary?month=${selectedMonth}&year=${selectedYear}`),
       ])
 
       const historyData = await historyTotalsRes.json()
@@ -267,6 +268,10 @@ export default function TransactionsPage() {
         }
       }
       setPerBuildingExpenses(perBuildingMap)
+
+      // อัปเดตเงินเดือนรายเดือน
+      const salaryData = await salarySummaryRes.json()
+      setSalarySummary(salaryData)
 
       // เก็บข้อมูลเงินสมทบประกันสังคม
       if (socialSecurityDataRes) {

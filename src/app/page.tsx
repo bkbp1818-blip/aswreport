@@ -294,18 +294,24 @@ export default function DashboardPage() {
     // 'custom' - ใช้ค่าที่ผู้ใช้เลือกเอง
   }, [timeMode])
 
-  // โหลดรายการอาคารและเงินเดือนพนักงาน
+  // โหลดรายการอาคาร
   useEffect(() => {
-    Promise.all([
-      fetch('/api/buildings').then((res) => res.json()),
-      fetch('/api/employees/salary-summary').then((res) => res.json()),
-    ])
-      .then(([buildingsData, salaryData]) => {
+    fetch('/api/buildings').then((res) => res.json())
+      .then((buildingsData) => {
         setBuildings(buildingsData)
+      })
+      .catch((err) => console.error('Error loading buildings:', err))
+  }, [])
+
+  // โหลดเงินเดือนพนักงานตามเดือน/ปีที่เลือก
+  useEffect(() => {
+    fetch(`/api/employees/salary-summary?month=${selectedMonth}&year=${selectedYear}`)
+      .then((res) => res.json())
+      .then((salaryData) => {
         setSalarySummary(salaryData)
       })
-      .catch((err) => console.error('Error loading data:', err))
-  }, [])
+      .catch((err) => console.error('Error loading salary summary:', err))
+  }, [selectedMonth, selectedYear])
 
   // โหลดข้อมูลสรุป
   useEffect(() => {

@@ -30,8 +30,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Loader2, Users, Calculator, UserCheck, UserX } from 'lucide-react'
-import { formatNumber } from '@/lib/utils'
+import { Plus, Pencil, Trash2, Loader2, Users, Calculator, UserCheck, UserX, CalendarDays, Save, Check } from 'lucide-react'
+import { formatNumber, MONTHS } from '@/lib/utils'
+import { generateYears } from '@/lib/calculations'
 
 interface Employee {
   id: number
@@ -61,6 +62,27 @@ interface SalarySummary {
   salaryPerBuilding: number
 }
 
+interface MonthlySalaryEmployee {
+  id: number
+  firstName: string
+  lastName: string
+  nickname: string | null
+  position: 'MAID' | 'MANAGER' | 'PARTNER'
+  salary: number
+  monthlySalaryId: number | null
+  monthlySalary: number | null
+  effectiveSalary: number
+}
+
+interface MonthlySalaryData {
+  employees: MonthlySalaryEmployee[]
+  totalSalary: number
+  salaryPerBuilding: number
+  buildingCount: number
+  month: number
+  year: number
+}
+
 const positionLabels: Record<string, string> = {
   MAID: 'แม่บ้าน',
   MANAGER: 'ผู้จัดการ',
@@ -81,6 +103,18 @@ export default function EmployeesPage() {
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+
+  // Monthly salary state
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    String(new Date().getMonth() + 1)
+  )
+  const [selectedYear, setSelectedYear] = useState<string>(
+    String(new Date().getFullYear())
+  )
+  const [monthlySalaryData, setMonthlySalaryData] = useState<MonthlySalaryData | null>(null)
+  const [loadingMonthly, setLoadingMonthly] = useState(false)
+  const [editingMonthlySalary, setEditingMonthlySalary] = useState<Record<number, string>>({})
+  const [savingMonthlySalary, setSavingMonthlySalary] = useState<number | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -114,10 +148,71 @@ export default function EmployeesPage() {
     }
   }
 
+  // โหลดเงินเดือนรายเดือน
+  const loadMonthlySalary = async (month?: string, year?: string) => {
+    const m = month || selectedMonth
+    const y = year || selectedYear
+    setLoadingMonthly(true)
+    try {
+      const res = await fetch(`/api/employees/monthly-salary?month=${m}&year=${y}`)
+      const data = await res.json()
+      setMonthlySalaryData(data)
+      // Reset editing state
+      setEditingMonthlySalary({})
+    } catch (error) {
+      console.error('Error loading monthly salary:', error)
+    } finally {
+      setLoadingMonthly(false)
+    }
+  }
+
+  // บันทึกเงินเดือนรายเดือนของพนักงานคนหน��่ง
+  const handleSaveMonthlySalary = async (employeeId: number) => {
+    const salaryValue = editingMonthlySalary[employeeId]
+    if (salaryValue === undefined) return
+
+    setSavingMonthlySalary(employeeId)
+    try {
+      const res = await fetch('/api/employees/monthly-salary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          salary: parseFloat(salaryValue) || 0,
+          month: parseInt(selectedMonth),
+          year: parseInt(selectedYear),
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to save')
+      }
+
+      // โหลดข้อมูลใหม่
+      await loadMonthlySalary()
+      // ลบ editing state ของคนนี้
+      setEditingMonthlySalary((prev) => {
+        const next = { ...prev }
+        delete next[employeeId]
+        return next
+      })
+    } catch (error) {
+      console.error('Error saving monthly salary:', error)
+      alert('เกิดข้อผิดพลาดในการบันทึกเงินเดือนรายเดือน')
+    } finally {
+      setSavingMonthlySalary(null)
+    }
+  }
+
   useEffect(() => {
-    Promise.all([loadEmployees(), loadSalarySummary()])
+    Promise.all([loadEmployees(), loadSalarySummary(), loadMonthlySalary()])
       .finally(() => setLoading(false))
   }, [])
+
+  // โหลดเงินเดือนรายเดือนใหม่เมื่อเปลี่ยนเดือน/ปี
+  useEffect(() => {
+    loadMonthlySalary()
+  }, [selectedMonth, selectedYear])
 
   // Reset form
   const resetForm = () => {
@@ -597,6 +692,176 @@ export default function EmployeesPage() {
         </div>
       )}
 
+      {/* Monthly Salary Section */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-[#457b9d] to-[#1d3557] text-white rounded-t-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" />
+              <div>
+                <CardTitle className="text-white">กรอกเงินเดือนรายเดือน</CardTitle>
+                <CardDescription className="text-white/70">
+                  ตั้งเงินเดือนแต่ละคนแยกตามเดือน (ถ้าไม่กรอก จะใช้ค่าเริ่มต้นจากข้อมูลพนักงาน)
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[140px] bg-white/20 border-white/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[100px] bg-white/20 border-white/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateYears().map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingMonthly ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#457b9d]" />
+              <span className="ml-2 text-[#666]">กำลังโหลดข้อมูล...</span>
+            </div>
+          ) : monthlySalaryData && monthlySalaryData.employees.length > 0 ? (
+            <>
+              {/* Summary row */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 border-b">
+                <div>
+                  <p className="text-xs text-slate-500">เงินเดือนรวม (เดือนนี้)</p>
+                  <p className="text-lg font-bold text-[#1d3557]">
+                    {formatNumber(monthlySalaryData.totalSalary)} บาท
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">เงินเดือนต่ออาคาร (÷{monthlySalaryData.buildingCount})</p>
+                  <p className="text-lg font-bold text-[#457b9d]">
+                    {formatNumber(monthlySalaryData.salaryPerBuilding)} บาท
+                  </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-xs text-slate-500">เดือน/ปี</p>
+                  <p className="text-lg font-bold text-[#84A59D]">
+                    {MONTHS.find((m) => m.value === monthlySalaryData.month)?.label} {monthlySalaryData.year}
+                  </p>
+                </div>
+              </div>
+
+              {/* Employee salary table */}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">#</TableHead>
+                      <TableHead>ชื่อ-นามสกุล</TableHead>
+                      <TableHead>ตำแหน่ง</TableHead>
+                      <TableHead className="text-right">เงินเดือนเริ่มต้น</TableHead>
+                      <TableHead className="text-right">เงินเดือนเดือนนี้</TableHead>
+                      <TableHead className="w-[80px] text-center">บันทึก</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monthlySalaryData.employees.map((emp, index) => {
+                      const isEditing = editingMonthlySalary[emp.id] !== undefined
+                      const hasMonthlyOverride = emp.monthlySalary !== null
+                      const isSaving = savingMonthlySalary === emp.id
+
+                      return (
+                        <TableRow key={emp.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <TableCell className="text-slate-500">{index + 1}</TableCell>
+                          <TableCell>
+                            <span className="font-medium">{emp.firstName} {emp.lastName}</span>
+                            {emp.nickname && (
+                              <span className="text-sm text-slate-500 ml-1">({emp.nickname})</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className="text-white"
+                              style={{ backgroundColor: positionColors[emp.position] }}
+                            >
+                              {positionIcons[emp.position]} {positionLabels[emp.position]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-slate-500">
+                            {formatNumber(emp.salary)} บาท
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Input
+                                type="number"
+                                className="w-[140px] text-right"
+                                placeholder={String(emp.salary)}
+                                value={
+                                  isEditing
+                                    ? editingMonthlySalary[emp.id]
+                                    : hasMonthlyOverride
+                                      ? String(emp.monthlySalary)
+                                      : ''
+                                }
+                                onChange={(e) =>
+                                  setEditingMonthlySalary((prev) => ({
+                                    ...prev,
+                                    [emp.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                              {!hasMonthlyOverride && !isEditing && (
+                                <span className="text-xs text-slate-400 whitespace-nowrap">ค่าเริ่มต้น</span>
+                              )}
+                              {hasMonthlyOverride && !isEditing && (
+                                <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isEditing && (
+                              <Button
+                                size="sm"
+                                className="bg-[#84A59D] hover:bg-[#6b8a84] h-8 px-3"
+                                onClick={() => handleSaveMonthlySalary(emp.id)}
+                                disabled={isSaving}
+                              >
+                                {isSaving ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Save className="h-3 w-3" />
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-[#666]">
+              <Users className="h-12 w-12 mb-4 text-slate-300" />
+              <p>ยังไม่มีพนักงานที่ใช้งานอยู่</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Info Card */}
       <Card className="border-0 shadow-md bg-[#F6BD60]/10 border-[#F6BD60]">
         <CardHeader>
@@ -610,6 +875,10 @@ export default function EmployeesPage() {
             * ตัวอย่าง: ถ้าเงินเดือนรวม {formatNumber(salarySummary?.totalSalary || 0)} บาท
             หาร {salarySummary?.buildingCount || 0} อาคาร
             = {formatNumber(salarySummary?.salaryPerBuilding || 0)} บาท/อาคาร
+          </p>
+          <p>
+            * ส่วน "กรอกเงินเดือนรายเดือน" ด้านบน ใช้สำหรับกรณีที่เงินเดือนพนักงานมีการปรับเปลี่ยนในบางเดือน
+            ถ้าไม่ได้กรอก ระบบจะใช้ค่าเริ่มต้นจากข้อมูลพนักงานโดยอัตโนมัติ
           </p>
         </CardContent>
       </Card>

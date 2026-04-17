@@ -214,11 +214,18 @@ async function calculateBuildingSummary(
   }
 
   // ดึงข้อมูลเงินเดือนพนักงาน (หาร 3 อาคาร: CT, YW, NANA)
+  // ใช้เงินเดือนรายเดือน (MonthlySalary) ถ้ามี ไม่มีก็ fallback ไป Employee.salary
   const buildings = await prisma.building.findMany()
   const employees = await prisma.employee.findMany({
     where: { isActive: true },
   })
-  const totalSalary = employees.reduce((sum, emp) => sum + Number(emp.salary), 0)
+  const monthlySalaries = await prisma.monthlySalary.findMany({
+    where: { month, year },
+  })
+  const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
+  const totalSalary = employees.reduce((sum, emp) => {
+    return sum + (msMap.get(emp.id) ?? Number(emp.salary))
+  }, 0)
   const salaryDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(building.code)
