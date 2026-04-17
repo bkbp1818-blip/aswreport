@@ -32,25 +32,75 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    const m = parseInt(month)
+    const y = parseInt(year)
+
     // ดึงข้อมูลเงินเดือนรายเดือนของเดือน/ปีที่เลือก
     const monthlySalaries = await prisma.monthlySalary.findMany({
-      where: {
-        month: parseInt(month),
-        year: parseInt(year),
-      },
+      where: { month: m, year: y },
     })
+
+    // ถ้าพนักงานคนไหนไม่มี record เดือนนี้ → ดึงจากเดือนก่อนหน้าล่าสุด (carry forward)
+    const employeeIdsWithRecord = new Set(monthlySalaries.map((ms) => ms.employeeId))
+    const employeeIdsWithoutRecord = employees
+      .filter((e) => !employeeIdsWithRecord.has(e.id))
+      .map((e) => e.id)
+
+    let previousRecords: typeof monthlySalaries = []
+    if (employeeIdsWithoutRecord.length > 0) {
+      // ดึง record ล่าสุดก่อนเดือนนี้ สำหรับพนักงานที่ไม่มี record เดือนนี้
+      const allPrevious = await prisma.monthlySalary.findMany({
+        where: {
+          employeeId: { in: employeeIdsWithoutRecord },
+          OR: [
+            { year: { lt: y } },
+            { year: y, month: { lt: m } },
+          ],
+        },
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
+      })
+      // เอาเฉพาะ record ล่าสุดต่อคน
+      const seen = new Set<number>()
+      for (const rec of allPrevious) {
+        if (!seen.has(rec.employeeId)) {
+          seen.add(rec.employeeId)
+          previousRecords.push(rec)
+        }
+      }
+    }
 
     // รวมข้อมูลพนักงานกับเงินเดือนรายเดือน
     const employeesWithMonthlySalary = employees.map((emp) => {
-      const ms = monthlySalaries.find((m) => m.employeeId === emp.id)
+      const ms = monthlySalaries.find((ms) => ms.employeeId === emp.id)
+      const prev = !ms ? previousRecords.find((p) => p.employeeId === emp.id) : null
       const defaultSalary = Number(emp.salary)
-      const monthlySalary = ms ? Number(ms.salary) : null
-      return {
-        ...emp,
-        salary: defaultSalary,
-        monthlySalaryId: ms?.id || null,
-        monthlySalary,
-        effectiveSalary: monthlySalary !== null ? monthlySalary : defaultSalary,
+
+      if (ms) {
+        // มี record เดือนนี้
+        const monthlySalary = Number(ms.salary)
+        return {
+          ...emp, salary: defaultSalary,
+          monthlySalaryId: ms.id, monthlySalary,
+          effectiveSalary: monthlySalary,
+          isCarriedForward: false,
+        }
+      } else if (prev) {
+        // ดึงจากเดือนก่อน (carry forward)
+        const carriedSalary = Number(prev.salary)
+        return {
+          ...emp, salary: defaultSalary,
+          monthlySalaryId: null, monthlySalary: carriedSalary,
+          effectiveSalary: carriedSalary,
+          isCarriedForward: true,
+        }
+      } else {
+        // ไม่มี record เลย → ใช้ค่า default
+        return {
+          ...emp, salary: defaultSalary,
+          monthlySalaryId: null, monthlySalary: null,
+          effectiveSalary: defaultSalary,
+          isCarriedForward: false,
+        }
       }
     })
 

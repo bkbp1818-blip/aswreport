@@ -29,21 +29,68 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    const m = parseInt(month)
+    const y = parseInt(year)
+
     // ดึงข้อมูลเงินสมทบประกันสังคมของเดือน/ปีที่เลือก
     const contributions = await prisma.socialSecurityContribution.findMany({
-      where: {
-        month: parseInt(month),
-        year: parseInt(year),
-      },
+      where: { month: m, year: y },
     })
+
+    // ถ้าพนักงานคนไหนไม่มี record เดือนนี้ → ดึงจากเดือนก่อนหน้าล่าสุด (carry forward)
+    const empIdsWithRecord = new Set(contributions.map((c) => c.employeeId))
+    const empIdsWithoutRecord = employees
+      .filter((e) => !empIdsWithRecord.has(e.id))
+      .map((e) => e.id)
+
+    let previousContributions: typeof contributions = []
+    if (empIdsWithoutRecord.length > 0) {
+      const allPrevious = await prisma.socialSecurityContribution.findMany({
+        where: {
+          employeeId: { in: empIdsWithoutRecord },
+          OR: [
+            { year: { lt: y } },
+            { year: y, month: { lt: m } },
+          ],
+        },
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
+      })
+      const seen = new Set<number>()
+      for (const rec of allPrevious) {
+        if (!seen.has(rec.employeeId)) {
+          seen.add(rec.employeeId)
+          previousContributions.push(rec)
+        }
+      }
+    }
 
     // รวมข้อมูลพนักงานกับเงินสมทบ
     const employeesWithContributions = employees.map((emp) => {
       const contribution = contributions.find((c) => c.employeeId === emp.id)
-      return {
-        ...emp,
-        contributionId: contribution?.id || null,
-        amount: contribution ? Number(contribution.amount) : 0,
+      const prev = !contribution ? previousContributions.find((p) => p.employeeId === emp.id) : null
+
+      if (contribution) {
+        return {
+          ...emp,
+          contributionId: contribution.id,
+          amount: Number(contribution.amount),
+          isCarriedForward: false,
+        }
+      } else if (prev && Number(prev.amount) > 0) {
+        // carry forward จากเดือนก่อน (แสดงว่าเปิดอยู่)
+        return {
+          ...emp,
+          contributionId: null,
+          amount: Number(prev.amount),
+          isCarriedForward: true,
+        }
+      } else {
+        return {
+          ...emp,
+          contributionId: null,
+          amount: 0,
+          isCarriedForward: false,
+        }
       }
     })
 

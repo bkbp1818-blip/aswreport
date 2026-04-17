@@ -65,6 +65,7 @@ interface MonthlySalaryEmployee {
   monthlySalaryId: number | null
   monthlySalary: number | null
   effectiveSalary: number
+  isCarriedForward?: boolean
 }
 
 interface MonthlySalaryData {
@@ -84,6 +85,7 @@ interface SocialSecurityEmployee {
   position: 'MAID' | 'MANAGER' | 'PARTNER'
   contributionId: number | null
   amount: number
+  isCarriedForward?: boolean
 }
 
 interface SocialSecurityData {
@@ -856,9 +858,10 @@ export default function EmployeesPage() {
                             }))
                           }
                         />
-                        <div className="w-5 flex-shrink-0">
+                        <div className="w-5 flex-shrink-0 text-center">
                           {showAsDisabled && !isEditing && <span className="text-[10px] text-red-400">✕</span>}
-                          {!showAsDisabled && hasMonthlyOverride && !isEditing && <Check className="h-4 w-4 text-green-500" />}
+                          {!showAsDisabled && hasMonthlyOverride && !isEditing && !emp.isCarriedForward && <Check className="h-4 w-4 text-green-500" />}
+                          {!showAsDisabled && emp.isCarriedForward && !isEditing && <span className="text-[10px] text-blue-400">auto</span>}
                           {!showAsDisabled && isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
                         </div>
                       </div>
@@ -984,9 +987,10 @@ export default function EmployeesPage() {
                             <p className="text-[10px] text-slate-400">5% × {formatNumber(effectiveSalary)}</p>
                           )}
                         </div>
-                        <div className="w-5 flex-shrink-0">
+                        <div className="w-5 flex-shrink-0 text-center">
                           {hasToggled && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
-                          {!hasToggled && savedIsOn && <Check className="h-4 w-4 text-green-500" />}
+                          {!hasToggled && savedIsOn && !emp.isCarriedForward && <Check className="h-4 w-4 text-green-500" />}
+                          {!hasToggled && savedIsOn && emp.isCarriedForward && <span className="text-[10px] text-blue-400">auto</span>}
                         </div>
                       </div>
                     )
