@@ -55,13 +55,6 @@ const positionIcons: Record<string, string> = {
   PARTNER: '🤝',
 }
 
-interface SalarySummary {
-  employees: Employee[]
-  totalSalary: number
-  buildingCount: number
-  salaryPerBuilding: number
-}
-
 interface MonthlySalaryEmployee {
   id: number
   firstName: string
@@ -98,7 +91,6 @@ const positionColors: Record<string, string> = {
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [salarySummary, setSalarySummary] = useState<SalarySummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -134,17 +126,6 @@ export default function EmployeesPage() {
       setEmployees(data)
     } catch (error) {
       console.error('Error loading employees:', error)
-    }
-  }
-
-  // โหลดสรุปเงินเดือน
-  const loadSalarySummary = async () => {
-    try {
-      const res = await fetch('/api/employees/salary-summary')
-      const data = await res.json()
-      setSalarySummary(data)
-    } catch (error) {
-      console.error('Error loading salary summary:', error)
     }
   }
 
@@ -204,7 +185,7 @@ export default function EmployeesPage() {
   }
 
   useEffect(() => {
-    Promise.all([loadEmployees(), loadSalarySummary(), loadMonthlySalary()])
+    Promise.all([loadEmployees(), loadMonthlySalary()])
       .finally(() => setLoading(false))
   }, [])
 
@@ -261,7 +242,7 @@ export default function EmployeesPage() {
         throw new Error('Failed to update')
       }
 
-      await Promise.all([loadEmployees(), loadSalarySummary()])
+      await Promise.all([loadEmployees(), loadMonthlySalary()])
     } catch (error) {
       console.error('Error toggling active:', error)
       alert('เกิดข้อผิดพลาดในการอัพเดท')
@@ -302,7 +283,7 @@ export default function EmployeesPage() {
         throw new Error(errorData.error || 'Failed to save')
       }
 
-      await Promise.all([loadEmployees(), loadSalarySummary()])
+      await Promise.all([loadEmployees(), loadMonthlySalary()])
       setIsDialogOpen(false)
       resetForm()
       alert('บันทึกข้อมูลพนักงานสำเร็จ')
@@ -329,7 +310,7 @@ export default function EmployeesPage() {
         throw new Error('Failed to delete')
       }
 
-      await Promise.all([loadEmployees(), loadSalarySummary()])
+      await Promise.all([loadEmployees(), loadMonthlySalary()])
     } catch (error) {
       console.error('Error deleting employee:', error)
       alert('เกิดข้อผิดพลาดในการลบ')
@@ -347,7 +328,37 @@ export default function EmployeesPage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Month/Year Selector */}
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-[#457b9d]" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((m) => (
+                  <SelectItem key={m.value} value={String(m.value)}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[90px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {generateYears().map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open)
           if (!open) resetForm()
         }}>
@@ -456,10 +467,11 @@ export default function EmployeesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      {salarySummary && (
+      {/* Summary Cards — ใช้ข้อมูลจาก monthlySalaryData ตามเดือนที่เลือก */}
+      {monthlySalaryData && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -472,7 +484,7 @@ export default function EmployeesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">
-                {salarySummary.employees.length} คน
+                {monthlySalaryData.employees.length} คน
               </div>
             </CardContent>
           </Card>
@@ -488,8 +500,11 @@ export default function EmployeesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">
-                {formatNumber(salarySummary.totalSalary)}
+                {formatNumber(monthlySalaryData.totalSalary)}
               </div>
+              <p className="text-xs text-white/70 mt-1">
+                {MONTHS.find((m) => m.value === monthlySalaryData.month)?.label} {monthlySalaryData.year}
+              </p>
             </CardContent>
           </Card>
 
@@ -499,12 +514,12 @@ export default function EmployeesPage() {
                 จำนวนอาคาร
               </CardTitle>
               <div className="rounded-full bg-white/20 p-1.5">
-                <span className="text-white text-xs font-bold">x{salarySummary.buildingCount}</span>
+                <span className="text-white text-xs font-bold">x{monthlySalaryData.buildingCount}</span>
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">
-                {salarySummary.buildingCount} อาคาร
+                {monthlySalaryData.buildingCount} อาคาร
               </div>
             </CardContent>
           </Card>
@@ -520,10 +535,10 @@ export default function EmployeesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-[#84A59D]">
-                {formatNumber(salarySummary.salaryPerBuilding)}
+                {formatNumber(monthlySalaryData.salaryPerBuilding)}
               </div>
               <p className="text-xs text-[#666] mt-1">
-                = {formatNumber(salarySummary.totalSalary)} ÷ {salarySummary.buildingCount}
+                = {formatNumber(monthlySalaryData.totalSalary)} ÷ {monthlySalaryData.buildingCount}
               </p>
             </CardContent>
           </Card>
@@ -559,7 +574,23 @@ export default function EmployeesPage() {
               .sort((a, b) => Number(b.salary) - Number(a.salary))
             if (positionEmployees.length === 0) return null
 
-            const totalSalary = positionEmployees.reduce((sum, e) => sum + Number(e.salary), 0)
+            // สร้าง map ของ effectiveSalary จาก monthlySalaryData
+            const msMap = new Map<number, MonthlySalaryEmployee>()
+            if (monthlySalaryData) {
+              monthlySalaryData.employees.forEach((e) => msMap.set(e.id, e))
+            }
+
+            // คำนวณ effective salary ของกลุ่มนี้
+            const getEffectiveSalary = (empId: number, defaultSalary: number) => {
+              const ms = msMap.get(empId)
+              return ms ? ms.effectiveSalary : defaultSalary
+            }
+
+            const totalSalary = positionEmployees.reduce(
+              (sum, e) => sum + getEffectiveSalary(e.id, Number(e.salary)),
+              0
+            )
+            const buildingCount = monthlySalaryData?.buildingCount || 3
 
             return (
               <Card key={position} className="border-0 shadow-md overflow-hidden">
@@ -582,86 +613,93 @@ export default function EmployeesPage() {
                 {/* Content */}
                 <CardContent className="p-0">
                   <div className="divide-y">
-                    {positionEmployees.map((employee, index) => (
-                      <div
-                        key={employee.id}
-                        className={`p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition-colors`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-[#333]">
-                                {employee.firstName} {employee.lastName}
-                              </p>
-                              {employee.nickname && (
-                                <span className="text-sm text-slate-500">
-                                  ({employee.nickname})
-                                </span>
-                              )}
-                              {!employee.isActive && (
-                                <Badge variant="outline" className="text-red-500 border-red-300">
-                                  ลาออกแล้ว
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                              <div className="flex items-center gap-1">
-                                <span className="text-slate-500">เงินเดือน:</span>
-                                <span className="font-semibold text-[#333]">
-                                  {formatNumber(Number(employee.salary))} บาท
-                                </span>
+                    {positionEmployees.map((employee, index) => {
+                      const effectiveSalary = getEffectiveSalary(employee.id, Number(employee.salary))
+                      const msEmployee = msMap.get(employee.id)
+                      const hasMonthlyOverride = msEmployee?.monthlySalary !== null && msEmployee?.monthlySalary !== undefined
+
+                      return (
+                        <div
+                          key={employee.id}
+                          className={`p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition-colors`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-[#333]">
+                                  {employee.firstName} {employee.lastName}
+                                </p>
+                                {employee.nickname && (
+                                  <span className="text-sm text-slate-500">
+                                    ({employee.nickname})
+                                  </span>
+                                )}
+                                {!employee.isActive && (
+                                  <Badge variant="outline" className="text-red-500 border-red-300">
+                                    ลาออกแล้ว
+                                  </Badge>
+                                )}
                               </div>
-                              <div
-                                className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                                style={{ backgroundColor: `${positionColors[position]}20` }}
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-slate-500">เงินเดือน:</span>
+                                  <span className="font-semibold text-[#333]">
+                                    {formatNumber(effectiveSalary)} บาท
+                                  </span>
+                                  {hasMonthlyOverride && effectiveSalary !== Number(employee.salary) && (
+                                    <span className="text-xs text-[#F6BD60]">(ปรับแล้ว)</span>
+                                  )}
+                                </div>
+                                <div
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                                  style={{ backgroundColor: `${positionColors[position]}20` }}
+                                >
+                                  <span style={{ color: positionColors[position] }}>÷{buildingCount}</span>
+                                  <span className="font-bold" style={{ color: positionColors[position] }}>
+                                    = {formatNumber(effectiveSalary / buildingCount)} บาท/อาคาร
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${
+                                  employee.isActive
+                                    ? 'text-green-600 hover:text-green-700'
+                                    : 'text-red-500 hover:text-red-600'
+                                }`}
+                                onClick={() => handleToggleActive(employee)}
+                                title={employee.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                               >
-                                <span style={{ color: positionColors[position] }}>÷{salarySummary?.buildingCount || 0}</span>
-                                <span className="font-bold" style={{ color: positionColors[position] }}>
-                                  = {salarySummary && salarySummary.buildingCount > 0
-                                    ? formatNumber(Number(employee.salary) / salarySummary.buildingCount)
-                                    : '-'} บาท/อาคาร
-                                </span>
-                              </div>
+                                {employee.isActive ? (
+                                  <UserCheck className="h-4 w-4" />
+                                ) : (
+                                  <UserX className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
+                                onClick={() => handleEdit(employee)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-red-500"
+                                onClick={() => handleDelete(employee.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={`h-8 w-8 ${
-                                employee.isActive
-                                  ? 'text-green-600 hover:text-green-700'
-                                  : 'text-red-500 hover:text-red-600'
-                              }`}
-                              onClick={() => handleToggleActive(employee)}
-                              title={employee.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
-                            >
-                              {employee.isActive ? (
-                                <UserCheck className="h-4 w-4" />
-                              ) : (
-                                <UserX className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
-                              onClick={() => handleEdit(employee)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-red-500"
-                              onClick={() => handleDelete(employee.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   {/* Footer - Total */}
@@ -675,11 +713,9 @@ export default function EmployeesPage() {
                         <p className="font-bold text-[#333]">{formatNumber(totalSalary)} บาท</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-slate-500">รวมต่ออาคาร (÷{salarySummary?.buildingCount || 0})</p>
+                        <p className="text-xs text-slate-500">รวมต่ออาคาร (÷{buildingCount})</p>
                         <p className="font-bold text-lg" style={{ color: positionColors[position] }}>
-                          {salarySummary && salarySummary.buildingCount > 0
-                            ? formatNumber(totalSalary / salarySummary.buildingCount)
-                            : '-'} บาท
+                          {formatNumber(totalSalary / buildingCount)} บาท
                         </p>
                       </div>
                     </div>
@@ -694,41 +730,15 @@ export default function EmployeesPage() {
       {/* Monthly Salary Section */}
       <Card className="border-0 shadow-md">
         <CardHeader className="bg-gradient-to-r from-[#457b9d] to-[#1d3557] text-white rounded-t-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5" />
-              <div>
-                <CardTitle className="text-white">กรอกเงินเดือนรายเดือน</CardTitle>
-                <CardDescription className="text-white/70">
-                  ตั้งเงินเดือนแต่ละคนแยกตามเดือน (ถ้าไม่กรอก จะใช้ค่าเริ่มต้นจากข้อมูลพนักงาน)
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px] bg-white/20 border-white/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px] bg-white/20 border-white/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {generateYears().map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" />
+            <div>
+              <CardTitle className="text-white">
+                กรอกเงินเดือนรายเดือน — {MONTHS.find((m) => m.value === parseInt(selectedMonth))?.label} {selectedYear}
+              </CardTitle>
+              <CardDescription className="text-white/70">
+                ตั้งเงินเดือนแต่ละคนแยกตามเดือน (ถ้าไม่กรอก จะใช้ค่าเริ่มต้นจากข้อมูลพนักงาน)
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -740,28 +750,6 @@ export default function EmployeesPage() {
             </div>
           ) : monthlySalaryData && monthlySalaryData.employees.length > 0 ? (
             <>
-              {/* Summary row */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 border-b">
-                <div>
-                  <p className="text-xs text-slate-500">เงินเดือนรวม (เดือนนี้)</p>
-                  <p className="text-lg font-bold text-[#1d3557]">
-                    {formatNumber(monthlySalaryData.totalSalary)} บาท
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">เงินเดือนต่ออาคาร (÷{monthlySalaryData.buildingCount})</p>
-                  <p className="text-lg font-bold text-[#457b9d]">
-                    {formatNumber(monthlySalaryData.salaryPerBuilding)} บาท
-                  </p>
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <p className="text-xs text-slate-500">เดือน/ปี</p>
-                  <p className="text-lg font-bold text-[#84A59D]">
-                    {MONTHS.find((m) => m.value === monthlySalaryData.month)?.label} {monthlySalaryData.year}
-                  </p>
-                </div>
-              </div>
-
               {/* Employee salary table */}
               <div className="overflow-x-auto">
                 <Table>
@@ -882,9 +870,9 @@ export default function EmployeesPage() {
             * เงินเดือนพนักงานจะถูกหารเฉลี่ยตามจำนวนอาคาร และนำไปแสดงในหน้ากรอกข้อมูลรายรับ-รายจ่ายโดยอัตโนมัติ
           </p>
           <p>
-            * ตัวอย่าง: ถ้าเงินเดือนรวม {formatNumber(salarySummary?.totalSalary || 0)} บาท
-            หาร {salarySummary?.buildingCount || 0} อาคาร
-            = {formatNumber(salarySummary?.salaryPerBuilding || 0)} บาท/อาคาร
+            * ตัวอย่าง: ถ้าเงินเดือนรวม {formatNumber(monthlySalaryData?.totalSalary || 0)} บาท
+            หาร {monthlySalaryData?.buildingCount || 0} อาคาร
+            = {formatNumber(monthlySalaryData?.salaryPerBuilding || 0)} บาท/อาคาร
           </p>
           <p>
             * ส่วน "กรอกเงินเดือนรายเดือน" ด้านบน ใช้สำหรับกรณีที่เงินเดือนพนักงานมีการปรับเปลี่ยนในบางเดือน
