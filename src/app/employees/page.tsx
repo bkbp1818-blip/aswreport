@@ -913,20 +913,16 @@ export default function EmployeesPage() {
           <CardContent className="p-0">
             {socialSecurityData && socialSecurityData.employees.length > 0 && monthlySalaryData ? (
               <>
-                {/* Summary — แสดงยอดที่บันทึกแล้ว + ยอด preview ถ้ามี toggle ที่ยังไม่บันทึก */}
+                {/* Summary — คำนวณยอดรวมจาก toggle + effectiveSalary เสมอ */}
                 {(() => {
-                  // คำนวณ preview total รวม toggle ที่ยังไม่ได้บันทึก
                   let previewTotal = 0
                   socialSecurityData.employees.forEach((emp) => {
                     const msEmp = monthlySalaryData.employees.find((e) => e.id === emp.id)
                     const calcAmount = msEmp ? calculateSocialSecurity(msEmp.effectiveSalary) : 0
-                    if (ssToggles[emp.id] !== undefined) {
-                      // มี toggle → ใช้ค่า toggle
-                      previewTotal += ssToggles[emp.id] ? calcAmount : 0
-                    } else {
-                      // ไม่มี toggle → ใช้ค่าจาก DB
-                      previewTotal += emp.amount
-                    }
+                    // ถ้ามี toggle → ใช้ค่า toggle, ถ้าไม่มี → ดูจาก DB ว่าเปิดอยู่ไหม
+                    const savedIsOn = emp.amount > 0
+                    const isOn = ssToggles[emp.id] !== undefined ? ssToggles[emp.id] : savedIsOn
+                    previewTotal += isOn ? calcAmount : 0
                   })
                   return (
                     <div className="flex items-center justify-between px-4 py-2 bg-pink-50/50 border-b text-xs">
