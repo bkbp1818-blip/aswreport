@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.14.0 |
+| **Version** | 1.15.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -124,11 +124,23 @@
   - กราฟแท่ง (recharts) เปรียบเทียบ รายรับ/รายจ่าย/กำไร
   - Header เปลี่ยนสีตามสถานะ: สีทอง = กำไร, สีแดง = ขาดทุน
 
-### 3. เงินเดือนพนักงาน (`/employees`)
+### 3. เงินเดือนพนักงาน (`/employees`) ✨ UPDATED v1.15.0
 - เพิ่ม/แก้ไข/ลบพนักงาน
-- เรียงจากเงินเดือนสูง → น้อย
-- แสดงเงินเดือนต่ออาคาร
-- สถานะ active/inactive
+- **Summary Cards 3 ใบ:** จำนวนพนักงาน | เงินเดือนรวม+ต่ออาคาร | ประกันสังคมรวม+ต่ออาคาร
+- **ตัวเลือกเดือน/ปี** ที่ Header — ควบคุมข้อมูลทั้งหน้า
+- **Card แยกประเภท (read-only):** หุ้นส่วน | ผู้จัดการ | แม่บ้าน — แสดง effectiveSalary ตามเดือนที่เลือก
+- **Layout 2 คอลัมน์ซ้าย-ขวา:**
+  - **ซ้าย: กรอกเงินเดือนรายเดือน** — ตั้งเงินเดือนแต่ละคนแยกตามเดือน
+    - Toggle ปิด/เปิดเงินเดือน (ลาออก/ไม่จ่ายเดือนนี้ = 0)
+    - Batch save — กรอกหลายคนแล้วกดบันทึกทีเดียว
+    - Carry forward — ดึงข้อมูลเดือนก่อนมาแสดง auto (ป้าย "auto" สีฟ้า)
+  - **ขวา: เงินสมทบประกันสังคม (นายจ้าง)** — คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท ตามกฎหมาย 2569)
+    - Toggle เปิด/ปิดประกันสังคมแต่ละคน
+    - แสดงสูตร "5% × เงินเดือน" ให้เห็นที่มา
+    - Carry forward — ดึง toggle จากเดือนก่อนมา auto
+    - ยอดรวมหาร 3 อาคาร → แสดงที่หน้ากรอกข้อมูล auto (read-only)
+- เรียงจากเงินเดือนสูง → น้อย (ทั้ง 2 ตาราง เรียงเหมือนกัน)
+- **MonthlySalary model** — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี (ถ้าไม่มี fallback ไป Employee.salary)
 
 ### 4. ยอดค้างจ่ายคืน (`/reimbursements`)
 - ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
@@ -205,7 +217,8 @@
 | `/api/summary` | GET | สรุปผลประกอบการ | Auth |
 | `/api/summary/history` | GET | ข้อมูลย้อนหลัง | Partner |
 | `/api/employees` | GET, POST, PUT, DELETE | จัดการพนักงาน | Partner |
-| `/api/employees/salary-summary` | GET | สรุปเงินเดือน | Partner |
+| `/api/employees/salary-summary` | GET | สรุปเงินเดือน (รับ ?month&year สำหรับเงินเดือนรายเดือน) | Partner |
+| `/api/employees/monthly-salary` | GET, POST | เงินเดือนรายเดือนแต่ละคน (carry forward, batch save) ✨ v1.15.0 | Partner |
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
 | `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย ✨ | Auth |
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
@@ -232,7 +245,7 @@ Amount to Pay    = Management Fee + VAT
 **หมายเหตุ:**
 - อาคาร FUNNS81, FUNNLP ไม่คำนวณ Management Fee และ VAT
 - **เงินเดือนพนักงาน** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
-- **เงินสมทบประกันสังคม** — ทุกอาคารกรอกเองแยกผ่าน ExpenseHistory (ไม่หาร 3 อีกแล้ว) ✨ UPDATED v1.11.1
+- **เงินสมทบประกันสังคม** — CT/YW/NANA: คำนวณ auto จาก effectiveSalary (5%, สูงสุด 875 บาท ตามกฎหมาย 2569) หาร 3 อาคาร, Funn D: กรอกเองผ่าน ExpenseHistory ✨ UPDATED v1.15.0
 - **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
 - **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
 - **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
@@ -258,7 +271,34 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.14.0 (Current - April 2026)
+### v1.15.0 (Current - April 2026)
+- **ระบบเงินเดือนรายเดือน (Monthly Salary):**
+  - เพิ่ม `MonthlySalary` model — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี
+  - API `/api/employees/monthly-salary` — GET (carry forward จากเดือนก่อน), POST (batch save, salary=0 ปิดเงินเดือน, salary=-1 ลบ record)
+  - อัปเดต salary-summary API ให้รับ month/year params
+  - อัปเดต summary + summary/history APIs ให้คำนวณจาก MonthlySalary
+  - Toggle ปิด/เปิดเงินเดือนแต่ละคนแต่ละเดือน (ลาออก/ไม่จ่าย)
+  - Carry forward — เดือนที่ไม่มี record ดึงจากเดือนก่อนหน้าล่าสุด auto
+  - ไฟล์ใหม่: `prisma/schema.prisma` (MonthlySalary), `api/employees/monthly-salary/route.ts`
+  - ไฟล์แก้ไข: `api/employees/salary-summary/route.ts`, `api/summary/route.ts`, `api/summary/history/route.ts`, `app/employees/page.tsx`, `app/transactions/page.tsx`, `app/page.tsx`
+- **ระบบเงินสมทบประกันสังคมอัตโนมัติ:**
+  - คำนวณ auto 5% ของ effectiveSalary (สูงสุด 875 บาท/คน ตามกฎหมายใหม่ 1 ม.ค. 2569)
+  - เพิ่มค่าคงที่: `SOCIAL_SECURITY_RATE=0.05`, `SOCIAL_SECURITY_MAX=875`, `SOCIAL_SECURITY_SALARY_CAP=17500`
+  - Toggle เปิด/ปิดประกันสังคมแต่ละคน + Carry forward จากเดือนก่อน
+  - CT/YW/NANA: แสดง read-only ที่หน้ากรอกข้อมูล "(จากหน้าเงินเดือน)" — ไม่มีปุ่ม edit
+  - Funn D: ยังกรอกเองผ่าน ExpenseHistory เหมือนเดิม
+  - social-security API เพิ่ม `calculatedTotal` + `calculatedPerBuilding` (คำนวณจาก effectiveSalary)
+  - summary APIs คำนวณ auto จาก effectiveSalary สำหรับ CT/YW/NANA
+  - ไฟล์แก้ไข: `lib/calculations.ts`, `api/social-security/route.ts`, `api/summary/route.ts`, `api/summary/history/route.ts`, `app/employees/page.tsx`, `app/transactions/page.tsx`
+- **ปรับ UI หน้าเงินเดือนพนักงาน:**
+  - ย้ายตัวเลือกเดือน/ปีขึ้น Header — ควบคุมทั้งหน้า
+  - Summary Cards 3 ใบ: จำนวนพนักงาน | เงินเดือนรวม | ประกันสังคมรวม
+  - Card แยกประเภท (หุ้นส่วน/ผู้จัดการ/แม่บ้าน) เป็น read-only — แสดง effectiveSalary ตามเดือน
+  - Layout 2 คอลัมน์: เงินเดือน (ซ้าย) | ประกันสังคม (ขวา)
+  - เรียงจากเงินเดือนสูง → น้อย ทั้ง 2 ตาราง
+  - ไฟล์แก้ไข: `app/employees/page.tsx`
+
+### v1.14.0 (April 2026)
 - **ระบบจัดการสิทธิ์เมนูรายผู้ใช้ (Per-User Menu Permissions):**
   - เพิ่ม `allowedMenus Json?` ใน User model → PARTNER เปิด/ปิดเมนูให้ STAFF/VIEWER ด้วย checkbox
   - PARTNER เข้าได้ทุกเมนูเสมอ, เมนู "จัดการผู้ใช้" สงวนสำหรับ PARTNER
@@ -794,12 +834,23 @@ npx vercel --prod        # Deploy
 | createdAt | DateTime | วันที่สร้าง |
 | updatedAt | DateTime | วันที่อัปเดต |
 
-### SocialSecurityContribution
+### MonthlySalary ✨ NEW v1.15.0
 | Field | Type | คำอธิบาย |
 |-------|------|----------|
 | id | Int | Primary key |
 | employeeId | Int | FK พนักงาน |
-| amount | Decimal | จำนวนเงินสมทบ (ค่าเริ่มต้น 750) |
+| salary | Decimal | เงินเดือนเดือนนี้ (0=ปิดเงินเดือน) |
+| month | Int | เดือน (1-12) |
+| year | Int | ปี |
+| createdAt | DateTime | วันที่สร้าง |
+| updatedAt | DateTime | วันที่อัปเดต |
+
+### SocialSecurityContribution ✨ UPDATED v1.15.0
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| employeeId | Int | FK พนักงาน |
+| amount | Decimal | จำนวนเงินสมทบ (คำนวณ auto: 5% สูงสุด 875 บาท) |
 | month | Int | เดือน (1-12) |
 | year | Int | ปี |
 | createdAt | DateTime | วันที่สร้าง |
@@ -829,4 +880,6 @@ npx vercel --prod        # Deploy
 - API มีการตรวจสอบสิทธิ์ (Auth)
 - Production URL: https://aswreport.vercel.app
 - **ค่าใช้จ่ายส่วนกลางแยกตามอาคาร+เดือน:** ข้อมูลเก็บใน ExpenseHistory (targetType=SETTINGS, targetId=buildingId) แยกตาม month/year — ไม่ใช้ GLOBAL_SETTINGS อีกแล้ว (v1.11.0)
-- **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year
+- **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year — CT/YW/NANA คำนวณ auto จาก effectiveSalary (5%, max 875 ตามกฎหมาย 2569)
+- **เงินเดือนรายเดือน (MonthlySalary):** เก็บแยกตามพนักงาน+เดือน+ปี — ถ้าไม่มี record จะ carry forward จากเดือนก่อน, ถ้าไม่มีเลย fallback ไป Employee.salary
+- **อัตราประกันสังคม (กฎหมาย 2569-2571):** 5%, เพดาน 17,500 บาท, สูงสุด 875 บาท/คน/เดือน
