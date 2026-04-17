@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Loader2, Users, Calculator, UserCheck, UserX, CalendarDays, Save, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 
@@ -545,7 +545,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Employee List - แยกตามกลุ่ม */}
+      {/* Employee List - แยกตามกลุ่ม (read-only แสดงเงินเดือนตามเดือนที่เลือก) */}
       {loading ? (
         <Card className="border-0 shadow-md">
           <CardContent className="py-12">
@@ -555,7 +555,7 @@ export default function EmployeesPage() {
             </div>
           </CardContent>
         </Card>
-      ) : employees.length === 0 ? (
+      ) : !monthlySalaryData || monthlySalaryData.employees.length === 0 ? (
         <Card className="border-0 shadow-md">
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center text-[#666]">
@@ -568,29 +568,14 @@ export default function EmployeesPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           {positionOrder.map((position) => {
-            // กรองตามตำแหน่ง และเรียงจากเงินเดือนสูงสุดไปน้อยสุด
-            const positionEmployees = employees
+            // กรองจาก monthlySalaryData ตามตำแหน่ง และเรียงจากเงินเดือนสูงสุดไปน้อยสุด
+            const positionEmployees = monthlySalaryData.employees
               .filter((e) => e.position === position)
-              .sort((a, b) => Number(b.salary) - Number(a.salary))
+              .sort((a, b) => b.effectiveSalary - a.effectiveSalary)
             if (positionEmployees.length === 0) return null
 
-            // สร้าง map ของ effectiveSalary จาก monthlySalaryData
-            const msMap = new Map<number, MonthlySalaryEmployee>()
-            if (monthlySalaryData) {
-              monthlySalaryData.employees.forEach((e) => msMap.set(e.id, e))
-            }
-
-            // คำนวณ effective salary ของกลุ่มนี้
-            const getEffectiveSalary = (empId: number, defaultSalary: number) => {
-              const ms = msMap.get(empId)
-              return ms ? ms.effectiveSalary : defaultSalary
-            }
-
-            const totalSalary = positionEmployees.reduce(
-              (sum, e) => sum + getEffectiveSalary(e.id, Number(e.salary)),
-              0
-            )
-            const buildingCount = monthlySalaryData?.buildingCount || 3
+            const totalSalary = positionEmployees.reduce((sum, e) => sum + e.effectiveSalary, 0)
+            const buildingCount = monthlySalaryData.buildingCount
 
             return (
               <Card key={position} className="border-0 shadow-md overflow-hidden">
@@ -613,88 +598,30 @@ export default function EmployeesPage() {
                 {/* Content */}
                 <CardContent className="p-0">
                   <div className="divide-y">
-                    {positionEmployees.map((employee, index) => {
-                      const effectiveSalary = getEffectiveSalary(employee.id, Number(employee.salary))
-                      const msEmployee = msMap.get(employee.id)
-                      const hasMonthlyOverride = msEmployee?.monthlySalary !== null && msEmployee?.monthlySalary !== undefined
-
+                    {positionEmployees.map((emp, index) => {
+                      const hasMonthlyOverride = emp.monthlySalary !== null
                       return (
                         <div
-                          key={employee.id}
-                          className={`p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition-colors`}
+                          key={emp.id}
+                          className={`px-4 py-3 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold text-[#333]">
-                                  {employee.firstName} {employee.lastName}
-                                </p>
-                                {employee.nickname && (
-                                  <span className="text-sm text-slate-500">
-                                    ({employee.nickname})
-                                  </span>
-                                )}
-                                {!employee.isActive && (
-                                  <Badge variant="outline" className="text-red-500 border-red-300">
-                                    ลาออกแล้ว
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-slate-500">เงินเดือน:</span>
-                                  <span className="font-semibold text-[#333]">
-                                    {formatNumber(effectiveSalary)} บาท
-                                  </span>
-                                  {hasMonthlyOverride && effectiveSalary !== Number(employee.salary) && (
-                                    <span className="text-xs text-[#F6BD60]">(ปรับแล้ว)</span>
-                                  )}
-                                </div>
-                                <div
-                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: `${positionColors[position]}20` }}
-                                >
-                                  <span style={{ color: positionColors[position] }}>÷{buildingCount}</span>
-                                  <span className="font-bold" style={{ color: positionColors[position] }}>
-                                    = {formatNumber(effectiveSalary / buildingCount)} บาท/อาคาร
-                                  </span>
-                                </div>
-                              </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-[#333]">
+                                {emp.firstName} {emp.lastName}
+                              </p>
+                              {emp.nickname && (
+                                <span className="text-sm text-slate-400">({emp.nickname})</span>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 ${
-                                  employee.isActive
-                                    ? 'text-green-600 hover:text-green-700'
-                                    : 'text-red-500 hover:text-red-600'
-                                }`}
-                                onClick={() => handleToggleActive(employee)}
-                                title={employee.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
-                              >
-                                {employee.isActive ? (
-                                  <UserCheck className="h-4 w-4" />
-                                ) : (
-                                  <UserX className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-[#84A59D]"
-                                onClick={() => handleEdit(employee)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-red-500"
-                                onClick={() => handleDelete(employee.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-[#333]">
+                                {formatNumber(emp.effectiveSalary)}
+                              </span>
+                              <span className="text-xs text-slate-400">บาท</span>
+                              {hasMonthlyOverride && emp.effectiveSalary !== emp.salary && (
+                                <span className="text-xs text-[#F6BD60] font-medium">(ปรับ)</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -713,7 +640,7 @@ export default function EmployeesPage() {
                         <p className="font-bold text-[#333]">{formatNumber(totalSalary)} บาท</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-slate-500">รวมต่ออาคาร (÷{buildingCount})</p>
+                        <p className="text-xs text-slate-500">ต่ออาคาร (÷{buildingCount})</p>
                         <p className="font-bold text-lg" style={{ color: positionColors[position] }}>
                           {formatNumber(totalSalary / buildingCount)} บาท
                         </p>
