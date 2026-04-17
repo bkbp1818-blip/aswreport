@@ -178,10 +178,23 @@ export default function EmployeesPage() {
 
     setSavingAllMonthlySalary(true)
     try {
-      const items = editedIds.map((id) => ({
-        employeeId: parseInt(id),
-        salary: parseFloat(editingMonthlySalary[parseInt(id)]) || 0,
-      }))
+      const items = editedIds
+        .map((id) => {
+          const val = editingMonthlySalary[parseInt(id)]
+          // ถ้าช่องว่าง → ส่ง -1 เพื่อลบ record (กลับไปใช้ค่า default)
+          // ถ้า 0 → ปิดเงินเดือนเดือนนี้
+          // ถ้า -1 → ลบ record (toggle เปิดกลับ)
+          const salary = val === '' || val === undefined ? -1 : parseFloat(val)
+          return { employeeId: parseInt(id), salary: isNaN(salary) ? -1 : salary }
+        })
+        // กรองออกรายการที่ไม่มีค่าจริงๆ เปลี่ยนแปลง (ช่องว่าง + ไม่มี override อยู่แล้ว)
+        .filter((item) => {
+          const emp = monthlySalaryData?.employees.find((e) => e.id === item.employeeId)
+          if (!emp) return false
+          // ถ้า salary = -1 (ลบ record) แต่ไม่มี override อยู่แล้ว → ข้าม
+          if (item.salary < 0 && emp.monthlySalary === null) return false
+          return true
+        })
 
       const res = await fetch('/api/employees/monthly-salary', {
         method: 'POST',
@@ -195,6 +208,12 @@ export default function EmployeesPage() {
 
       if (!res.ok) {
         throw new Error('Failed to save')
+      }
+
+      if (items.length === 0) {
+        setEditingMonthlySalary({})
+        setSavingAllMonthlySalary(false)
+        return
       }
 
       // โหลดข้อมูลใหม่
