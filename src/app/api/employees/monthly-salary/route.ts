@@ -116,15 +116,18 @@ export async function POST(request: NextRequest) {
       })
 
       if (existing) {
-        if (salaryVal === 0) {
+        if (salaryVal < 0) {
+          // salary = -1 → ลบ record (กลับไปใช้ค่า default)
           await prisma.monthlySalary.delete({ where: { id: existing.id } })
         } else {
+          // salary >= 0 → อัปเดต (รวมถึง 0 = ปิดเงินเดือนเดือนนี้)
           await prisma.monthlySalary.update({
             where: { id: existing.id },
             data: { salary: salaryVal },
           })
         }
-      } else if (salaryVal > 0) {
+      } else if (salaryVal >= 0) {
+        // สร้างใหม่ (รวมถึง 0 = ปิดเงินเดือนเดือนนี้)
         await prisma.monthlySalary.create({
           data: { employeeId: empId, salary: salaryVal, month, year },
         })

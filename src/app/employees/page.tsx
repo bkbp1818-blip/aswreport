@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check, ShieldCheck } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Users, Calculator, CalendarDays, Save, Check, ShieldCheck, ToggleLeft, ToggleRight } from 'lucide-react'
 import { formatNumber, MONTHS } from '@/lib/utils'
 import { generateYears } from '@/lib/calculations'
 
@@ -760,24 +760,65 @@ export default function EmployeesPage() {
                   {monthlySalaryData.employees.map((emp, index) => {
                     const isEditing = editingMonthlySalary[emp.id] !== undefined
                     const hasMonthlyOverride = emp.monthlySalary !== null
+                    // "ปิดเงินเดือน" = มี record แต่ค่า = 0
+                    const isDisabledThisMonth = hasMonthlyOverride && emp.monthlySalary === 0
+                    // ถ้ากำลังแก้ไขเป็น "0" ก็ถือว่าปิด
+                    const isEditingToZero = isEditing && editingMonthlySalary[emp.id] === '0'
+                    const showAsDisabled = isDisabledThisMonth || isEditingToZero
 
                     return (
-                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${showAsDisabled ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        {/* ปุ่ม toggle ปิด/เปิด */}
+                        <button
+                          type="button"
+                          className="flex-shrink-0"
+                          title={showAsDisabled ? 'เปิดเงินเดือนเดือนนี้' : 'ปิดเงินเดือนเดือนนี้ (ลาออก/ไม่จ่าย)'}
+                          onClick={() => {
+                            if (showAsDisabled) {
+                              // เปิดกลับ → ลบ editing state (ถ้ามี) หรือตั้งเป็น -1 เพื่อลบ record
+                              if (isEditing) {
+                                setEditingMonthlySalary((prev) => {
+                                  const next = { ...prev }
+                                  delete next[emp.id]
+                                  return next
+                                })
+                              } else {
+                                // มี record = 0 อยู่ → ตั้งเป็น -1 เพื่อลบ record กลับไปใช้ค่า default
+                                setEditingMonthlySalary((prev) => ({ ...prev, [emp.id]: '-1' }))
+                              }
+                            } else {
+                              // ปิด → ตั้งเป็น 0
+                              setEditingMonthlySalary((prev) => ({ ...prev, [emp.id]: '0' }))
+                            }
+                          }}
+                        >
+                          {showAsDisabled ? (
+                            <ToggleLeft className="h-5 w-5 text-red-400" />
+                          ) : (
+                            <ToggleRight className="h-5 w-5 text-green-500" />
+                          )}
+                        </button>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#333] truncate">
+                          <p className={`text-sm font-medium truncate ${showAsDisabled ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
                             {emp.firstName} {emp.lastName}
                           </p>
+                          {showAsDisabled && (
+                            <p className="text-[10px] text-red-400">ปิดเงินเดือนเดือนนี้</p>
+                          )}
                         </div>
                         <Input
                           type="number"
-                          className="w-[110px] h-8 text-right text-sm"
+                          className={`w-[110px] h-8 text-right text-sm ${showAsDisabled ? 'opacity-40' : ''}`}
                           placeholder={String(emp.salary)}
+                          disabled={showAsDisabled}
                           value={
-                            isEditing
-                              ? editingMonthlySalary[emp.id]
-                              : hasMonthlyOverride
-                                ? String(emp.monthlySalary)
-                                : ''
+                            showAsDisabled
+                              ? '0'
+                              : isEditing
+                                ? editingMonthlySalary[emp.id]
+                                : hasMonthlyOverride
+                                  ? String(emp.monthlySalary)
+                                  : ''
                           }
                           onChange={(e) =>
                             setEditingMonthlySalary((prev) => ({
@@ -787,8 +828,9 @@ export default function EmployeesPage() {
                           }
                         />
                         <div className="w-5 flex-shrink-0">
-                          {hasMonthlyOverride && !isEditing && <Check className="h-4 w-4 text-green-500" />}
-                          {isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                          {showAsDisabled && !isEditing && <span className="text-[10px] text-red-400">✕</span>}
+                          {!showAsDisabled && hasMonthlyOverride && !isEditing && <Check className="h-4 w-4 text-green-500" />}
+                          {!showAsDisabled && isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
                         </div>
                       </div>
                     )
