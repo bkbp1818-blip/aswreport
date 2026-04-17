@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.15.0 |
+| **Version** | 1.16.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -68,7 +68,7 @@
 - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, ยอดค้างจ่ายคืน, จัดการผู้ใช้
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
 - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), การ์ดกำไร/ขาดทุน+กราฟ
-- หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel, ค่าทำความสะอาด
+- หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel, งานเสริม FD
 
 ---
 
@@ -94,7 +94,7 @@
   - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
   - Thai Bus Tour (สีม่วง purple)
   - Co Van Kessel (สีส้ม orange)
-  - ค่าทำความสะอาด (สีเขียว teal) — ทุกอาคาร ✨ NEW
+  - งานเสริม FD (สีเขียว teal) — เฉพาะ CT/YW/NANA แยก 2 อาคาร: ลาดพร้าว 21, สุขุมวิท 81 ✨ UPDATED v1.16.0
   - รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet) — เฉพาะ CT/YW/NANA ✨ NEW
 - **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:**
   - รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet)
@@ -243,7 +243,7 @@ Amount to Pay    = Management Fee + VAT
 ```
 
 **หมายเหตุ:**
-- อาคาร FUNNS81, FUNNLP ไม่คำนวณ Management Fee และ VAT
+- อาคาร FUNNS81 (สุขุมวิท 81), FUNNLP (ลาดพร้าว 21) ไม่คำนวณ Management Fee และ VAT ✨ UPDATED v1.16.0
 - **เงินเดือนพนักงาน** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
 - **เงินสมทบประกันสังคม** — CT/YW/NANA: คำนวณ auto จาก effectiveSalary (5%, สูงสุด 875 บาท ตามกฎหมาย 2569) หาร 3 อาคาร, Funn D: กรอกเองผ่าน ExpenseHistory ✨ UPDATED v1.15.0
 - **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
@@ -271,7 +271,19 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.15.0 (Current - April 2026)
+### v1.16.0 (Current - April 2026)
+- **เปลี่ยน "ค่าทำความสะอาด" เป็น "งานเสริม FD" แยก 2 อาคาร:**
+  - เปลี่ยน fieldName จาก `cleaningFeeIncome` เป็น `fdExtraLadpraoIncome` (ลาดพร้าว 21) + `fdExtraSukhumvitIncome` (สุขุมวิท 81)
+  - แสดงเฉพาะ CT/YW/NANA (ไม่แสดงที่ Funn D)
+  - สี teal เขียวอมฟ้า, header "งานเสริม FD" แสดงยอดรวม 2 อาคาร
+  - รวมใน totalIncome เฉพาะ `isEligibleForSalary` (CT/YW/NANA)
+  - อัปเดต Summary API + Summary History API — incomeByChannel แยก 2 รายการ
+  - ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
+- **เปลี่ยนชื่ออาคาร Funn D - ลาดพร้าว 149 → ลาดพร้าว 21:**
+  - อัปเดตชื่อใน database + seed script
+  - ไฟล์แก้ไข: `prisma/add-buildings.ts`
+
+### v1.15.0 (April 2026)
 - **ระบบเงินเดือนรายเดือน (Monthly Salary):**
   - เพิ่ม `MonthlySalary` model — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี
   - API `/api/employees/monthly-salary` — GET (carry forward จากเดือนก่อน), POST (batch save, salary=0 ปิดเงินเดือน, salary=-1 ลบ record)
@@ -391,11 +403,11 @@ npx vercel --prod        # Deploy
   - รวมใน totalIncome, Summary API, Summary History API
 - **เพิ่มรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (Funn D):**
   - fieldName: `managerAdminSalaryExpense` — สีม่วง violet
-  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว, สุขุมวิท 81)
+  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว 21, สุขุมวิท 81)
   - รวมใน totalExpense, Summary API, Summary History API
 - **เพิ่มรายจ่ายบริการอื่นๆจาก ASW (Funn D):**
   - fieldName: `aswOtherServiceExpense` — สีส้มอำพัน amber
-  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว, สุขุมวิท 81)
+  - แสดงในตารางรายจ่าย เฉพาะ Funn D (ลาดพร้าว 21, สุขุมวิท 81)
   - รวมใน totalExpense, Summary API, Summary History API
 - ไฟล์แก้ไข: `transactions/page.tsx`, `api/summary/route.ts`, `api/summary/history/route.ts`
 
