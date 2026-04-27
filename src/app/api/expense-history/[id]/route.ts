@@ -61,6 +61,7 @@ export async function DELETE(
     const remainingHistory = await prisma.expenseHistory.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: { otaSource: true },
     })
 
     // คำนวณยอดรวมใหม่
