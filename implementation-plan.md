@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.16.0 |
+| **Version** | 1.17.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -67,7 +67,7 @@
 - Login ผ่านหน้า `/access/staff` (ไม่ใช่หน้า partner)
 - ไม่เห็น: Dashboard, เงินเดือนพนักงาน, ยอดค้างจ่ายคืน, จัดการผู้ใช้
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
-- หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), การ์ดกำไร/ขาดทุน+กราฟ
+- หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), OTA sub-rows ใต้ Direct Booking, การ์ดกำไร/ขาดทุน+กราฟ
 - หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel, งานเสริม FD
 
 ---
@@ -87,6 +87,11 @@
   - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
   - ยอดรวม Reset เป็น 0 ทุกเดือน
   - ดูประวัติ/ลบรายการได้
+- **OTA Source สำหรับ Direct Booking:** ✨ NEW v1.17.0
+  - Dialog เพิ่ม/ลด/แก้ไขของ 4 ช่องทาง (PayPal, Credit Card, Bank Transfer, Cash) มี dropdown "มาจาก OTA" บังคับเลือก
+  - รายชื่อ OTA: Direct, AirBNB, Booking.com, Agoda, Expedia (เก็บใน OtaSource master table)
+  - ตารางหลัก Direct Booking โชว์ sub-rows ของ OTA ใต้แต่ละ channel — ซ่อน OTA ที่ยอด=0 และซ่อนสำหรับ VIEWER
+  - ตารางประวัติใน Dialog มีคอลัมน์ "OTA"
 - ค่าใช้จ่ายส่วนกลาง **แยกตามอาคาร** (ไม่ใช่ GlobalSettings อีกแล้ว) ✨ UPDATED
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
 - **กรองน้ำ Coway** - กรอกได้โดยตรงในหน้านี้ (ย้ายมาจากหน้า Settings) ✨ MOVED
@@ -222,7 +227,9 @@
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
 | `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย ✨ | Auth |
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
-| `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ | - |
+| `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ (รองรับ `?groupBy=ota` คืน byOta breakdown) ✨ UPDATED v1.17.0 | - |
+| `/api/ota-sources` | GET, POST | รายชื่อ OTA master (Direct, AirBNB, Booking.com, Agoda, Expedia) ✨ NEW v1.17.0 | GET=Auth / POST=Partner |
+| `/api/ota-sources/[id]` | PATCH, DELETE | แก้ไข/soft-delete OTA ✨ NEW v1.17.0 | Partner |
 | `/api/social-security` | GET, POST | จัดการเงินสมทบประกันสังคม ✨ | Auth |
 | `/api/auth/me` | GET | ดึงข้อมูล user ปัจจุบันจาก DB (refresh allowedMenus) ✨ v1.14.0 | Auth |
 | `/api/reimbursements` | GET, POST, PUT, PATCH, DELETE | จัดการยอดค้างจ่ายคืน (PATCH = bulk, GET: summary/details=returned/details=pending) ✨ | Partner |
@@ -271,7 +278,20 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.16.0 (Current - April 2026)
+### v1.17.0 (Current - April 2026)
+- **OTA Source สำหรับ Direct Booking transactions:**
+  - เพิ่ม `OtaSource` model + `otaSourceId` (nullable) ใน `ExpenseHistory`
+  - Seed 5 OTA: Direct, AirBNB, Booking.com, Agoda, Expedia (ตัด Trip.com / Roombix ออก)
+  - API ใหม่: `/api/ota-sources` (GET/POST), `/api/ota-sources/[id]` (PATCH/DELETE — soft delete)
+  - ขยาย `/api/expense-history/totals?groupBy=ota` คืน `byOta` breakdown
+  - `/api/expense-history` POST รับ `otaSourceId` (optional), GET include otaSource relation
+  - Dialog เพิ่ม/ลด/แก้ไขของ 4 channels (PayPal/Credit Card/Bank Transfer/Cash) มี dropdown OTA บังคับเลือก + validation
+  - ตารางหลัก Direct Booking โชว์ sub-rows ของ OTA ใต้แต่ละ channel (ซ่อนของ VIEWER + ซ่อน OTA ที่ยอด=0)
+  - ตารางประวัติใน Dialog มีคอลัมน์ OTA
+  - ไฟล์ใหม่: `prisma/add-ota-sources.ts`, `src/app/api/ota-sources/route.ts`, `src/app/api/ota-sources/[id]/route.ts`
+  - ไฟล์แก้ไข: `prisma/schema.prisma`, `src/app/api/expense-history/route.ts`, `src/app/api/expense-history/[id]/route.ts`, `src/app/api/expense-history/totals/route.ts`, `src/app/transactions/page.tsx`
+
+### v1.16.0 (April 2026)
 - **เปลี่ยน "ค่าทำความสะอาด" เป็น "งานเสริม FD" แยก 2 อาคาร:**
   - เปลี่ยน fieldName จาก `cleaningFeeIncome` เป็น `fdExtraLadpraoIncome` (ลาดพร้าว 21) + `fdExtraSukhumvitIncome` (สุขุมวิท 81)
   - แสดงเฉพาะ CT/YW/NANA (ไม่แสดงที่ Funn D)
@@ -829,6 +849,7 @@ npx vercel --prod        # Deploy
 | month | Int | เดือน (1-12) |
 | year | Int | ปี |
 | createdAt | DateTime | วันที่สร้าง |
+| otaSourceId | Int? | FK ไปยัง OtaSource (เฉพาะ Direct Booking channels) ✨ NEW v1.17.0 |
 
 ### Reimbursement ✨ NEW
 | Field | Type | คำอธิบาย |
@@ -865,6 +886,16 @@ npx vercel --prod        # Deploy
 | amount | Decimal | จำนวนเงินสมทบ (คำนวณ auto: 5% สูงสุด 875 บาท) |
 | month | Int | เดือน (1-12) |
 | year | Int | ปี |
+| createdAt | DateTime | วันที่สร้าง |
+| updatedAt | DateTime | วันที่อัปเดต |
+
+### OtaSource ✨ NEW v1.17.0
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| name | String | ชื่อ OTA (Direct, AirBNB, Booking.com, Agoda, Expedia) — unique |
+| order | Int | ลำดับการแสดงผล |
+| isActive | Boolean | เปิด/ปิดใช้งาน (soft delete) |
 | createdAt | DateTime | วันที่สร้าง |
 | updatedAt | DateTime | วันที่อัปเดต |
 
