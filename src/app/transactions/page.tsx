@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,6 +87,13 @@ interface SocialSecurityData {
   buildingCount: number
 }
 
+interface OtaSource {
+  id: number
+  name: string
+  order: number
+  isActive: boolean
+}
+
 interface ExpenseHistoryItem {
   id: number
   targetType: string
@@ -99,6 +106,8 @@ interface ExpenseHistoryItem {
   month: number
   year: number
   createdAt: string
+  otaSourceId?: number | null
+  otaSource?: OtaSource | null
 }
 
 interface ReimbursementItem {
@@ -123,6 +132,8 @@ export default function TransactionsPage() {
     String(new Date().getFullYear())
   )
   const [transactionData, setTransactionData] = useState<Record<number, number>>({})
+  const [otaSources, setOtaSources] = useState<OtaSource[]>([])
+  const [otaBreakdown, setOtaBreakdown] = useState<Record<number, Record<number, number>>>({})
   const [airportShuttleRentIncome, setAirportShuttleRentIncome] = useState<number>(0)
   const [thaiBusTourIncome, setThaiBusTourIncome] = useState<number>(0)
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
@@ -145,6 +156,7 @@ export default function TransactionsPage() {
   const [adjustCategoryName, setAdjustCategoryName] = useState('')
   const [adjustAmount, setAdjustAmount] = useState<string>('')
   const [adjustDescription, setAdjustDescription] = useState<string>('')
+  const [adjustOtaSourceId, setAdjustOtaSourceId] = useState<number | null>(null)
 
   // State สำหรับประวัติค่าใช้จ่าย
   const [adjustMonth, setAdjustMonth] = useState<string>(String(new Date().getMonth() + 1))
@@ -163,11 +175,13 @@ export default function TransactionsPage() {
       fetch('/api/buildings').then((res) => res.json()),
       fetch('/api/categories').then((res) => res.json()),
       fetch(`/api/employees/salary-summary?month=${selectedMonth}&year=${selectedYear}`).then((res) => res.json()),
+      fetch('/api/ota-sources').then((res) => res.json()),
     ])
-      .then(([buildingsData, categoriesData, salaryData]) => {
+      .then(([buildingsData, categoriesData, salaryData, otaData]) => {
         setBuildings(buildingsData)
         setCategories(categoriesData)
         setSalarySummary(salaryData)
+        setOtaSources(Array.isArray(otaData) ? otaData : [])
         if (buildingsData.length > 0 && !selectedBuilding) {
           setSelectedBuilding(String(buildingsData[0].id))
         }
@@ -187,6 +201,7 @@ export default function TransactionsPage() {
         targetId: selectedBuilding,
         month: selectedMonth,
         year: selectedYear,
+        groupBy: 'ota',
       })
 
       // โหลด expense history totals, settings, global totals, social security และ settings history totals พร้อมกัน
@@ -256,6 +271,20 @@ export default function TransactionsPage() {
       }
       setTransactionData(dataMap)
 
+      // เก็บ breakdown ตาม OTA: byOta[fieldName(categoryId)][otaSourceId] = total
+      const breakdown: Record<number, Record<number, number>> = {}
+      if (historyData.byOta) {
+        for (const [fieldName, otaTotals] of Object.entries(historyData.byOta as Record<string, Record<string, number>>)) {
+          const categoryId = parseInt(fieldName)
+          if (isNaN(categoryId)) continue
+          breakdown[categoryId] = {}
+          for (const [otaIdStr, amount] of Object.entries(otaTotals)) {
+            breakdown[categoryId][parseInt(otaIdStr)] = amount as number
+          }
+        }
+      }
+      setOtaBreakdown(breakdown)
+
       // เก็บ settings ของอาคาร (ใช้ค่า Coway จาก ExpenseHistory แทน Settings table)
       if (settings) {
         setBuildingSettings({
@@ -313,6 +342,13 @@ export default function TransactionsPage() {
   // กลุ่ม Direct Booking sub-items
   const directBookingSubNames = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer', 'ค่าเช่า Cash']
   const directBookingSubCategories = rentalIncomeCategories.filter((c) => directBookingSubNames.includes(c.name))
+  const directBookingSubCategoryIds = new Set(directBookingSubCategories.map((c) => c.id))
+
+  // helper: เช็คว่า categoryId เป็น Direct Booking channel (4 ช่องทาง) หรือไม่
+  const isDirectBookingChannel = (cid: number | string | null): boolean => {
+    if (typeof cid !== 'number') return false
+    return directBookingSubCategoryIds.has(cid)
+  }
 
   // กรองออกจากรายการค่าเช่าปกติ (ลบ Direct Booking standalone + 3 sub-items)
   const normalRentalCategories = rentalIncomeCategories.filter(
@@ -545,6 +581,7 @@ export default function TransactionsPage() {
     setAdjustCategoryName(categoryName)
     setAdjustAmount('')
     setAdjustDescription('')
+    setAdjustOtaSourceId(null)
     // ใช้เดือน/ปีที่เลือกในหน้าหลัก
     setAdjustMonth(selectedMonth)
     setAdjustYear(selectedYear)
@@ -580,6 +617,11 @@ export default function TransactionsPage() {
       alert('กรุณากรอกจำนวนเงิน')
       return
     }
+    // ถ้าเป็น Direct Booking channel ต้องเลือก OTA
+    if (isDirectBookingChannel(adjustCategoryId) && !adjustOtaSourceId) {
+      alert('กรุณาเลือก OTA ที่มา')
+      return
+    }
 
     // เก็บค่าไว้ก่อน async call เพื่อหลีกเลี่ยงปัญหา closure
     const currentCategoryId = adjustCategoryId
@@ -611,6 +653,7 @@ export default function TransactionsPage() {
           description: adjustDescription.trim(),
           month: requestMonth,
           year: requestYear,
+          otaSourceId: isDirectBookingChannel(currentCategoryId) ? adjustOtaSourceId : null,
         }),
       })
 
@@ -895,48 +938,76 @@ export default function TransactionsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                  {/* Direct Booking Sub-items (PayPal, Credit Card, Bank Transfer) */}
+                  {/* Direct Booking Sub-items (PayPal, Credit Card, Bank Transfer, Cash) */}
                   {directBookingSubCategories.map((category, index) => (
-                    <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                      <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
-                      <TableCell className="px-2 md:px-4">
-                        <div className="flex items-center gap-1 md:gap-2 pl-4 md:pl-6">
-                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-xs md:text-sm">{category.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right px-2 md:px-4">
-                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                          <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
-                            {formatNumber(transactionData[category.id] || 0)}
+                    <Fragment key={category.id}>
+                      <TableRow className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
+                        <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-1 md:gap-2 pl-4 md:pl-6">
+                            <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs md:text-sm">{category.name}</span>
                           </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                            onClick={() => openAdjustDialog('edit', category.id, category.name)}
-                          >
-                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                            onClick={() => openAdjustDialog('add', category.id, category.name)}
-                          >
-                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                            onClick={() => openAdjustDialog('subtract', category.id, category.name)}
-                          >
-                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell className="text-right px-2 md:px-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
+                              {formatNumber(transactionData[category.id] || 0)}
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                              onClick={() => openAdjustDialog('edit', category.id, category.name)}
+                            >
+                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                              onClick={() => openAdjustDialog('add', category.id, category.name)}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {/* Sub-rows: breakdown ตาม OTA (ซ่อนของ VIEWER เพื่อ consistency กับ OTA section ด้านล่าง) */}
+                      {!isViewer && otaSources.map((ota) => {
+                        const amount = otaBreakdown[category.id]?.[ota.id] || 0
+                        if (amount === 0) return null
+                        return (
+                          <TableRow key={`${category.id}-${ota.id}`} className="bg-[#1d3557]/[0.03]">
+                            <TableCell className="px-2 md:px-4"></TableCell>
+                            <TableCell className="px-2 md:px-4">
+                              <div className="flex items-center gap-1 md:gap-2 pl-10 md:pl-14 text-[10px] md:text-xs text-gray-600">
+                                <span>└</span>
+                                <span>{ota.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right px-2 md:px-4">
+                              <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                                <div className="text-right px-2 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs text-gray-600 min-w-[60px] md:min-w-[80px]">
+                                  {formatNumber(amount)}
+                                </div>
+                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </Fragment>
                   ))}
                   {/* OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) - ซ่อนสำหรับ VIEWER */}
                   {!isViewer && normalRentalCategories.map((category, index) => (
@@ -2348,6 +2419,9 @@ export default function TransactionsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px] sm:w-[100px] px-1 sm:px-4 text-[9px] sm:text-xs">วันที่</TableHead>
+                      {isDirectBookingChannel(adjustCategoryId) && (
+                        <TableHead className="w-[55px] sm:w-[90px] px-1 sm:px-4 text-[9px] sm:text-xs">OTA</TableHead>
+                      )}
                       <TableHead className="px-1 sm:px-4 text-[9px] sm:text-xs">รายละเอียด</TableHead>
                       <TableHead className="text-right w-[60px] sm:w-[100px] px-1 sm:px-4 text-[9px] sm:text-xs">จำนวน</TableHead>
                       <TableHead className="w-[30px] sm:w-[50px] px-0.5 sm:px-4"></TableHead>
@@ -2362,6 +2436,11 @@ export default function TransactionsPage() {
                             month: 'short',
                           })}
                         </TableCell>
+                        {isDirectBookingChannel(adjustCategoryId) && (
+                          <TableCell className="text-[10px] sm:text-xs text-gray-700 px-1 sm:px-4 py-1 sm:py-2">
+                            {item.otaSource?.name || '-'}
+                          </TableCell>
+                        )}
                         <TableCell className="text-[10px] sm:text-sm px-1 sm:px-4 py-1 sm:py-2 max-w-[80px] sm:max-w-none truncate">{item.description}</TableCell>
                         <TableCell className={`text-right font-medium text-[10px] sm:text-sm px-1 sm:px-4 py-1 sm:py-2 ${item.actionType === 'ADD' ? 'text-green-600' : 'text-red-600'}`}>
                           {item.actionType === 'ADD' ? '+' : '-'}{formatNumber(Number(item.amount))}
@@ -2422,6 +2501,26 @@ export default function TransactionsPage() {
                   </div>
                 )}
               </div>
+              {isDirectBookingChannel(adjustCategoryId) && (
+                <div>
+                  <label className="text-[10px] sm:text-sm text-gray-500">มาจาก OTA *</label>
+                  <Select
+                    value={adjustOtaSourceId ? String(adjustOtaSourceId) : ''}
+                    onValueChange={(v) => setAdjustOtaSourceId(Number(v))}
+                  >
+                    <SelectTrigger className="mt-0.5 h-7 sm:h-10 text-[11px] sm:text-sm">
+                      <SelectValue placeholder="เลือก OTA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {otaSources.map((ota) => (
+                        <SelectItem key={ota.id} value={String(ota.id)}>
+                          {ota.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <label className="text-[10px] sm:text-sm text-gray-500">รายละเอียด *</label>
                 <Input
@@ -2458,7 +2557,7 @@ export default function TransactionsPage() {
             </Button>
             <Button
               onClick={handleAdjustConfirm}
-              disabled={savingHistory || !adjustDescription.trim() || !adjustAmount}
+              disabled={savingHistory || !adjustDescription.trim() || !adjustAmount || (isDirectBookingChannel(adjustCategoryId) && !adjustOtaSourceId)}
               className={`w-full sm:w-auto h-7 sm:h-10 text-[11px] sm:text-sm ${getEffectiveAction() === 'add' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
               {savingHistory ? (

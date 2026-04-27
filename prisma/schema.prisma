@@ -43,19 +43,32 @@ model Employee {
 }
 
 model ExpenseHistory {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   targetType  String
   targetId    Int?
   fieldName   String
   fieldLabel  String
   actionType  String
-  amount      Decimal  @db.Decimal(15, 2)
+  amount      Decimal    @db.Decimal(15, 2)
   description String
   month       Int
   year        Int
-  createdAt   DateTime @default(now())
+  createdAt   DateTime   @default(now())
+  otaSourceId Int?
+  otaSource   OtaSource? @relation(fields: [otaSourceId], references: [id])
 
   @@index([targetType, targetId, fieldName, month, year])
+  @@index([otaSourceId])
+}
+
+model OtaSource {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  order           Int              @default(0)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  expenseHistory  ExpenseHistory[]
 }
 
 model GlobalSettings {
