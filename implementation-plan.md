@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.17.0 |
+| **Version** | 1.18.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -278,7 +278,30 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.17.0 (Current - April 2026)
+### v1.18.0 (Current - April 2026)
+- **เชื่อมระบบ leave (https://leave-bay.vercel.app) → ดึงงานเสริม FD อัตโนมัติ:**
+  - **Feature 1 (รายรับ CT/YW/NANA):** ดึง `fdExtraLadpraoIncome` + `fdExtraSukhumvitIncome` จาก leave (ยอดรวมเดือน ÷ 3)
+  - **Feature 2 (รายจ่าย FUNNLP/FUNNS81):** เปลี่ยนชื่อ "บริการอื่นๆจาก ASW" → **"งานเสริม FD"** ดึงยอดเต็ม (FUNNLP=raw.ladprao, FUNNS81=raw.sukhumvit)
+  - **ลบปุ่ม +/-/edit** ของทั้ง 2 จุด → กรอกที่ leave อย่างเดียว มี link "แก้ไขที่ระบบ Leave →"
+  - UI สีเปลี่ยน amber → teal (สอดคล้องกัน), badge แสดง source เมื่อ ≠ 'leave' (`stale`/`legacy`/`fallback`)
+- **Architecture:**
+  - leave มี public endpoint `/api/public/extra-work/summary` (auth: `X-API-Key` ผ่าน `crypto.timingSafeEqual`)
+  - aswreport มี proxy `/api/extra-work-sync` (เรียก server-to-server, cache 60s, timeout 4s, retry 1, stale-while-error 10 นาที, fallback 0)
+  - Helper `getFdExtraIncome()` cache ใช้ร่วมระหว่าง summary + summary/history (ไม่ fetch leave ซ้ำ)
+- **Hybrid cutover** ผ่าน env var `EXTRA_WORK_CUTOVER_YYYYMM`:
+  - เดือน ≥ cutover → ใช้ leave (ใหม่)
+  - เดือน < cutover → ใช้ ExpenseHistory เดิม (ไม่กระทบรายงานย้อนหลัง)
+- **Kill switch** `EXTRA_WORK_SOURCE=legacy` → rollback ทั้ง 2 features พร้อมกันใน <1 นาที
+- **Env vars ใหม่ (Vercel):**
+  - aswreport: `LEAVE_API_BASE_URL`, `LEAVE_SHARED_API_KEY`, `EXTRA_WORK_SOURCE`, `EXTRA_WORK_CUTOVER_YYYYMM`
+  - leave: `ASWREPORT_SHARED_API_KEY` (ค่าเดียวกับ `LEAVE_SHARED_API_KEY`)
+- **เปลี่ยน expenseByCategory key** `'บริการอื่นๆจาก ASW'` → `'งานเสริม FD'` (Dashboard render dynamic ไม่กระทบ)
+- **ไม่แตะ database schema** ทั้ง 2 ระบบ — ค่าเก่าใน `ExpenseHistory` (fieldName=aswOtherServiceExpense, fdExtraLadpraoIncome, fdExtraSukhumvitIncome) คงอยู่สำหรับเดือน < cutover
+- **ไฟล์ใหม่ฝั่ง aswreport:** `src/lib/extra-work-source.ts`, `src/app/api/extra-work-sync/route.ts`
+- **ไฟล์แก้ฝั่ง aswreport:** `src/app/api/summary/route.ts`, `src/app/api/summary/history/route.ts`, `src/app/transactions/page.tsx`
+- **ไฟล์ใหม่ฝั่ง leave:** `src/lib/external-api-key.ts`, `src/app/api/public/extra-work/summary/route.ts`
+
+### v1.17.0 (April 2026)
 - **OTA Source สำหรับ Direct Booking transactions:**
   - เพิ่ม `OtaSource` model + `otaSourceId` (nullable) ใน `ExpenseHistory`
   - Seed 5 OTA: Direct, AirBNB, Booking.com, Agoda, Expedia (ตัด Trip.com / Roombix ออก)
