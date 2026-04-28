@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         year,
         fdExtraLadpraoIncome: 0,
         fdExtraSukhumvitIncome: 0,
+        fdExtraExpenseLadprao: 0,
+        fdExtraExpenseSukhumvit: 0,
         raw: { ladprao: 0, sukhumvit: 0 },
         source: 'legacy',
         fetchedAt: new Date().toISOString(),
@@ -37,7 +39,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await getFdExtraIncome(month, year, { force })
-    return NextResponse.json(data)
+    return NextResponse.json({
+      ...data,
+      fdExtraExpenseLadprao: data.raw.ladprao,
+      fdExtraExpenseSukhumvit: data.raw.sukhumvit,
+    })
   } catch (error) {
     const authError = handleAuthError(error)
     if (authError) {

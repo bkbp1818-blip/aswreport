@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 import { calculateSocialSecurity } from '@/lib/calculations'
-import { getFdExtraIncome, shouldUseLeaveSource } from '@/lib/extra-work-source'
+import { getFdExtraIncome, shouldUseLeaveSource, getFdExtraExpenseForBuilding } from '@/lib/extra-work-source'
 
 // GET - ดึงข้อมูลย้อนหลังหลายเดือน (ต้องเป็น Partner)
 export async function GET(request: NextRequest) {
@@ -312,7 +312,19 @@ async function calculateBuildingSummary(
   // รายได้/รายจ่ายเงินเดือนเมเนเจอร์แอดมิน (CT/YW/NANA = รายได้, Funn D = รายจ่าย)
   const managerAdminSalaryIncome = isEligibleForSalary ? (perBuildingTotals.managerAdminSalaryIncome || 0) : 0
   const managerAdminSalaryExpense = isFunnD ? (perBuildingTotals.managerAdminSalaryExpense || 0) : 0
-  const aswOtherServiceExpense = isFunnD ? (perBuildingTotals.aswOtherServiceExpense || 0) : 0
+
+  // "งานเสริม FD" (รายจ่ายของ FUNN — เปลี่ยนชื่อจาก "บริการอื่นๆจาก ASW")
+  // หลัง cutover ดึงยอดเต็มจาก leave: FUNNLP=raw.ladprao, FUNNS81=raw.sukhumvit
+  let aswOtherServiceExpense = 0
+  if (isFunnD) {
+    if (useLeaveForFdExtra) {
+      const leaveData = await getFdExtraIncome(month, year)
+      aswOtherServiceExpense = getFdExtraExpenseForBuilding(building.code, leaveData.raw)
+    } else {
+      aswOtherServiceExpense = perBuildingTotals.aswOtherServiceExpense || 0
+    }
+  }
+
   const siteminderExpensePerBuilding = perBuildingTotals.siteminderExpense || 0
 
   // ดึงค่าเช่าเครื่องกรองน้ำ Coway จาก ExpenseHistory (แยกแต่ละอาคาร)
@@ -433,7 +445,7 @@ async function calculateBuildingSummary(
     expenseByCategory['รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryExpense
   }
   if (aswOtherServiceExpense > 0) {
-    expenseByCategory['บริการอื่นๆจาก ASW'] = aswOtherServiceExpense
+    expenseByCategory['งานเสริม FD'] = aswOtherServiceExpense
   }
   expenseByCategory['Site Minder Dynamic Revenue Plus'] = siteminderExpensePerBuilding
   if (reimbursementReturnExpense > 0) {

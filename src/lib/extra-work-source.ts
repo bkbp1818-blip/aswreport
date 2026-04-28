@@ -175,3 +175,18 @@ export function shouldUseLeaveSource(month: number, year: number): boolean {
 
   return true
 }
+
+/**
+ * Map building code ของ Funn D → ยอดเต็ม (rawTotal) จาก leave
+ * ใช้สำหรับรายจ่าย "งานเสริม FD" (ไม่หาร 3)
+ *   FUNNLP  = ลาดพร้าว 21 → raw.ladprao
+ *   FUNNS81 = สุขุมวิท 81 → raw.sukhumvit
+ */
+export function getFdExtraExpenseForBuilding(
+  buildingCode: string,
+  raw: { ladprao: number; sukhumvit: number }
+): number {
+  if (buildingCode === 'FUNNLP') return Math.max(0, raw.ladprao)
+  if (buildingCode === 'FUNNS81') return Math.max(0, raw.sukhumvit)
+  return 0
+}

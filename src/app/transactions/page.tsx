@@ -139,6 +139,8 @@ export default function TransactionsPage() {
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
   const [fdExtraLadpraoIncome, setFdExtraLadpraoIncome] = useState<number>(0)
   const [fdExtraSukhumvitIncome, setFdExtraSukhumvitIncome] = useState<number>(0)
+  const [fdExtraExpenseLadprao, setFdExtraExpenseLadprao] = useState<number>(0)
+  const [fdExtraExpenseSukhumvit, setFdExtraExpenseSukhumvit] = useState<number>(0)
   const [extraWorkSyncSource, setExtraWorkSyncSource] = useState<string>('leave')
   const [reimbursementReturnExpense, setReimbursementReturnExpense] = useState<number>(0)
   const [returnedReimbursementItems, setReturnedReimbursementItems] = useState<ReimbursementItem[]>([])
@@ -266,6 +268,7 @@ export default function TransactionsPage() {
       setTransactionData(dataMap)
 
       // ดึงยอดงานเสริม FD จาก leave system ผ่าน proxy
+      // ใช้ทั้ง 4 ค่า: รายรับ (perBuilding หาร 3) สำหรับ CT/YW/NANA + รายจ่าย (rawTotal เต็ม) สำหรับ FUNN
       try {
         const syncRes = await fetch(
           `/api/extra-work-sync?month=${selectedMonth}&year=${selectedYear}`
@@ -274,16 +277,22 @@ export default function TransactionsPage() {
           const syncData = await syncRes.json()
           setFdExtraLadpraoIncome(Number(syncData.fdExtraLadpraoIncome) || 0)
           setFdExtraSukhumvitIncome(Number(syncData.fdExtraSukhumvitIncome) || 0)
+          setFdExtraExpenseLadprao(Number(syncData.fdExtraExpenseLadprao) || 0)
+          setFdExtraExpenseSukhumvit(Number(syncData.fdExtraExpenseSukhumvit) || 0)
           setExtraWorkSyncSource(String(syncData.source || 'leave'))
         } else {
           setFdExtraLadpraoIncome(0)
           setFdExtraSukhumvitIncome(0)
+          setFdExtraExpenseLadprao(0)
+          setFdExtraExpenseSukhumvit(0)
           setExtraWorkSyncSource('fallback')
         }
       } catch (err) {
         console.warn('extra-work-sync failed:', err)
         setFdExtraLadpraoIncome(0)
         setFdExtraSukhumvitIncome(0)
+        setFdExtraExpenseLadprao(0)
+        setFdExtraExpenseSukhumvit(0)
         setExtraWorkSyncSource('fallback')
       }
 
@@ -469,7 +478,21 @@ export default function TransactionsPage() {
 
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
-  const aswOtherServiceExpense = perBuildingExpenses.aswOtherServiceExpense || 0
+
+  // "งานเสริม FD" (รายจ่ายของ FUNN — เปลี่ยนชื่อจาก "บริการอื่นๆจาก ASW")
+  // ถ้า source = 'leave' หรือ 'stale' → ใช้ rawTotal จาก leave (FUNNLP=ladprao, FUNNS81=sukhumvit)
+  // ถ้า source = 'legacy' หรือ 'fallback' → ใช้ค่าเดิมจาก ExpenseHistory
+  const useLeaveForFunnExpense = extraWorkSyncSource === 'leave' || extraWorkSyncSource === 'stale'
+  let aswOtherServiceExpense = 0
+  if (isFunnD) {
+    if (useLeaveForFunnExpense) {
+      if (selectedBuildingCode === 'FUNNLP') aswOtherServiceExpense = fdExtraExpenseLadprao
+      else if (selectedBuildingCode === 'FUNNS81') aswOtherServiceExpense = fdExtraExpenseSukhumvit
+    } else {
+      aswOtherServiceExpense = perBuildingExpenses.aswOtherServiceExpense || 0
+    }
+  }
+
   const siteminderExpense = perBuildingExpenses.siteminderExpense || 0
 
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
@@ -508,7 +531,7 @@ export default function TransactionsPage() {
     'coffeeExpense', 'fuelExpense', 'parkingExpense',
     'motorcycleMaintenanceExpense', 'maidTravelExpense',
     'cleaningSupplyExpense', 'foodExpense',
-    'managerAdminSalaryIncome', 'managerAdminSalaryExpense', 'aswOtherServiceExpense',
+    'managerAdminSalaryIncome', 'managerAdminSalaryExpense',
     'socialSecurityExpense', 'siteminderExpense',
   ]
 
@@ -2093,30 +2116,45 @@ export default function TransactionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {/* บริการอื่นๆจาก ASW - เฉพาะ Funn D */}
+                      {/* งานเสริม FD (รายจ่าย) - เฉพาะ Funn D — ดึงจากระบบ Leave (ยอดเต็ม) */}
                       {isFunnD && (
-                        <TableRow className="bg-amber-500/10">
+                        <TableRow className="bg-teal-500/10">
                           <TableCell className="font-medium px-2 md:px-4"></TableCell>
                           <TableCell className="px-2 md:px-4">
-                            <div className="flex items-center gap-1 md:gap-2">
-                              <CategoryIcon name="บริการ" className="h-4 w-4 flex-shrink-0" />
-                              <div>
-                                <span className="text-xs md:text-sm font-medium text-amber-600">บริการอื่นๆจาก ASW</span>
-                              </div>
+                            <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+                              <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
+                              <span className="text-xs md:text-sm font-medium text-teal-600">งานเสริม FD</span>
+                              {extraWorkSyncSource !== 'leave' && (
+                                <span
+                                  className="text-[10px] md:text-xs px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                  title={
+                                    extraWorkSyncSource === 'stale'
+                                      ? 'ใช้ข้อมูลจากแคชชั่วคราว — ระบบ leave อาจไม่ตอบสนอง'
+                                      : extraWorkSyncSource === 'legacy'
+                                        ? 'แสดงข้อมูลเดือนก่อน cutover (จากระบบเดิม)'
+                                        : 'ดึงข้อมูลจากระบบ leave ไม่สำเร็จ'
+                                  }
+                                >
+                                  {extraWorkSyncSource === 'stale'
+                                    ? 'แคช'
+                                    : extraWorkSyncSource === 'legacy'
+                                      ? 'ข้อมูลเดิม'
+                                      : 'sync ไม่สำเร็จ'}
+                                </span>
+                              )}
+                              <a
+                                href="https://leave-bay.vercel.app/extra-work"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] md:text-xs underline text-teal-700 hover:text-teal-900"
+                              >
+                                แก้ไขที่ระบบ Leave →
+                              </a>
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-2 md:px-4">
                             <div className="flex items-center justify-end gap-1">
-                              <p className="font-medium text-xs md:text-sm text-amber-600">{formatNumber(aswOtherServiceExpense)}</p>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={() => openAdjustDialog('edit', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
-                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => openAdjustDialog('add', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
-                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => openAdjustDialog('subtract', 'aswOtherServiceExpense', 'บริการอื่นๆจาก ASW')}>
-                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                              </Button>
+                              <p className="font-medium text-xs md:text-sm text-teal-600">{formatNumber(aswOtherServiceExpense)}</p>
                             </div>
                           </TableCell>
                         </TableRow>
