@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 import { calculateSocialSecurity } from '@/lib/calculations'
+import { getFdExtraIncome, shouldUseLeaveSource } from '@/lib/extra-work-source'
 
 // GET - ดึงข้อมูลสรุป (ต้อง login)
 export async function GET(request: NextRequest) {
@@ -156,6 +157,7 @@ async function calculateBuildingSummary(
   let coVanKesselIncome = 0
   let fdExtraLadpraoIncome = 0
   let fdExtraSukhumvitIncome = 0
+  const useLeaveForFdExtra = shouldUseLeaveSource(month, year)
   for (const item of expenseHistory) {
     // ถ้าเป็น special income fields ให้เก็บแยก
     if (item.fieldName === 'airportShuttleRentIncome') {
@@ -185,22 +187,17 @@ async function calculateBuildingSummary(
       }
       continue
     }
+    // fdExtra* - หลัง cutover อ่านจาก leave (ผ่าน getFdExtraIncome) ไม่ใช่ ExpenseHistory
     if (item.fieldName === 'fdExtraLadpraoIncome') {
+      if (useLeaveForFdExtra) continue
       const amount = Number(item.amount)
-      if (item.actionType === 'ADD') {
-        fdExtraLadpraoIncome += amount
-      } else {
-        fdExtraLadpraoIncome -= amount
-      }
+      fdExtraLadpraoIncome += item.actionType === 'ADD' ? amount : -amount
       continue
     }
     if (item.fieldName === 'fdExtraSukhumvitIncome') {
+      if (useLeaveForFdExtra) continue
       const amount = Number(item.amount)
-      if (item.actionType === 'ADD') {
-        fdExtraSukhumvitIncome += amount
-      } else {
-        fdExtraSukhumvitIncome -= amount
-      }
+      fdExtraSukhumvitIncome += item.actionType === 'ADD' ? amount : -amount
       continue
     }
     const categoryId = parseInt(item.fieldName)
@@ -222,6 +219,15 @@ async function calculateBuildingSummary(
   fdExtraSukhumvitIncome = Math.max(0, fdExtraSukhumvitIncome)
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
+  }
+
+  // หลัง cutover: ดึงยอด fdExtra ของอาคารที่อยู่ใน CT/YW/NANA จาก leave system
+  // (อาคารอื่น เช่น FUNN1/FUNN2 จะไม่ใช้ค่านี้อยู่แล้ว เพราะ UI gate ด้วย isEligibleForSalary)
+  const eligibleBuildingsForSalaryCheck = ['CT', 'YW', 'NANA']
+  if (useLeaveForFdExtra && eligibleBuildingsForSalaryCheck.includes(building.code)) {
+    const leaveData = await getFdExtraIncome(month, year)
+    fdExtraLadpraoIncome = Math.max(0, leaveData.fdExtraLadpraoIncome)
+    fdExtraSukhumvitIncome = Math.max(0, leaveData.fdExtraSukhumvitIncome)
   }
 
   // สร้าง virtual transactions จาก expense history totals

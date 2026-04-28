@@ -139,6 +139,7 @@ export default function TransactionsPage() {
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
   const [fdExtraLadpraoIncome, setFdExtraLadpraoIncome] = useState<number>(0)
   const [fdExtraSukhumvitIncome, setFdExtraSukhumvitIncome] = useState<number>(0)
+  const [extraWorkSyncSource, setExtraWorkSyncSource] = useState<string>('leave')
   const [reimbursementReturnExpense, setReimbursementReturnExpense] = useState<number>(0)
   const [returnedReimbursementItems, setReturnedReimbursementItems] = useState<ReimbursementItem[]>([])
   const [pendingReimbursementItems, setPendingReimbursementItems] = useState<ReimbursementItem[]>([])
@@ -234,6 +235,7 @@ export default function TransactionsPage() {
       setPendingReimbursementItems(Array.isArray(pendingItemsData) ? pendingItemsData : [])
 
       // แปลงข้อมูลจาก expense history totals เป็น Record<categoryId, amount>
+      // หมายเหตุ: fdExtra* ดึงจาก leave system (/api/extra-work-sync) ไม่ใช่ ExpenseHistory
       const dataMap: Record<number, number> = {}
       if (historyData.totals) {
         for (const [fieldName, amount] of Object.entries(historyData.totals)) {
@@ -244,10 +246,8 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(amount as number)
           } else if (fieldName === 'coVanKesselIncome') {
             setCoVanKesselIncome(amount as number)
-          } else if (fieldName === 'fdExtraLadpraoIncome') {
-            setFdExtraLadpraoIncome(amount as number)
-          } else if (fieldName === 'fdExtraSukhumvitIncome') {
-            setFdExtraSukhumvitIncome(amount as number)
+          } else if (fieldName === 'fdExtraLadpraoIncome' || fieldName === 'fdExtraSukhumvitIncome') {
+            // ข้าม — fdExtra* ดึงจาก /api/extra-work-sync แทน (ดูด้านล่าง)
           } else {
             dataMap[parseInt(fieldName)] = amount as number
           }
@@ -263,13 +263,29 @@ export default function TransactionsPage() {
       if (!historyData.totals?.coVanKesselIncome) {
         setCoVanKesselIncome(0)
       }
-      if (!historyData.totals?.fdExtraLadpraoIncome) {
-        setFdExtraLadpraoIncome(0)
-      }
-      if (!historyData.totals?.fdExtraSukhumvitIncome) {
-        setFdExtraSukhumvitIncome(0)
-      }
       setTransactionData(dataMap)
+
+      // ดึงยอดงานเสริม FD จาก leave system ผ่าน proxy
+      try {
+        const syncRes = await fetch(
+          `/api/extra-work-sync?month=${selectedMonth}&year=${selectedYear}`
+        )
+        if (syncRes.ok) {
+          const syncData = await syncRes.json()
+          setFdExtraLadpraoIncome(Number(syncData.fdExtraLadpraoIncome) || 0)
+          setFdExtraSukhumvitIncome(Number(syncData.fdExtraSukhumvitIncome) || 0)
+          setExtraWorkSyncSource(String(syncData.source || 'leave'))
+        } else {
+          setFdExtraLadpraoIncome(0)
+          setFdExtraSukhumvitIncome(0)
+          setExtraWorkSyncSource('fallback')
+        }
+      } catch (err) {
+        console.warn('extra-work-sync failed:', err)
+        setFdExtraLadpraoIncome(0)
+        setFdExtraSukhumvitIncome(0)
+        setExtraWorkSyncSource('fallback')
+      }
 
       // เก็บ breakdown ตาม OTA: byOta[fieldName(categoryId)][otaSourceId] = total
       const breakdown: Record<number, Record<number, number>> = {}
@@ -670,10 +686,6 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(data.total || 0)
           } else if (currentCategoryId === 'coVanKesselIncome') {
             setCoVanKesselIncome(data.total || 0)
-          } else if (currentCategoryId === 'fdExtraLadpraoIncome') {
-            setFdExtraLadpraoIncome(data.total || 0)
-          } else if (currentCategoryId === 'fdExtraSukhumvitIncome') {
-            setFdExtraSukhumvitIncome(data.total || 0)
           } else if (currentCategoryId === 'cowayWaterFilterExpense') {
             // อัปเดต buildingSettings สำหรับ Coway
             setBuildingSettings(prev => prev ? {
@@ -1283,12 +1295,40 @@ export default function TransactionsPage() {
                 </>
               )}
 
-              {/* กลุ่ม 6: งานเสริม FD - เฉพาะ CT/YW/NANA */}
+              {/* กลุ่ม 6: งานเสริม FD - เฉพาะ CT/YW/NANA (ดึงจาก leave system, หาร 3 อาคาร) */}
               {isEligibleForSalary && (
                 <>
                   <div className="bg-teal-500/10 px-4 py-2 border-y border-teal-500/20">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-semibold text-teal-600">งานเสริม FD</p>
+                    <div className="flex justify-between items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-teal-600">งานเสริม FD</p>
+                        {extraWorkSyncSource !== 'leave' && (
+                          <span
+                            className="text-[10px] md:text-xs px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 border border-yellow-300"
+                            title={
+                              extraWorkSyncSource === 'stale'
+                                ? 'ใช้ข้อมูลจากแคชชั่วคราว — ระบบ leave อาจไม่ตอบสนอง'
+                                : extraWorkSyncSource === 'legacy'
+                                  ? 'แสดงข้อมูลเดือนก่อน cutover (จากระบบเดิม)'
+                                  : 'ดึงข้อมูลจากระบบ leave ไม่สำเร็จ'
+                            }
+                          >
+                            {extraWorkSyncSource === 'stale'
+                              ? 'แคช'
+                              : extraWorkSyncSource === 'legacy'
+                                ? 'ข้อมูลเดิม'
+                                : 'sync ไม่สำเร็จ'}
+                          </span>
+                        )}
+                        <a
+                          href="https://leave-bay.vercel.app/extra-work"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] md:text-xs underline text-teal-700 hover:text-teal-900"
+                        >
+                          แก้ไขที่ระบบ Leave →
+                        </a>
+                      </div>
                       <p className="text-sm font-bold text-teal-600">{formatNumber(fdExtraLadpraoIncome + fdExtraSukhumvitIncome)}</p>
                     </div>
                   </div>
@@ -1300,6 +1340,7 @@ export default function TransactionsPage() {
                           <div className="flex items-center gap-1 md:gap-2">
                             <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
                             <span className="text-xs md:text-sm font-medium text-teal-600">ลาดพร้าว 21</span>
+                            <span className="text-[10px] md:text-xs text-gray-500">(หาร 3)</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right px-2 md:px-4">
@@ -1307,30 +1348,6 @@ export default function TransactionsPage() {
                             <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-teal-50 border border-teal-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-teal-600">
                               {formatNumber(fdExtraLadpraoIncome)}
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', 'fdExtraLadpraoIncome', 'งานเสริม FD ลาดพร้าว 21')}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', 'fdExtraLadpraoIncome', 'งานเสริม FD ลาดพร้าว 21')}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', 'fdExtraLadpraoIncome', 'งานเสริม FD ลาดพร้าว 21')}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1340,6 +1357,7 @@ export default function TransactionsPage() {
                           <div className="flex items-center gap-1 md:gap-2">
                             <CategoryIcon name="ทำความสะอาด" className="h-4 w-4 flex-shrink-0" />
                             <span className="text-xs md:text-sm font-medium text-teal-600">สุขุมวิท 81</span>
+                            <span className="text-[10px] md:text-xs text-gray-500">(หาร 3)</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right px-2 md:px-4">
@@ -1347,30 +1365,6 @@ export default function TransactionsPage() {
                             <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-teal-50 border border-teal-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-teal-600">
                               {formatNumber(fdExtraSukhumvitIncome)}
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', 'fdExtraSukhumvitIncome', 'งานเสริม FD สุขุมวิท 81')}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', 'fdExtraSukhumvitIncome', 'งานเสริม FD สุขุมวิท 81')}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', 'fdExtraSukhumvitIncome', 'งานเสริม FD สุขุมวิท 81')}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
