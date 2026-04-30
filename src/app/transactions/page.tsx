@@ -1004,7 +1004,6 @@ export default function TransactionsPage() {
                       {/* Sub-rows: breakdown ตาม OTA (ซ่อนของ VIEWER เพื่อ consistency กับ OTA section ด้านล่าง) */}
                       {!isViewer && otaSources.map((ota) => {
                         const amount = otaBreakdown[category.id]?.[ota.id] || 0
-                        if (amount === 0) return null
                         return (
                           <TableRow key={`${category.id}-${ota.id}`} className="bg-[#1d3557]/[0.03]">
                             <TableCell className="px-2 md:px-4"></TableCell>
