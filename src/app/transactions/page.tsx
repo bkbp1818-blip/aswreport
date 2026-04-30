@@ -380,10 +380,8 @@ export default function TransactionsPage() {
     (c) => !directBookingSubNames.includes(c.name) && c.name !== 'ค่าเช่าจาก Direct Booking'
   )
 
-  // Subtotal ของ Direct Booking (รวมข้อมูลเก่า + 3 sub-items)
+  // entry เก่าของ Direct Booking (ใช้ใน totalDirectBookingIncome เพื่อรวมข้อมูลก่อนแยก 4 ช่องทาง)
   const directBookingCategory = rentalIncomeCategories.find((c) => c.name === 'ค่าเช่าจาก Direct Booking')
-  const directBookingSubtotal = directBookingSubCategories.reduce((sum, c) => sum + (transactionData[c.id] || 0), 0)
-    + (directBookingCategory ? (transactionData[directBookingCategory.id] || 0) : 0)
 
   // หา categoryId ของเงินเดือนพนักงาน
   const salaryCategory = categories.find((c) => c.name === 'เงินเดือนพนักงาน')
@@ -440,6 +438,13 @@ export default function TransactionsPage() {
     (sum, c) => sum + getDisplayAmount(c.id),
     0
   )
+  // ยอดรวมเฉพาะ Direct Booking (4 ช่องทาง + entry เก่า) สำหรับแสดงเป็นกลุ่มแยก
+  const totalDirectBookingIncome = directBookingSubCategories.reduce(
+    (sum, c) => sum + getDisplayAmount(c.id),
+    0
+  ) + (directBookingCategory ? getDisplayAmount(directBookingCategory.id) : 0)
+  // ยอดรวมเฉพาะ "รายได้ค่าเช่า" (OTA ล้วน ไม่รวม Direct Booking)
+  const totalNormalRentalIncome = totalRentalIncome - totalDirectBookingIncome
   const totalOtherIncome = otherIncomeCategories.reduce(
     (sum, c) => sum + getDisplayAmount(c.id),
     0
@@ -937,11 +942,11 @@ export default function TransactionsPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              {/* กลุ่ม 1: รายได้ค่าเช่า */}
-              <div className="bg-[#84A59D]/10 px-4 py-2 border-b border-[#84A59D]/20">
+              {/* กลุ่ม 1: Direct Booking */}
+              <div className="bg-[#1d3557]/10 px-4 py-2 border-b border-[#1d3557]/20">
                 <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</p>
-                  <p className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalRentalIncome)}</p>
+                  <p className="text-sm font-semibold text-[#1d3557]">Direct Booking</p>
+                  <p className="text-sm font-bold text-[#1d3557]">{formatNumber(totalDirectBookingIncome)}</p>
                 </div>
               </div>
               <Table>
@@ -953,26 +958,6 @@ export default function TransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Direct Booking Group Header */}
-                  <TableRow className="bg-[#1d3557]/10">
-                    <TableCell className="font-medium px-2 md:px-4"></TableCell>
-                    <TableCell className="px-2 md:px-4">
-                      <div className="flex items-center gap-1 md:gap-2">
-                        <CategoryIcon name="ค่าเช่าจาก Direct Booking" className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-xs md:text-sm font-semibold text-[#1d3557]">Direct Booking</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right px-2 md:px-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                        <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-[#1d3557]/10 border border-[#1d3557]/20 rounded-md text-xs md:text-sm font-bold text-[#1d3557] min-w-[60px] md:min-w-[80px]">
-                          {formatNumber(directBookingSubtotal)}
-                        </div>
-                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
-                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
-                        <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
                   {/* Direct Booking Sub-items (PayPal, Credit Card, Bank Transfer, Cash) */}
                   {directBookingSubCategories.map((category, index) => (
                     <Fragment key={category.id}>
@@ -1044,53 +1029,68 @@ export default function TransactionsPage() {
                       })}
                     </Fragment>
                   ))}
-                  {/* OTA อื่นๆ (AirBNB, Booking, Agoda, Trip, Expedia, RB) - ซ่อนสำหรับ VIEWER */}
-                  {!isViewer && normalRentalCategories.map((category, index) => (
-                    <TableRow key={category.id} className={(directBookingSubCategories.length + index) % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                      <TableCell className="font-medium px-2 md:px-4">{directBookingSubCategories.length + index + 1}</TableCell>
-                      <TableCell className="px-2 md:px-4">
-                        <div className="flex items-center gap-1 md:gap-2">
-                          <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-xs md:text-sm">{category.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right px-2 md:px-4">
-                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                          <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
-                            {formatNumber(transactionData[category.id] || 0)}
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                            onClick={() => openAdjustDialog('edit', category.id, category.name)}
-                          >
-                            <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                            onClick={() => openAdjustDialog('add', category.id, category.name)}
-                          >
-                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                            onClick={() => openAdjustDialog('subtract', category.id, category.name)}
-                          >
-                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
 
-              {/* กลุ่ม 2: รายได้อื่นๆ */}
+              {/* กลุ่ม 2: รายได้ค่าเช่า (OTA) - ซ่อนสำหรับ VIEWER */}
+              {!isViewer && normalRentalCategories.length > 0 && (
+                <>
+                  <div className="bg-[#84A59D]/10 px-4 py-2 border-y border-[#84A59D]/20">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-[#5a7d75]">รายได้ค่าเช่า</p>
+                      <p className="text-sm font-bold text-[#5a7d75]">{formatNumber(totalNormalRentalIncome)}</p>
+                    </div>
+                  </div>
+                  <Table>
+                    <TableBody>
+                      {normalRentalCategories.map((category, index) => (
+                        <TableRow key={category.id} className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
+                          <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
+                              <span className="text-xs md:text-sm">{category.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right px-2 md:px-4">
+                            <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                              <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
+                                {formatNumber(transactionData[category.id] || 0)}
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                                onClick={() => openAdjustDialog('edit', category.id, category.name)}
+                              >
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
+                                onClick={() => openAdjustDialog('add', category.id, category.name)}
+                              >
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                onClick={() => openAdjustDialog('subtract', category.id, category.name)}
+                              >
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+
+              {/* กลุ่ม 3: รายได้อื่นๆ */}
               {otherIncomeCategories.length > 0 && (
                 <>
                   <div className="bg-[#F6BD60]/10 px-4 py-2 border-y border-[#F6BD60]/20">
