@@ -44,3 +44,7 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# local-only files
+cookies.txt
+_ul
