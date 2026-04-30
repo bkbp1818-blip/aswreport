@@ -103,11 +103,39 @@ interface ExpenseHistoryItem {
   actionType: string
   amount: string
   description: string
+  day?: number | null
   month: number
   year: number
   createdAt: string
   otaSourceId?: number | null
   otaSource?: OtaSource | null
+}
+
+// Daily Entry — รายชื่อ OTA และช่องทางที่จะแสดงใน section
+const DAILY_OTA_LIST = ['Agoda', 'Booking', 'AirBnB', 'Trip', 'Expedia'] as const
+const DAILY_CHANNEL_LIST = ['PayPal', 'Credit Card', 'Bank Transfer', 'Cash'] as const
+
+// Map ชื่อใน UI → ชื่อ category ใน DB (สำหรับ "ค่าเช่าจาก ...")
+const DAILY_OTA_CATEGORY_NAME: Record<string, string> = {
+  Agoda: 'ค่าเช่าจาก Agoda',
+  Booking: 'ค่าเช่าจาก Booking',
+  AirBnB: 'ค่าเช่าจาก AirBNB',
+  Trip: 'ค่าเช่าจาก Trip',
+  Expedia: 'ค่าเช่าจาก Expedia',
+}
+const DAILY_CHANNEL_CATEGORY_NAME: Record<string, string> = {
+  PayPal: 'ค่าเช่าจาก PayPal',
+  'Credit Card': 'ค่าเช่าจาก Credit Card',
+  'Bank Transfer': 'ค่าเช่าจาก Bank Transfer',
+  Cash: 'ค่าเช่า Cash',
+}
+// Map ชื่อ OTA ใน UI → ชื่อใน OtaSource table (อาจต่างจาก category name)
+const DAILY_OTA_SOURCE_NAME: Record<string, string> = {
+  Agoda: 'Agoda',
+  Booking: 'Booking.com',
+  AirBnB: 'AirBNB',
+  Trip: 'Trip',
+  Expedia: 'Expedia',
 }
 
 interface ReimbursementItem {
@@ -169,6 +197,15 @@ export default function TransactionsPage() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [savingHistory, setSavingHistory] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  // State สำหรับ Daily Entry section
+  const [dailyEntryInputs, setDailyEntryInputs] = useState<Record<string, { day: string; amount: string }>>({})
+  const [savingDailyEntry, setSavingDailyEntry] = useState<Record<string, boolean>>({})
+  const [dailyHistoryDialogOpen, setDailyHistoryDialogOpen] = useState(false)
+  const [dailyHistoryTitle, setDailyHistoryTitle] = useState('')
+  const [dailyHistoryEntries, setDailyHistoryEntries] = useState<ExpenseHistoryItem[]>([])
+  const [dailyHistoryLoading, setDailyHistoryLoading] = useState(false)
+  const [dailyHistoryDeletingId, setDailyHistoryDeletingId] = useState<number | null>(null)
 
   const years = generateYears()
 
@@ -445,6 +482,10 @@ export default function TransactionsPage() {
   ) + (directBookingCategory ? getDisplayAmount(directBookingCategory.id) : 0)
   // ยอดรวมเฉพาะ "รายได้ค่าเช่า" (OTA ล้วน ไม่รวม Direct Booking)
   const totalNormalRentalIncome = totalRentalIncome - totalDirectBookingIncome
+  // ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) ตั้งแต่เมษา 2026 เป็นต้นไป (เดือนก่อนหน้ายังแสดงปกติ)
+  const _selMonth = parseInt(selectedMonth)
+  const _selYear = parseInt(selectedYear)
+  const hideRentalIncomeOtaGroup = _selYear > 2026 || (_selYear === 2026 && _selMonth >= 4)
   const totalOtherIncome = otherIncomeCategories.reduce(
     (sum, c) => sum + getDisplayAmount(c.id),
     0
@@ -618,14 +659,258 @@ export default function TransactionsPage() {
     }
   }
 
+  // ===== Daily Entry helpers =====
+  const getTodayIso = () => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const getDailyInput = (key: string) => {
+    return dailyEntryInputs[key] || { day: getTodayIso(), amount: '' }
+  }
+
+  const setDailyInputField = (key: string, field: 'day' | 'amount', value: string) => {
+    setDailyEntryInputs((prev) => ({
+      ...prev,
+      [key]: { ...getDailyInput(key), [field]: value },
+    }))
+  }
+
+  // resolve categoryId จากชื่อ category
+  const resolveCategoryByName = (name: string) => categories.find((c) => c.name === name)
+
+  // resolve otaSourceId จากชื่อ ota
+  const resolveOtaSourceByName = (name: string) => otaSources.find((o) => o.name === name)
+
+  // ยอดของ Direct Booking ในแต่ละ (OTA, Channel) — ใช้ otaBreakdown ของเดือนปัจจุบัน
+  const getDailyDbAmount = (otaUiName: string, channelUiName: string): number => {
+    const channelCat = resolveCategoryByName(DAILY_CHANNEL_CATEGORY_NAME[channelUiName])
+    const otaSrc = resolveOtaSourceByName(DAILY_OTA_SOURCE_NAME[otaUiName])
+    if (!channelCat || !otaSrc) return 0
+    return otaBreakdown[channelCat.id]?.[otaSrc.id] || 0
+  }
+
+  // ยอดรวมของ OTA หนึ่งตัว (รวมทุก channel)
+  const getDailyDbOtaTotal = (otaUiName: string): number => {
+    return DAILY_CHANNEL_LIST.reduce((sum, ch) => sum + getDailyDbAmount(otaUiName, ch), 0)
+  }
+
+  // ยอดรวมของ OTA ในกลุ่ม "กรอกข้อมูลรายเดือน — OTA"
+  // ใช้ transactionData ของ category "ค่าเช่าจาก [OTA]" (ยอดรวมเดือนนี้)
+  const getDailyOtaMonthTotal = (otaUiName: string): number => {
+    const cat = resolveCategoryByName(DAILY_OTA_CATEGORY_NAME[otaUiName])
+    if (!cat) return 0
+    return transactionData[cat.id] || 0
+  }
+
+  // บันทึก daily entry — POST /api/expense-history แบบ ADD
+  const saveDailyEntry = async (
+    group: 'DB' | 'OTA' | 'CHANNEL',
+    otaUiName?: string,
+    channelUiName?: string,
+  ) => {
+    if (!selectedBuilding) {
+      alert('กรุณาเลือกอาคารก่อน')
+      return
+    }
+
+    // หา categoryName ที่จะบันทึก
+    let categoryName: string | undefined
+    let otaSourceName: string | undefined
+    if (group === 'DB') {
+      // กลุ่ม 1: Direct Booking — บันทึกเข้า category ของ channel + otaSourceId
+      if (!otaUiName || !channelUiName) return
+      categoryName = DAILY_CHANNEL_CATEGORY_NAME[channelUiName]
+      otaSourceName = DAILY_OTA_SOURCE_NAME[otaUiName]
+    } else if (group === 'OTA') {
+      // กลุ่ม 2 (OTA): บันทึกเข้า "ค่าเช่าจาก [OTA]"
+      if (!otaUiName) return
+      categoryName = DAILY_OTA_CATEGORY_NAME[otaUiName]
+    } else if (group === 'CHANNEL') {
+      // กลุ่ม 2 (Channel): บันทึกเข้า "ค่าเช่าจาก [Channel]"
+      if (!channelUiName) return
+      categoryName = DAILY_CHANNEL_CATEGORY_NAME[channelUiName]
+    }
+    if (!categoryName) {
+      alert('ไม่พบ category สำหรับรายการนี้')
+      return
+    }
+
+    const category = resolveCategoryByName(categoryName)
+    if (!category) {
+      alert(`ไม่พบ category "${categoryName}" ในระบบ`)
+      return
+    }
+
+    const key = group === 'DB'
+      ? `DB:${otaUiName}:${channelUiName}`
+      : group === 'OTA' ? `OTA:${otaUiName}` : `CH:${channelUiName}`
+    const input = getDailyInput(key)
+    const amount = parseFloat(input.amount)
+    if (!amount || amount <= 0) {
+      alert('กรุณากรอกจำนวนที่มากกว่า 0')
+      return
+    }
+
+    // กลุ่ม OTA: ไม่มี date picker — ใช้เดือน/ปีของหน้าหลัก, day = null
+    // กลุ่ม DB / CHANNEL: ใช้ date picker
+    let day: number | null
+    let month: number
+    let year: number
+    if (group === 'OTA') {
+      day = null
+      month = parseInt(selectedMonth)
+      year = parseInt(selectedYear)
+    } else {
+      if (!input.day) {
+        alert('กรุณาเลือกวันที่')
+        return
+      }
+      const dt = new Date(input.day)
+      if (Number.isNaN(dt.getTime())) {
+        alert('วันที่ไม่ถูกต้อง')
+        return
+      }
+      day = dt.getDate()
+      month = dt.getMonth() + 1
+      year = dt.getFullYear()
+    }
+
+    // หา otaSourceId (เฉพาะกลุ่ม DB)
+    let otaSourceId: number | null = null
+    if (otaSourceName) {
+      const src = resolveOtaSourceByName(otaSourceName)
+      if (!src) {
+        alert(`ไม่พบ OTA "${otaSourceName}" ใน OtaSource`)
+        return
+      }
+      otaSourceId = src.id
+    }
+
+    setSavingDailyEntry((prev) => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/expense-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetType: 'TRANSACTION',
+          targetId: parseInt(selectedBuilding),
+          fieldName: String(category.id),
+          fieldLabel: category.name,
+          actionType: 'ADD',
+          amount,
+          description: group === 'OTA'
+            ? `กรอกข้อมูลรายเดือน - ${month}/${year}`
+            : `กรอกข้อมูลรายวัน - ${input.day}`,
+          day,
+          month,
+          year,
+          otaSourceId,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        return
+      }
+      // เคลียร์ amount เก็บ day ไว้
+      setDailyEntryInputs((prev) => ({
+        ...prev,
+        [key]: { ...getDailyInput(key), amount: '' },
+      }))
+      await loadTransactions()
+    } catch (e) {
+      console.error('saveDailyEntry error', e)
+      alert('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setSavingDailyEntry((prev) => ({ ...prev, [key]: false }))
+    }
+  }
+
+  // เปิด Dialog ประวัติรายวัน — แสดง entries ของเดือนปัจจุบัน + ยอดรวม
+  const openDailyHistory = async (
+    categoryName: string,
+    titleSuffix: string,
+    otaSourceName?: string,
+  ) => {
+    if (!selectedBuilding) {
+      alert('กรุณาเลือกอาคารก่อน')
+      return
+    }
+    const category = resolveCategoryByName(categoryName)
+    if (!category) {
+      alert(`ไม่พบ category "${categoryName}" ในระบบ`)
+      return
+    }
+    const otaSource = otaSourceName ? resolveOtaSourceByName(otaSourceName) : null
+
+    setDailyHistoryTitle(`${titleSuffix} — ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`)
+    setDailyHistoryDialogOpen(true)
+    setDailyHistoryLoading(true)
+    setDailyHistoryEntries([])
+
+    try {
+      const params = new URLSearchParams({
+        targetType: 'TRANSACTION',
+        targetId: selectedBuilding,
+        fieldName: String(category.id),
+        month: selectedMonth,
+        year: selectedYear,
+      })
+      const res = await fetch(`/api/expense-history?${params}`)
+      const data = await res.json()
+      let entries: ExpenseHistoryItem[] = data.history || []
+      if (otaSource) {
+        entries = entries.filter((e) => e.otaSourceId === otaSource.id)
+      }
+      setDailyHistoryEntries(entries)
+    } catch (e) {
+      console.error('openDailyHistory error', e)
+      alert('เกิดข้อผิดพลาดในการดึงประวัติ')
+    } finally {
+      setDailyHistoryLoading(false)
+    }
+  }
+
+  // ลบ entry จาก dialog ประวัติ
+  const deleteDailyEntry = async (id: number) => {
+    if (!confirm('ยืนยันการลบรายการนี้?')) return
+    setDailyHistoryDeletingId(id)
+    try {
+      const res = await fetch(`/api/expense-history/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`ลบไม่สำเร็จ: ${err.error || res.statusText}`)
+        return
+      }
+      // ลบออกจาก list ที่กำลังแสดง
+      setDailyHistoryEntries((prev) => prev.filter((e) => e.id !== id))
+      await loadTransactions()
+    } catch (e) {
+      console.error('deleteDailyEntry error', e)
+      alert('เกิดข้อผิดพลาดในการลบ')
+    } finally {
+      setDailyHistoryDeletingId(null)
+    }
+  }
+
+  // คำนวณยอดรวมของ entries ใน dialog
+  const dailyHistorySum = dailyHistoryEntries.reduce((sum, e) => {
+    const amt = Number(e.amount)
+    return e.actionType === 'ADD' ? sum + amt : sum - amt
+  }, 0)
+
   // เปิด Dialog เพิ่ม/ลดยอด
-  const openAdjustDialog = (type: 'add' | 'subtract' | 'edit', categoryId: number | string, categoryName: string) => {
+  const openAdjustDialog = (type: 'add' | 'subtract' | 'edit', categoryId: number | string, categoryName: string, preSelectedOtaSourceId?: number) => {
     setAdjustType(type)
     setAdjustCategoryId(categoryId)
     setAdjustCategoryName(categoryName)
     setAdjustAmount('')
     setAdjustDescription('')
-    setAdjustOtaSourceId(null)
+    setAdjustOtaSourceId(preSelectedOtaSourceId ?? null)
     // ใช้เดือน/ปีที่เลือกในหน้าหลัก
     setAdjustMonth(selectedMonth)
     setAdjustYear(selectedYear)
@@ -942,85 +1227,86 @@ export default function TransactionsPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-              {/* กลุ่ม 1: Direct Booking */}
-              <div className="bg-[#1d3557]/10 px-4 py-2 border-b border-[#1d3557]/20">
+              {/* กลุ่ม 1.5: กรอกข้อมูลรายวัน — Direct Booking (OTA × Channel) */}
+              <div className="bg-[#a78bfa]/10 px-4 py-2 border-y border-[#a78bfa]/20">
                 <div className="flex justify-between items-center">
-                  <p className="text-sm font-semibold text-[#1d3557]">Direct Booking</p>
-                  <p className="text-sm font-bold text-[#1d3557]">{formatNumber(totalDirectBookingIncome)}</p>
+                  <p className="text-sm font-semibold text-[#6d4ec6]">กรอกข้อมูลรายวัน — Direct Booking</p>
                 </div>
               </div>
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8 md:w-[50px]">#</TableHead>
-                    <TableHead>รายการ</TableHead>
-                    <TableHead className="text-right">จำนวนเงิน</TableHead>
-                  </TableRow>
-                </TableHeader>
                 <TableBody>
-                  {/* Direct Booking Sub-items (PayPal, Credit Card, Bank Transfer, Cash) */}
-                  {directBookingSubCategories.map((category, index) => (
-                    <Fragment key={category.id}>
-                      <TableRow className={index % 2 === 0 ? 'bg-white' : 'bg-[#84A59D]/5'}>
-                        <TableCell className="font-medium px-2 md:px-4">{index + 1}</TableCell>
-                        <TableCell className="px-2 md:px-4">
-                          <div className="flex items-center gap-1 md:gap-2 pl-4 md:pl-6">
-                            <CategoryIcon name={category.name} className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs md:text-sm">{category.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right px-2 md:px-4">
-                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-gray-50 border rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px]">
-                              {formatNumber(transactionData[category.id] || 0)}
+                  {DAILY_OTA_LIST.map((otaName) => (
+                    <Fragment key={`db-${otaName}`}>
+                      <TableRow className="bg-[#a78bfa]/5">
+                        <TableCell colSpan={5} className="px-2 md:px-4 py-1.5">
+                          <div className="flex items-center justify-between gap-1 md:gap-2">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name={DAILY_OTA_CATEGORY_NAME[otaName]} className="h-4 w-4 flex-shrink-0" />
+                              <span className="text-xs md:text-sm font-semibold text-[#6d4ec6]">{otaName}</span>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', category.id, category.name)}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', category.id, category.name)}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', category.id, category.name)}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
+                            <span className="text-xs md:text-sm font-bold text-[#6d4ec6]">รวม: {formatNumber(getDailyDbOtaTotal(otaName))}</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                      {/* Sub-rows: breakdown ตาม OTA (ซ่อนของ VIEWER เพื่อ consistency กับ OTA section ด้านล่าง) */}
-                      {!isViewer && otaSources.map((ota) => {
-                        const amount = otaBreakdown[category.id]?.[ota.id] || 0
+                      {DAILY_CHANNEL_LIST.map((channelName) => {
+                        const key = `DB:${otaName}:${channelName}`
+                        const input = getDailyInput(key)
+                        const saving = !!savingDailyEntry[key]
+                        const channelAmount = getDailyDbAmount(otaName, channelName)
                         return (
-                          <TableRow key={`${category.id}-${ota.id}`} className="bg-[#1d3557]/[0.03]">
-                            <TableCell className="px-2 md:px-4"></TableCell>
+                          <TableRow key={key} className="bg-white">
+                            <TableCell className="px-2 md:px-4 w-8" />
                             <TableCell className="px-2 md:px-4">
-                              <div className="flex items-center gap-1 md:gap-2 pl-10 md:pl-14 text-[10px] md:text-xs text-gray-600">
-                                <span>└</span>
-                                <span>{ota.name}</span>
+                              <div className="flex items-center justify-between gap-2 pl-4 md:pl-6">
+                                <span className="text-xs md:text-sm text-gray-700">└ {channelName}</span>
+                                <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                  {formatNumber(channelAmount)}
+                                </span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-right px-2 md:px-4">
-                              <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                                <div className="text-right px-2 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs text-gray-600 min-w-[60px] md:min-w-[80px]">
-                                  {formatNumber(amount)}
-                                </div>
-                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
-                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
-                                <div className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0" />
+                            <TableCell className="px-1 md:px-2 w-[140px]">
+                              <Input
+                                type="date"
+                                value={input.day}
+                                onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                                className="h-8 text-xs md:text-sm"
+                              />
+                            </TableCell>
+                            <TableCell className="px-1 md:px-2 w-[110px]">
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                value={input.amount}
+                                onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                                placeholder="0"
+                                className="h-8 text-xs md:text-sm text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="px-1 md:px-2 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="h-8 px-2 text-xs"
+                                  disabled={saving}
+                                  onClick={() => saveDailyEntry('DB', otaName, channelName)}
+                                >
+                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() =>
+                                    openDailyHistory(
+                                      DAILY_CHANNEL_CATEGORY_NAME[channelName],
+                                      `${otaName} → ${channelName}`,
+                                      DAILY_OTA_SOURCE_NAME[otaName],
+                                    )
+                                  }
+                                >
+                                  ตรวจสอบ
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -1031,8 +1317,73 @@ export default function TransactionsPage() {
                 </TableBody>
               </Table>
 
-              {/* กลุ่ม 2: รายได้ค่าเช่า (OTA) - ซ่อนสำหรับ VIEWER */}
-              {!isViewer && normalRentalCategories.length > 0 && (
+              {/* กลุ่ม 1.6: กรอกข้อมูลรายวัน — OTA */}
+              <div className="bg-[#fbbf24]/10 px-4 py-2 border-y border-[#fbbf24]/20">
+                <div className="flex justify-between items-center gap-2">
+                  <p className="text-sm font-semibold text-[#b97500]">กรอกข้อมูลรายเดือน — OTA</p>
+                  <span className="text-xs md:text-sm font-bold text-[#b97500]">รวม: {formatNumber(DAILY_OTA_LIST.reduce((sum, ota) => sum + getDailyOtaMonthTotal(ota), 0))}</span>
+                </div>
+              </div>
+              <Table>
+                <TableBody>
+                  {DAILY_OTA_LIST.map((otaName) => {
+                    const key = `OTA:${otaName}`
+                    const input = getDailyInput(key)
+                    const saving = !!savingDailyEntry[key]
+                    const categoryName = DAILY_OTA_CATEGORY_NAME[otaName]
+                    return (
+                      <TableRow key={key} className="bg-white">
+                        <TableCell className="px-2 md:px-4 w-8" />
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center justify-between gap-2 pl-2 md:pl-4">
+                            <div className="flex items-center gap-1 md:gap-2">
+                              <CategoryIcon name={categoryName} className="h-4 w-4 flex-shrink-0" />
+                              <span className="text-xs md:text-sm">{otaName}</span>
+                            </div>
+                            <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                              {formatNumber(getDailyOtaMonthTotal(otaName))}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-1 md:px-2 w-[140px]">
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            value={input.amount}
+                            onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                            placeholder="0"
+                            className="h-8 text-xs md:text-sm text-right"
+                          />
+                        </TableCell>
+                        <TableCell className="px-1 md:px-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-8 px-2 text-xs"
+                              disabled={saving}
+                              onClick={() => saveDailyEntry('OTA', otaName)}
+                            >
+                              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => openDailyHistory(categoryName, otaName)}
+                            >
+                              ตรวจสอบ
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+
+              {/* กลุ่ม 2: รายได้ค่าเช่า (OTA) - ซ่อนสำหรับ VIEWER และตั้งแต่เมษา 2026 เป็นต้นไป */}
+              {!isViewer && !hideRentalIncomeOtaGroup && normalRentalCategories.length > 0 && (
                 <>
                   <div className="bg-[#84A59D]/10 px-4 py-2 border-y border-[#84A59D]/20">
                     <div className="flex justify-between items-center">
@@ -2595,6 +2946,82 @@ export default function TransactionsPage() {
                 <Loader2 className="h-2.5 w-2.5 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
               ) : null}
               บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ประวัติรายวัน */}
+      <Dialog open={dailyHistoryDialogOpen} onOpenChange={setDailyHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">
+              ตรวจสอบ — {dailyHistoryTitle}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {dailyHistoryLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : dailyHistoryEntries.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 py-8">ยังไม่มีรายการในเดือนนี้</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[110px]">วันที่</TableHead>
+                    <TableHead className="text-right w-[110px]">จำนวน</TableHead>
+                    <TableHead>รายละเอียด</TableHead>
+                    <TableHead className="w-[60px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dailyHistoryEntries.map((entry) => {
+                    const dt = entry.day != null
+                      ? `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`
+                      : new Date(entry.createdAt).toISOString().slice(0, 10)
+                    const amt = Number(entry.amount)
+                    const sign = entry.actionType === 'ADD' ? '+' : '-'
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="text-xs">{dt}</TableCell>
+                        <TableCell className={`text-right text-xs font-medium ${entry.actionType === 'ADD' ? 'text-green-700' : 'text-red-700'}`}>
+                          {sign}{formatNumber(amt)}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600">{entry.description}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600 hover:bg-red-100"
+                            disabled={dailyHistoryDeletingId === entry.id}
+                            onClick={() => deleteDailyEntry(entry.id)}
+                          >
+                            {dailyHistoryDeletingId === entry.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="text-xs font-semibold">ยอดรวม</TableCell>
+                    <TableCell className="text-right text-xs font-bold">{formatNumber(Math.max(0, dailyHistorySum))}</TableCell>
+                    <TableCell colSpan={2} />
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDailyHistoryDialogOpen(false)}>
+              ปิด
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -20,6 +20,7 @@ async function main() {
     { name: 'Booking.com', order: 3 },
     { name: 'Agoda', order: 4 },
     { name: 'Expedia', order: 5 },
+    { name: 'Trip', order: 6 },
   ]
 
   for (const ota of otaSources) {

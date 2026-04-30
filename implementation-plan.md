@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.18.0 |
+| **Version** | 1.19.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -87,11 +87,26 @@
   - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
   - ยอดรวม Reset เป็น 0 ทุกเดือน
   - ดูประวัติ/ลบรายการได้
+- **Daily Entry Sections:** ✨ NEW v1.19.0
+  - **กลุ่ม "กรอกข้อมูลรายวัน — Direct Booking"** (สีม่วง `#a78bfa`):
+    - matrix 5 OTA × 4 Channel = 20 rows (Agoda, Booking, AirBnB, Trip, Expedia × PayPal, Credit Card, Bank Transfer, Cash)
+    - แต่ละ row: date picker + amount input + ปุ่ม "บันทึก" + "ตรวจสอบ"
+    - แสดงยอดสะสมต่อ row (ตัวเล็ก เทา) + ยอดรวมต่อ OTA (font-bold สีม่วง) ที่ header row
+    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [Channel]` + `otaSourceId` + `day`
+  - **กลุ่ม "กรอกข้อมูลรายเดือน — OTA"** (สีเหลือง `#fbbf24`):
+    - 5 OTA (Agoda, Booking, AirBnB, Trip, Expedia) — ไม่มี date picker (ใช้เดือน/ปีของหน้า) เพราะกรอกเดือนละครั้ง
+    - แต่ละ row: amount input + ปุ่ม "บันทึก" + "ตรวจสอบ" + ยอดสะสม
+    - Grand Total ของกลุ่มที่ header (สี theme `#b97500`)
+    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [OTA]` (ไม่มี channel)
+  - **Dialog "ตรวจสอบ"** ของแต่ละ row:
+    - แสดง entries รายวันของเดือนปัจจุบัน + ปุ่มลบรายตัว
+    - footer: ยอดรวมของ entries
+- **เงื่อนไขการแสดงตาม period:**
+  - **ก่อน เม.ย. 2026** → แสดงกลุ่ม "รายได้ค่าเช่า" (OTA AirBNB/Booking/Agoda/Trip/Expedia/RB) ตามเดิม
+  - **ตั้งแต่ เม.ย. 2026** → ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) — ใช้ Daily Entry sections แทน (ยอดยังบวกเข้า "รวมรายได้")
 - **OTA Source สำหรับ Direct Booking:** ✨ NEW v1.17.0
-  - Dialog เพิ่ม/ลด/แก้ไขของ 4 ช่องทาง (PayPal, Credit Card, Bank Transfer, Cash) มี dropdown "มาจาก OTA" บังคับเลือก
-  - รายชื่อ OTA: Direct, AirBNB, Booking.com, Agoda, Expedia (เก็บใน OtaSource master table)
-  - ตารางหลัก Direct Booking โชว์ sub-rows ของ OTA ใต้แต่ละ channel — ซ่อน OTA ที่ยอด=0 และซ่อนสำหรับ VIEWER
-  - ตารางประวัติใน Dialog มีคอลัมน์ "OTA"
+  - รายชื่อ OTA: Direct, AirBNB, Booking.com, Agoda, Expedia, **Trip** (เพิ่มใน v1.19.0)
+  - เก็บใน OtaSource master table
 - ค่าใช้จ่ายส่วนกลาง **แยกตามอาคาร** (ไม่ใช่ GlobalSettings อีกแล้ว) ✨ UPDATED
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
 - **กรองน้ำ Coway** - กรอกได้โดยตรงในหน้านี้ (ย้ายมาจากหน้า Settings) ✨ MOVED
@@ -278,7 +293,34 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.18.0 (Current - April 2026)
+### v1.19.0 (Current - April 2026)
+- **Daily Entry Sections — กรอกรายรับรายวัน/รายเดือน ที่หน้า `/transactions`:**
+  - **Schema:** เพิ่ม `day Int?` (nullable) ใน `ExpenseHistory` (Prisma db push บน Neon) — records เก่า `day = null`
+  - **API:** `POST /api/expense-history` รับ `day?` field
+  - **กลุ่ม 1 — "กรอกข้อมูลรายวัน — Direct Booking" (สีม่วง):**
+    - matrix 5 OTA × 4 Channel = 20 input rows
+    - date picker + amount + ปุ่มบันทึก/ตรวจสอบ ต่อ row
+    - แสดงยอดต่อ row (font-normal เทา) + subtotal ต่อ OTA (font-bold สีม่วง) ที่ header
+    - บันทึก: category ของ Channel (`ค่าเช่าจาก PayPal/CC/BT/Cash`) + `otaSourceId` + `day`
+  - **กลุ่ม 2 — "กรอกข้อมูลรายเดือน — OTA" (สีเหลือง):**
+    - 5 OTA — ไม่มี date picker (กรอกเดือนละครั้ง ใช้เดือน/ปีของหน้า)
+    - amount + ปุ่มบันทึก/ตรวจสอบ + ยอดสะสมต่อ row
+    - Grand Total ที่ header (sum 5 OTA)
+    - บันทึก: category `ค่าเช่าจาก [OTA]` ตรงๆ (ไม่มี otaSourceId)
+  - **Dialog "ตรวจสอบ":** แสดง entries รายวันของเดือนปัจจุบัน + ลบรายการ + footer ยอดรวม
+- **OtaSource:** เพิ่ม `Trip` (id=6, order=6) — ก่อนหน้านี้ Trip มีใน Category แต่ไม่มี OtaSource
+- **UI condition by period:**
+  - **เดือน ≥ เม.ย. 2026** → ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) เดิม — ใช้ Daily Entry แทน
+  - **เดือน < เม.ย. 2026** → ยังแสดงกลุ่มเดิมตามปกติ (ไม่กระทบรายงานย้อนหลัง)
+  - ยอดยังนับเข้า `totalRentalIncome` → "รวมรายได้" ทุกช่วง (ใช้ category เดียวกัน)
+- **Cleanup ของเดิม:**
+  - ลบ section "Direct Booking" บนสุดของ Card รายรับ (PayPal/CC/BT/Cash + OTA breakdown แบบเดิม)
+  - ลบปุ่ม +/-/แก้ไข ของ Direct Booking row ระดับ channel (ผ่าน Daily Entry แทน)
+  - ลบ `directBookingSubtotal` (dead code)
+- **Data reset:** ลบ ExpenseHistory ของ Direct Booking channels (PayPal/CC/BT/Cash) ใน เม.ย. 2026 ขึ้นไป 23 records — เพื่อให้พนักงานเริ่มกรอกใหม่ผ่าน Daily Entry
+- **ไฟล์แก้:** `prisma/schema.prisma`, `src/app/api/expense-history/route.ts`, `src/app/transactions/page.tsx`, `prisma/add-ota-sources.ts`
+
+### v1.18.0 (April 2026)
 - **เชื่อมระบบ leave (https://leave-bay.vercel.app) → ดึงงานเสริม FD อัตโนมัติ:**
   - **Feature 1 (รายรับ CT/YW/NANA):** ดึง `fdExtraLadpraoIncome` + `fdExtraSukhumvitIncome` จาก leave (ยอดรวมเดือน ÷ 3)
   - **Feature 2 (รายจ่าย FUNNLP/FUNNS81):** เปลี่ยนชื่อ "บริการอื่นๆจาก ASW" → **"งานเสริม FD"** ดึงยอดเต็ม (FUNNLP=raw.ladprao, FUNNS81=raw.sukhumvit)
