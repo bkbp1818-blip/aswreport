@@ -795,7 +795,9 @@ export default function EmployeesPage() {
                     const isDisabledThisMonth = hasMonthlyOverride && emp.monthlySalary === 0
                     // ถ้ากำลังแก้ไขเป็น "0" ก็ถือว่าปิด
                     const isEditingToZero = isEditing && editingMonthlySalary[emp.id] === '0'
-                    const showAsDisabled = isDisabledThisMonth || isEditingToZero
+                    // ถ้ากำลังแก้ไขเป็น "-1" = สั่งเปิดกลับ (รอ save) — ให้แสดงเป็น "เปิด" ทันที
+                    const isEditingToReopen = isEditing && editingMonthlySalary[emp.id] === '-1'
+                    const showAsDisabled = (isDisabledThisMonth && !isEditingToReopen) || isEditingToZero
 
                     return (
                       <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${showAsDisabled ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
