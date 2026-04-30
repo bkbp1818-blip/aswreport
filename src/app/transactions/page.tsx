@@ -149,7 +149,9 @@ interface ReimbursementItem {
 }
 
 export default function TransactionsPage() {
-  const { isViewer } = useAccess()
+  const { isViewer, user } = useAccess()
+  // ซ่อน section "คืนยอดค้างจ่าย / ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)" สำหรับ user เหล่านี้
+  const hideReimbursementForUser = !!user && ['aswjj', 'jmng'].includes(user.username)
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
@@ -2692,7 +2694,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* คืนยอดค้างจ่ายแล้ว - รายละเอียดแต่ละรายการ (รวมในรายจ่ายแล้ว) */}
-        {selectedBuilding && returnedReimbursementItems.length > 0 && (
+        {selectedBuilding && returnedReimbursementItems.length > 0 && !hideReimbursementForUser && (
           <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm md:text-base text-green-700 flex items-center gap-2">
@@ -2743,7 +2745,7 @@ export default function TransactionsPage() {
         )}
 
         {/* ยอดค้างจ่าย - แสดงรายการที่ยืมจ่ายในเดือนนี้ (ไม่รวมในรายจ่าย) */}
-        {selectedBuilding && pendingReimbursementItems.length > 0 && (
+        {selectedBuilding && pendingReimbursementItems.length > 0 && !hideReimbursementForUser && (
           <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm md:text-base text-orange-700 flex items-center gap-2">
