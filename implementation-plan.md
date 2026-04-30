@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.19.0 |
+| **Version** | 1.20.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -69,6 +69,10 @@
 - หน้า Settings: ไม่เห็นค่าเช่าอาคาร
 - หน้า Transactions: ไม่เห็นค่าเช่าอาคาร, เงินเดือน, ประกันสังคม, รายได้ OTA (AirBNB, Booking, Agoda ฯลฯ), OTA sub-rows ใต้ Direct Booking, การ์ดกำไร/ขาดทุน+กราฟ
 - หน้า Transactions: เห็น Direct Booking (รวม Cash), รายได้อื่นๆ, รับส่งสนามบิน, Thai Bus Tour, Co Van Kessel, งานเสริม FD
+
+**หมายเหตุพิเศษสำหรับ user `aswjj` และ `jmng` (v1.20.0):**
+- หน้า Transactions: ไม่เห็น 2 sections ด้านล่างสุด — "คืนยอดค้างจ่ายแล้ว (ยืมจ่ายเดือนนี้)" และ "ยอดค้างจ่ายที่ยังไม่จ่ายคืน (ยืมจ่ายเดือนนี้)"
+- เปรียบเทียบ username แบบ case-insensitive (รองรับ Jmng/jmng/JMNG)
 
 ---
 
@@ -293,7 +297,27 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.19.0 (Current - April 2026)
+### v1.20.0 (Current - April 2026)
+- **Direct Booking — เหลือ 4 ช่องทาง (เริ่ม เม.ย. 2026):**
+  - หน้า `/transactions` กลุ่ม "กรอกข้อมูลรายวัน — Direct Booking"
+  - **เม.ย. 2026 ขึ้นไป** → แสดงเพียง **4 แถว** (PayPal / Credit Card / Bank Transfer / Cash) — ไม่แยกตาม OTA — บันทึกด้วย `otaSourceId = null`
+  - **มี.ค. 2026 ย้อนหลัง** → ยังคงเป็น Matrix 5 OTA × 4 Channel (20 แถว) เหมือนเดิม เพื่อรักษาประวัติ
+  - ใช้ flag `hideRentalIncomeOtaGroup` เดิม + `saveDailyEntry('CHANNEL', ...)` ที่มีอยู่แล้ว — ไม่เพิ่ม helper / state / API / DB schema ใหม่
+- **Fix: ปุ่ม "เปิดเงินเดือนเดือนนี้" ดูเหมือนกดไม่ได้** ที่หน้า `/employees`:
+  - เดิม: เมื่อ user กด toggle เพื่อเปิดเงินเดือนกลับ state ตั้ง `editingMonthlySalary[id] = '-1'` แต่ `showAsDisabled` คำนวณจาก server data อย่างเดียว — ปุ่มยังเป็นสีแดง ดูเหมือนกดไม่ได้
+  - แก้: เพิ่ม `isEditingToReopen` (= true เมื่อ editing === '-1') ในเงื่อนไข — ปุ่มเปลี่ยนเป็นเขียวทันที
+- **Fix: ช่องเงินเดือนแสดง `-1` ตอนกดเปิด:**
+  - หลัง toggle เปิด state เป็น `'-1'` แต่ `<Input value={editingMonthlySalary[id]}>` ดึงมาแสดงตรงๆ
+  - แก้: ถ้า editing === `-1` ให้ value เป็น `''` (ว่าง) ผู้ใช้เห็น placeholder = เงินเดือนปกติของพนักงาน
+- **ซ่อน "คืนยอดค้างจ่าย / ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)" สำหรับ user `aswjj` และ `jmng`:**
+  - หน้า `/transactions` ซ่อน 2 Cards ที่อยู่ด้านล่างสุด (สีเขียว + สีส้ม)
+  - ดึง `user` จาก `useAccess()` — เปรียบเทียบ `user.username.toLowerCase()` เพื่อรองรับการสะกดทุกแบบ
+- **DevOps:**
+  - เพิ่ม `cookies.txt`, `_ul` เข้า `.gitignore`
+  - เพิ่ม Bash permission rule `Bash(git push:*)` ใน `.claude/settings.local.json` เพื่อ push ตรงเข้า master ได้ (workflow ส่วนตัวของ user)
+- **ไฟล์แก้:** `src/app/transactions/page.tsx`, `src/app/employees/page.tsx`, `.gitignore`, `.claude/settings.local.json`
+
+### v1.19.0 (April 2026)
 - **Daily Entry Sections — กรอกรายรับรายวัน/รายเดือน ที่หน้า `/transactions`:**
   - **Schema:** เพิ่ม `day Int?` (nullable) ใน `ExpenseHistory` (Prisma db push บน Neon) — records เก่า `day = null`
   - **API:** `POST /api/expense-history` รับ `day?` field

@@ -150,8 +150,9 @@ interface ReimbursementItem {
 
 export default function TransactionsPage() {
   const { isViewer, user } = useAccess()
-  // ซ่อน section "คืนยอดค้างจ่าย / ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)" สำหรับ user เหล่านี้
-  const hideReimbursementForUser = !!user && ['aswjj', 'jmng'].includes(user.username)
+  // ซ่อน section "คืนยอดค้างจ่าย / ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)" สำหรับ user เหล่านี้ (case-insensitive)
+  const hideReimbursementForUser =
+    !!user && ['aswjj', 'jmng'].includes(user.username.toLowerCase())
   const [buildings, setBuildings] = useState<Building[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
