@@ -848,7 +848,7 @@ export default function EmployeesPage() {
                             showAsDisabled
                               ? '0'
                               : isEditing
-                                ? editingMonthlySalary[emp.id]
+                                ? (editingMonthlySalary[emp.id] === '-1' ? '' : editingMonthlySalary[emp.id])
                                 : hasMonthlyOverride
                                   ? String(emp.monthlySalary)
                                   : ''
