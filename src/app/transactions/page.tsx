@@ -1235,85 +1235,156 @@ export default function TransactionsPage() {
               </div>
               <Table>
                 <TableBody>
-                  {DAILY_OTA_LIST.map((otaName) => (
-                    <Fragment key={`db-${otaName}`}>
-                      <TableRow className="bg-[#a78bfa]/5">
-                        <TableCell colSpan={5} className="px-2 md:px-4 py-1.5">
-                          <div className="flex items-center justify-between gap-1 md:gap-2">
-                            <div className="flex items-center gap-1 md:gap-2">
-                              <CategoryIcon name={DAILY_OTA_CATEGORY_NAME[otaName]} className="h-4 w-4 flex-shrink-0" />
-                              <span className="text-xs md:text-sm font-semibold text-[#6d4ec6]">{otaName}</span>
+                  {hideRentalIncomeOtaGroup ? (
+                    DAILY_CHANNEL_LIST.map((channelName) => {
+                      const key = `CH:${channelName}`
+                      const input = getDailyInput(key)
+                      const saving = !!savingDailyEntry[key]
+                      const channelCategoryName = DAILY_CHANNEL_CATEGORY_NAME[channelName]
+                      const channelCat = resolveCategoryByName(channelCategoryName)
+                      const channelAmount = channelCat ? getDisplayAmount(channelCat.id) : 0
+                      return (
+                        <TableRow key={key} className="bg-white">
+                          <TableCell className="px-2 md:px-4 w-8" />
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name={channelCategoryName} className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm text-gray-700">{channelName}</span>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                {formatNumber(channelAmount)}
+                              </span>
                             </div>
-                            <span className="text-xs md:text-sm font-bold text-[#6d4ec6]">รวม: {formatNumber(getDailyDbOtaTotal(otaName))}</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {DAILY_CHANNEL_LIST.map((channelName) => {
-                        const key = `DB:${otaName}:${channelName}`
-                        const input = getDailyInput(key)
-                        const saving = !!savingDailyEntry[key]
-                        const channelAmount = getDailyDbAmount(otaName, channelName)
-                        return (
-                          <TableRow key={key} className="bg-white">
-                            <TableCell className="px-2 md:px-4 w-8" />
-                            <TableCell className="px-2 md:px-4">
-                              <div className="flex items-center justify-between gap-2 pl-4 md:pl-6">
-                                <span className="text-xs md:text-sm text-gray-700">└ {channelName}</span>
-                                <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
-                                  {formatNumber(channelAmount)}
-                                </span>
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="date"
+                              value={input.day}
+                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[110px]">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={input.amount}
+                              onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                              placeholder="0"
+                              className="h-8 text-xs md:text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 px-2 text-xs"
+                                disabled={saving}
+                                onClick={() => saveDailyEntry('CHANNEL', undefined, channelName)}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() =>
+                                  openDailyHistory(
+                                    channelCategoryName,
+                                    `Direct Booking → ${channelName}`,
+                                  )
+                                }
+                              >
+                                ตรวจสอบ
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  ) : (
+                    DAILY_OTA_LIST.map((otaName) => (
+                      <Fragment key={`db-${otaName}`}>
+                        <TableRow className="bg-[#a78bfa]/5">
+                          <TableCell colSpan={5} className="px-2 md:px-4 py-1.5">
+                            <div className="flex items-center justify-between gap-1 md:gap-2">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name={DAILY_OTA_CATEGORY_NAME[otaName]} className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm font-semibold text-[#6d4ec6]">{otaName}</span>
                               </div>
-                            </TableCell>
-                            <TableCell className="px-1 md:px-2 w-[140px]">
-                              <Input
-                                type="date"
-                                value={input.day}
-                                onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
-                                className="h-8 text-xs md:text-sm"
-                              />
-                            </TableCell>
-                            <TableCell className="px-1 md:px-2 w-[110px]">
-                              <Input
-                                type="number"
-                                inputMode="decimal"
-                                value={input.amount}
-                                onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
-                                placeholder="0"
-                                className="h-8 text-xs md:text-sm text-right"
-                              />
-                            </TableCell>
-                            <TableCell className="px-1 md:px-2 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  className="h-8 px-2 text-xs"
-                                  disabled={saving}
-                                  onClick={() => saveDailyEntry('DB', otaName, channelName)}
-                                >
-                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 px-2 text-xs"
-                                  onClick={() =>
-                                    openDailyHistory(
-                                      DAILY_CHANNEL_CATEGORY_NAME[channelName],
-                                      `${otaName} → ${channelName}`,
-                                      DAILY_OTA_SOURCE_NAME[otaName],
-                                    )
-                                  }
-                                >
-                                  ตรวจสอบ
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </Fragment>
-                  ))}
+                              <span className="text-xs md:text-sm font-bold text-[#6d4ec6]">รวม: {formatNumber(getDailyDbOtaTotal(otaName))}</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {DAILY_CHANNEL_LIST.map((channelName) => {
+                          const key = `DB:${otaName}:${channelName}`
+                          const input = getDailyInput(key)
+                          const saving = !!savingDailyEntry[key]
+                          const channelAmount = getDailyDbAmount(otaName, channelName)
+                          return (
+                            <TableRow key={key} className="bg-white">
+                              <TableCell className="px-2 md:px-4 w-8" />
+                              <TableCell className="px-2 md:px-4">
+                                <div className="flex items-center justify-between gap-2 pl-4 md:pl-6">
+                                  <span className="text-xs md:text-sm text-gray-700">└ {channelName}</span>
+                                  <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                    {formatNumber(channelAmount)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-1 md:px-2 w-[140px]">
+                                <Input
+                                  type="date"
+                                  value={input.day}
+                                  onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                                  className="h-8 text-xs md:text-sm"
+                                />
+                              </TableCell>
+                              <TableCell className="px-1 md:px-2 w-[110px]">
+                                <Input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={input.amount}
+                                  onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-xs md:text-sm text-right"
+                                />
+                              </TableCell>
+                              <TableCell className="px-1 md:px-2 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    className="h-8 px-2 text-xs"
+                                    disabled={saving}
+                                    onClick={() => saveDailyEntry('DB', otaName, channelName)}
+                                  >
+                                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2 text-xs"
+                                    onClick={() =>
+                                      openDailyHistory(
+                                        DAILY_CHANNEL_CATEGORY_NAME[channelName],
+                                        `${otaName} → ${channelName}`,
+                                        DAILY_OTA_SOURCE_NAME[otaName],
+                                      )
+                                    }
+                                  >
+                                    ตรวจสอบ
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </Fragment>
+                    ))
+                  )}
                 </TableBody>
               </Table>
 
