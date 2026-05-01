@@ -598,6 +598,7 @@ export default function HolidaysPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px] px-2 text-xs">#</TableHead>
+                    <TableHead className="px-2 text-xs whitespace-nowrap">ชื่อพนักงาน</TableHead>
                     <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
                     <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
                     <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
@@ -607,7 +608,7 @@ export default function HolidaysPage() {
                 <TableBody>
                   {hcItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-sm text-[#666] py-6">
+                      <TableCell colSpan={6} className="text-center text-sm text-[#666] py-6">
                         ยังไม่มีรายการจ่ายค่าแรงในเดือนนี้
                       </TableCell>
                     </TableRow>
@@ -617,23 +618,23 @@ export default function HolidaysPage() {
                       return (
                         <TableRow key={item.groupId}>
                           <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
+                          <TableCell className="px-2 text-xs font-semibold text-gray-800 align-top pt-3 whitespace-nowrap">
+                            {parsed?.employeeName || '—'}
+                          </TableCell>
                           <TableCell className="px-2 align-top pt-2.5">
                             {parsed ? (
-                              <div className="space-y-1">
-                                <div className="text-xs font-semibold text-gray-800">{parsed.employeeName}</div>
-                                <ul className="space-y-0.5">
-                                  {parsed.items.map((it, i) => (
-                                    <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
-                                      <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
-                                      <span className="text-gray-500">·</span>
-                                      <span className="flex-1 truncate">{it.name}</span>
-                                      <span className="text-gray-500 whitespace-nowrap">
-                                        ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
+                              <ul className="space-y-0.5">
+                                {parsed.items.map((it, i) => (
+                                  <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
+                                    <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
+                                    <span className="text-gray-500">·</span>
+                                    <span className="flex-1 truncate">{it.name}</span>
+                                    <span className="text-gray-500 whitespace-nowrap">
+                                      ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
                             ) : (
                               <span className="text-[11px] leading-relaxed text-gray-700 break-words">{item.description}</span>
                             )}
@@ -667,7 +668,7 @@ export default function HolidaysPage() {
                 {hcItems.length > 0 && (
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={2} className="px-2 text-xs font-semibold">รวม</TableCell>
+                      <TableCell colSpan={3} className="px-2 text-xs font-semibold">รวม</TableCell>
                       <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">{formatNumber(hcTotalAll)}</TableCell>
                       <TableCell className="text-right px-2 text-xs font-bold text-[#84A59D] whitespace-nowrap">{formatNumber(hcTotalPerBuilding)}</TableCell>
                       <TableCell />
