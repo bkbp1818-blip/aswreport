@@ -115,37 +115,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'พนักงานตำแหน่งหุ้นส่วนไม่มีค่าแรงวันหยุดชดเชย' }, { status: 400 })
     }
 
-    // 2) หา effectiveSalary สำหรับคำนวณค่าแรงวันหยุดชดเชย
-    //    ใช้เงินเดือนของเดือนปัจจุบันก่อน — ถ้าเป็น 0 หรือไม่มี record ให้หาเดือนก่อนหน้า (skip 0)
-    //    หา record ล่าสุดที่ salary > 0 ในเดือน/ปีนั้น หรือก่อนหน้านั้น
-    const candidate = await prisma.monthlySalary.findFirst({
-      where: {
-        employeeId: empId,
-        salary: { gt: 0 },
-        OR: [
-          { year: { lt: y } },
-          { year: y, month: { lte: m } },
-        ],
-      },
-      orderBy: [{ year: 'desc' }, { month: 'desc' }],
-    })
-
-    const effectiveSalary = candidate ? Number(candidate.salary) : Number(employee.salary)
-
-    if (effectiveSalary <= 0) {
-      return NextResponse.json(
-        { error: 'พนักงานคนนี้ไม่เคยมีเงินเดือนในระบบ ไม่สามารถคำนวณค่าแรงได้' },
-        { status: 400 }
-      )
-    }
-
-    // 3) ดึง holidays
+    // 2) ดึง holidays
     const holidays = await prisma.holiday.findMany({
       where: { id: { in: hIds } },
       orderBy: { date: 'asc' },
     })
     if (holidays.length === 0) {
       return NextResponse.json({ error: 'ไม่พบรายการวันหยุดที่เลือก' }, { status: 400 })
+    }
+
+    // 3) ดึง MonthlySalary ทั้งหมดของพนักงาน (เฉพาะที่ salary > 0)
+    //    เพื่อใช้ lookup salary ตามเดือน/ปีของแต่ละวันหยุด (skip 0 + carry forward จากเดือนก่อนหน้าล่าสุดที่ > 0)
+    const allSalaryRecords = await prisma.monthlySalary.findMany({
+      where: { employeeId: empId, salary: { gt: 0 } },
+      orderBy: [{ year: 'asc' }, { month: 'asc' }],
+    })
+    const defaultSalary = Number(employee.salary)
+
+    // helper: หา effectiveSalary ของ (month, year) → record ล่าสุดที่ salary > 0 และไม่เกิน month/year นั้น
+    const lookupSalary = (mm: number, yy: number): number => {
+      let chosen: { month: number; year: number; salary: number } | null = null
+      for (const r of allSalaryRecords) {
+        if (r.year < yy || (r.year === yy && r.month <= mm)) {
+          chosen = { month: r.month, year: r.year, salary: Number(r.salary) }
+        } else {
+          break
+        }
+      }
+      return chosen ? chosen.salary : defaultSalary
     }
 
     // 4) ดึง 3 อาคาร CT/YW/NANA
@@ -156,20 +153,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบอาคาร CT/YW/NANA ครบทั้ง 3 อาคาร' }, { status: 500 })
     }
 
-    // 5) คำนวณ
-    const days = holidays.length
-    const totalAllBuildings = (effectiveSalary / 30) * days * 2
-    const perBuilding = totalAllBuildings / buildings.length
-
-    // 6) สร้าง description (snapshot)
+    // 5) คำนวณ per-holiday: amountPerHoliday = salary_of_holiday_month / 30 * 2
     const empDisplayName = employee.nickname || `${employee.firstName} ${employee.lastName}`.trim()
-    const formatDate = (d: Date) => {
-      const dd = d.getUTCDate()
-      const mm = d.getUTCMonth() + 1
-      return `${dd}/${mm}`
+    let totalAllBuildings = 0
+    const perHolidayDetails: { name: string; date: string; salary: number; amount: number }[] = []
+
+    for (const h of holidays) {
+      const hm = h.date.getUTCMonth() + 1
+      const hy = h.date.getUTCFullYear()
+      const sal = lookupSalary(hm, hy)
+      if (sal <= 0) {
+        return NextResponse.json(
+          { error: `พนักงาน "${empDisplayName}" ไม่มีเงินเดือนในช่วงก่อนหรือตรงกับวันหยุด ${h.date.toISOString().slice(0, 10)} ที่เลือก` },
+          { status: 400 }
+        )
+      }
+      const amt = (sal / 30) * 2
+      totalAllBuildings += amt
+      const dd = h.date.getUTCDate()
+      const mmStr = String(hm).padStart(2, '0')
+      perHolidayDetails.push({
+        name: h.name,
+        date: `${dd}/${mmStr}/${hy}`,
+        salary: sal,
+        amount: amt,
+      })
     }
-    const holidayLabels = holidays.map(h => `${h.name} ${formatDate(h.date)}`).join(', ')
-    const description = `${empDisplayName} | ${holidayLabels} (${days} วัน) | ${effectiveSalary.toLocaleString()}÷30×${days}×2 = ${totalAllBuildings.toFixed(2)} ÷ ${buildings.length} = ${perBuilding.toFixed(2)}`
+
+    const perBuilding = totalAllBuildings / buildings.length
+    const days = holidays.length
+
+    // 6) สร้าง description (snapshot ของรายละเอียดทุกวันหยุด)
+    // เรียงสรุป: "ชื่อ | วันหยุด: 13/04/2026 (ฐาน 16,000 → 1,066.67) + 14/04/2026 (ฐาน 16,000 → 1,066.67) | รวม 2,133.33 ÷ 3 = 711.11"
+    const detailParts = perHolidayDetails.map(d =>
+      `${d.date} (ฐาน ${d.salary.toLocaleString()} → ${d.amount.toFixed(2)})`
+    ).join(' + ')
+    const description = `${empDisplayName} | ${days} วัน: ${detailParts} | รวม ${totalAllBuildings.toFixed(2)} ÷ ${buildings.length} = ${perBuilding.toFixed(2)}`
 
     const groupId = randomUUID()
     const fieldName = 'holidayCompensation'

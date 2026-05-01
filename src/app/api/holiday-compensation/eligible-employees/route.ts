@@ -3,19 +3,17 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth, handleAuthError } from '@/lib/auth'
 
 // GET - ดึงรายชื่อพนักงานที่ใช้ในการจ่ายค่าแรงวันหยุดชดเชยได้
-// คืน effectiveSalary แบบ "เงินเดือนล่าสุดที่ > 0" (skip 0 ที่ผู้ใช้ตั้งให้ปิดเงินเดือนเดือนนั้น)
-// query: ?month=&year=
+// คืน salaries: { [month]: salary } ของแต่ละเดือนในปีที่ระบุ (skip 0 + carry forward จากเดือนก่อนล่าสุดที่ > 0)
+// query: ?year=
 export async function GET(request: NextRequest) {
   try {
     await requireAuth()
 
     const { searchParams } = new URL(request.url)
-    const monthParam = searchParams.get('month')
     const yearParam = searchParams.get('year')
-    if (!monthParam || !yearParam) {
-      return NextResponse.json({ error: 'กรุณาระบุ month และ year' }, { status: 400 })
+    if (!yearParam) {
+      return NextResponse.json({ error: 'กรุณาระบุ year' }, { status: 400 })
     }
-    const m = parseInt(monthParam)
     const y = parseInt(yearParam)
 
     // ดึงเฉพาะพนักงาน MAID/MANAGER ที่ active
@@ -28,46 +26,78 @@ export async function GET(request: NextRequest) {
       select: { id: true, firstName: true, lastName: true, nickname: true, position: true, salary: true },
     })
 
-    // ดึง record ล่าสุดที่ salary > 0 ของแต่ละคน (เดือนปัจจุบันหรือก่อนหน้า)
     const employeeIds = employees.map(e => e.id)
-    const candidates = await prisma.monthlySalary.findMany({
+    if (employeeIds.length === 0) {
+      return NextResponse.json({ employees: [], year: y })
+    }
+
+    // ดึง MonthlySalary ทั้งหมดของพนักงานเหล่านี้ ที่ salary > 0 (จากปีที่ระบุและก่อนหน้า)
+    const allSalaryRecords = await prisma.monthlySalary.findMany({
       where: {
         employeeId: { in: employeeIds },
         salary: { gt: 0 },
-        OR: [
-          { year: { lt: y } },
-          { year: y, month: { lte: m } },
-        ],
+        OR: [{ year: { lt: y } }, { year: y }],
       },
-      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+      orderBy: [{ year: 'asc' }, { month: 'asc' }],
     })
 
-    const latestByEmployee = new Map<number, { salary: number; month: number; year: number }>()
-    for (const c of candidates) {
-      if (!latestByEmployee.has(c.employeeId)) {
-        latestByEmployee.set(c.employeeId, { salary: Number(c.salary), month: c.month, year: c.year })
-      }
+    // group ตาม employeeId แล้วเรียงตามเวลา (เก่า → ใหม่)
+    const salaryByEmployee = new Map<number, { month: number; year: number; salary: number }[]>()
+    for (const r of allSalaryRecords) {
+      const arr = salaryByEmployee.get(r.employeeId) || []
+      arr.push({ month: r.month, year: r.year, salary: Number(r.salary) })
+      salaryByEmployee.set(r.employeeId, arr)
     }
 
+    // สำหรับแต่ละ employee: คำนวณ effectiveSalary ของแต่ละเดือน 1-12 ของปี y
+    // - ถ้ามี record ใน month-y และ salary > 0 → ใช้ค่านั้น (sourceMonth = month, sourceYear = y)
+    // - ถ้าไม่มี → ดึง record ล่าสุดก่อน month-y ที่ salary > 0 (carry forward)
+    // - ถ้าไม่มีเลย → ใช้ Employee.salary (default)
     const result = employees.map(emp => {
-      const latest = latestByEmployee.get(emp.id)
+      const records = salaryByEmployee.get(emp.id) || []
       const defaultSalary = Number(emp.salary)
-      const effectiveSalary = latest ? latest.salary : defaultSalary
-      const isCarriedForward = !!latest && (latest.month !== m || latest.year !== y)
+
+      const salaries: Record<number, { salary: number; sourceMonth: number | null; sourceYear: number | null; isCarriedForward: boolean }> = {}
+
+      for (let m = 1; m <= 12; m++) {
+        // หา record ล่าสุดที่ (year < y) หรือ (year = y และ month <= m)
+        let chosen: { month: number; year: number; salary: number } | null = null
+        for (let i = records.length - 1; i >= 0; i--) {
+          const r = records[i]
+          if (r.year < y || (r.year === y && r.month <= m)) {
+            chosen = r
+            break
+          }
+        }
+        if (chosen) {
+          salaries[m] = {
+            salary: chosen.salary,
+            sourceMonth: chosen.month,
+            sourceYear: chosen.year,
+            isCarriedForward: !(chosen.month === m && chosen.year === y),
+          }
+        } else {
+          salaries[m] = {
+            salary: defaultSalary,
+            sourceMonth: null,
+            sourceYear: null,
+            isCarriedForward: false,
+          }
+        }
+      }
+
       return {
         id: emp.id,
         firstName: emp.firstName,
         lastName: emp.lastName,
         nickname: emp.nickname,
         position: emp.position,
-        effectiveSalary,
-        salarySourceMonth: latest?.month ?? null,
-        salarySourceYear: latest?.year ?? null,
-        isCarriedForward,
+        defaultSalary,
+        salaries,
       }
     })
 
-    return NextResponse.json({ employees: result, month: m, year: y })
+    return NextResponse.json({ employees: result, year: y })
   } catch (error) {
     const authError = handleAuthError(error)
     if (authError) {

@@ -41,16 +41,22 @@ interface Holiday {
   isActive: boolean
 }
 
+interface SalaryEntry {
+  salary: number
+  sourceMonth: number | null
+  sourceYear: number | null
+  isCarriedForward: boolean
+}
+
 interface HcEmployee {
   id: number
   firstName: string
   lastName: string
   nickname: string | null
   position: string
-  effectiveSalary: number
-  salarySourceMonth?: number | null
-  salarySourceYear?: number | null
-  isCarriedForward?: boolean
+  defaultSalary: number
+  // salaries[1..12] ของปีที่ระบุ — มาจาก endpoint
+  salaries: Record<number, SalaryEntry>
 }
 
 interface HcItem {
@@ -257,48 +263,33 @@ export default function HolidaysPage() {
   }
 
   // ========== Holiday Compensation ==========
+  const loadDialogData = useCallback(async (yearStr: string) => {
+    setPayLoadingDialog(true)
+    try {
+      const [empRes, hRes] = await Promise.all([
+        fetch(`/api/holiday-compensation/eligible-employees?year=${yearStr}`),
+        fetch(`/api/holidays?year=${yearStr}`),
+      ])
+      const empData = await empRes.json()
+      const hData = await hRes.json()
+      setPayEmployees(empData.employees || [])
+      setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
+    } catch (e) {
+      console.error('loadDialogData error', e)
+      alert('ดึงข้อมูลไม่สำเร็จ')
+    } finally {
+      setPayLoadingDialog(false)
+    }
+  }, [])
+
   const openPayDialog = async () => {
     setPayEmployeeId(null)
     setPaySelectedHolidayIds([])
     setPayMonth(hcMonth)
     setPayYear(hcYear)
     setPayDialogOpen(true)
-    setPayLoadingDialog(true)
-    try {
-      const [empRes, hRes] = await Promise.all([
-        fetch(`/api/holiday-compensation/eligible-employees?month=${hcMonth}&year=${hcYear}`),
-        fetch(`/api/holidays?year=${hcYear}`),
-      ])
-      const empData = await empRes.json()
-      const hData = await hRes.json()
-      setPayEmployees(empData.employees || [])
-      setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
-    } catch (e) {
-      console.error('openPayDialog error', e)
-      alert('ดึงข้อมูลไม่สำเร็จ')
-    } finally {
-      setPayLoadingDialog(false)
-    }
+    await loadDialogData(hcYear)
   }
-
-  // เมื่อเปลี่ยน เดือน/ปี ของ entry ใน Dialog → reload employees + holidays ของช่วงนั้น
-  const reloadDialogData = useCallback(async (m: string, y: string) => {
-    setPayLoadingDialog(true)
-    try {
-      const [empRes, hRes] = await Promise.all([
-        fetch(`/api/holiday-compensation/eligible-employees?month=${m}&year=${y}`),
-        fetch(`/api/holidays?year=${y}`),
-      ])
-      const empData = await empRes.json()
-      const hData = await hRes.json()
-      setPayEmployees(empData.employees || [])
-      setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
-    } catch (e) {
-      console.error('reloadDialogData error', e)
-    } finally {
-      setPayLoadingDialog(false)
-    }
-  }, [])
 
   const togglePayHolidayId = (id: number) => {
     setPaySelectedHolidayIds(prev =>
@@ -308,11 +299,33 @@ export default function HolidaysPage() {
 
   const paySelectedEmployee = payEmployees.find(e => e.id === payEmployeeId)
   const payDays = paySelectedHolidayIds.length
-  const payEffectiveSalary = paySelectedEmployee?.effectiveSalary || 0
-  const payTotalAllBuildings = payEffectiveSalary > 0 && payDays > 0
-    ? (payEffectiveSalary / 30) * payDays * 2
-    : 0
+
+  // คำนวณ per-holiday: แต่ละวันใช้ salary ของเดือนของวันหยุดนั้น
+  const payPerHoliday = paySelectedHolidayIds.map(id => {
+    const h = payHolidays.find(x => x.id === id)
+    if (!h || !paySelectedEmployee) return null
+    const d = new Date(h.date)
+    const hm = d.getUTCMonth() + 1
+    const entry = paySelectedEmployee.salaries[hm]
+    const sal = entry?.salary || 0
+    const amt = sal > 0 ? (sal / 30) * 2 : 0
+    return {
+      holidayId: id,
+      name: h.name,
+      day: d.getUTCDate(),
+      month: hm,
+      year: d.getUTCFullYear(),
+      salary: sal,
+      amount: amt,
+      isCarriedForward: !!entry?.isCarriedForward,
+      sourceMonth: entry?.sourceMonth ?? null,
+      sourceYear: entry?.sourceYear ?? null,
+    }
+  }).filter((x): x is NonNullable<typeof x> => x !== null)
+
+  const payTotalAllBuildings = payPerHoliday.reduce((s, x) => s + x.amount, 0)
   const payPerBuilding = payTotalAllBuildings / 3
+  const payHasNoSalaryHoliday = payPerHoliday.some(x => x.salary <= 0)
 
   const handlePaySave = async () => {
     if (!payEmployeeId) {
@@ -673,12 +686,9 @@ export default function HolidaysPage() {
           <div className="space-y-3 py-2">
             {/* เดือน/ปี ที่จะลงรายการ */}
             <div className="space-y-1.5">
-              <Label className="text-xs sm:text-sm font-medium">ลงรายการในเดือน</Label>
+              <Label className="text-xs sm:text-sm font-medium">ลงรายการรายจ่ายในเดือน</Label>
               <div className="flex gap-2">
-                <Select
-                  value={payMonth}
-                  onValueChange={(v) => { setPayMonth(v); reloadDialogData(v, payYear) }}
-                >
+                <Select value={payMonth} onValueChange={setPayMonth}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="เดือน" />
                   </SelectTrigger>
@@ -690,7 +700,7 @@ export default function HolidaysPage() {
                 </Select>
                 <Select
                   value={payYear}
-                  onValueChange={(v) => { setPayYear(v); reloadDialogData(payMonth, v) }}
+                  onValueChange={(v) => { setPayYear(v); loadDialogData(v) }}
                 >
                   <SelectTrigger className="w-[100px]">
                     <SelectValue placeholder="ปี" />
@@ -723,24 +733,18 @@ export default function HolidaysPage() {
                     <SelectContent>
                       {payEmployees.map((emp) => {
                         const display = emp.nickname || `${emp.firstName} ${emp.lastName}`.trim()
-                        const noSalary = !emp.effectiveSalary || emp.effectiveSalary <= 0
-                        const sourceLabel = emp.isCarriedForward && emp.salarySourceMonth && emp.salarySourceYear
-                          ? ` * ใช้ของ ${getMonthName(emp.salarySourceMonth)} ${emp.salarySourceYear}`
-                          : ''
+                        const hasAnySalary = Object.values(emp.salaries).some(s => s.salary > 0) || emp.defaultSalary > 0
                         return (
-                          <SelectItem key={emp.id} value={String(emp.id)} disabled={noSalary}>
-                            {display}
-                            {noSalary
-                              ? ' (ไม่มีเงินเดือน)'
-                              : ` (เงินเดือน ${formatNumber(emp.effectiveSalary)}${sourceLabel})`}
+                          <SelectItem key={emp.id} value={String(emp.id)} disabled={!hasAnySalary}>
+                            {display}{!hasAnySalary && ' (ไม่มีเงินเดือนในระบบ)'}
                           </SelectItem>
                         )
                       })}
                     </SelectContent>
                   </Select>
-                  {payEmployees.some(e => e.isCarriedForward) && (
-                    <p className="text-[10px] text-gray-500">* คือเงินเดือนที่ดึงจากเดือนล่าสุดที่มีค่ามากกว่า 0</p>
-                  )}
+                  <p className="text-[10px] text-gray-500">
+                    ระบบจะดึงเงินเดือนตามเดือนของวันหยุดที่เลือก (ถ้าเดือนนั้นไม่มี/เป็น 0 จะใช้เงินเดือนล่าสุดที่ &gt; 0)
+                  </p>
                 </div>
 
                 {/* เลือกวันหยุด */}
@@ -778,18 +782,39 @@ export default function HolidaysPage() {
                   </div>
                 </div>
 
-                {/* Preview การคำนวณ */}
+                {/* Preview การคำนวณ per-holiday */}
                 {payEmployeeId && payDays > 0 && (
-                  <div className="rounded-lg border border-[#F28482]/30 bg-[#F28482]/5 p-3 space-y-1">
-                    <p className="text-[11px] sm:text-xs text-gray-600">การคำนวณ:</p>
-                    <p className="text-xs sm:text-sm">
-                      เงินเดือน <span className="font-bold">{formatNumber(payEffectiveSalary)}</span> ÷ 30 ×{' '}
-                      <span className="font-bold">{payDays}</span> วัน × 2 ={' '}
-                      <span className="font-bold text-[#F28482]">{formatNumber(payTotalAllBuildings)}</span> บาท
-                    </p>
-                    <p className="text-xs sm:text-sm">
-                      ÷ 3 อาคาร = <span className="font-bold text-[#84A59D]">{formatNumber(payPerBuilding)}</span> บาท / อาคาร
-                    </p>
+                  <div className="rounded-lg border border-[#F28482]/30 bg-[#F28482]/5 p-3 space-y-2">
+                    <p className="text-[11px] sm:text-xs text-gray-600 font-medium">การคำนวณ (แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น):</p>
+                    <div className="space-y-0.5">
+                      {payPerHoliday.map((d) => (
+                        <div key={d.holidayId} className="text-[11px] sm:text-xs flex items-center justify-between gap-2">
+                          <span className="text-gray-700">
+                            {d.day}/{d.month}/{d.year} — {d.name}
+                            {d.isCarriedForward && d.sourceMonth && d.sourceYear && (
+                              <span className="text-amber-600"> *</span>
+                            )}
+                          </span>
+                          <span className="text-gray-700">
+                            {d.salary > 0
+                              ? <>ฐาน <span className="font-medium">{formatNumber(d.salary)}</span> ÷ 30 × 2 = <span className="font-bold text-[#F28482]">{formatNumber(d.amount)}</span></>
+                              : <span className="text-red-600 font-medium">ไม่มีเงินเดือน</span>
+                            }
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {payPerHoliday.some(d => d.isCarriedForward) && (
+                      <p className="text-[10px] text-amber-600">* ใช้เงินเดือนล่าสุดที่ &gt; 0 ก่อนเดือนของวันหยุดนั้น</p>
+                    )}
+                    <div className="border-t border-[#F28482]/20 pt-1.5 space-y-0.5">
+                      <p className="text-xs sm:text-sm">
+                        รวม {payDays} วัน = <span className="font-bold text-[#F28482]">{formatNumber(payTotalAllBuildings)}</span> บาท
+                      </p>
+                      <p className="text-xs sm:text-sm">
+                        ÷ 3 อาคาร = <span className="font-bold text-[#84A59D]">{formatNumber(payPerBuilding)}</span> บาท / อาคาร
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -806,7 +831,7 @@ export default function HolidaysPage() {
             </Button>
             <Button
               onClick={handlePaySave}
-              disabled={paySaving || payLoadingDialog || !payEmployeeId || paySelectedHolidayIds.length === 0}
+              disabled={paySaving || payLoadingDialog || !payEmployeeId || paySelectedHolidayIds.length === 0 || payHasNoSalaryHoliday}
               className="w-full sm:w-auto bg-[#F28482] hover:bg-[#d76b69]"
             >
               {paySaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
