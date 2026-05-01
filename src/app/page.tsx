@@ -29,7 +29,6 @@ import {
 import {
   TrendingUp,
   TrendingDown,
-  Wallet,
   Building2,
   Calculator,
   Users,
@@ -558,7 +557,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 md:gap-4 sm:grid-cols-3">
             <Card className="border-0 bg-gradient-to-br from-[#84A59D] to-[#6b8a84] text-white shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-white/90">
@@ -610,24 +609,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 bg-gradient-to-br from-[#F6BD60] to-[#e5a84a] text-white shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">
-                  Net Profit (Owner)
-                </CardTitle>
-                <div className="rounded-full bg-white/20 p-1.5">
-                  <Wallet className="h-4 w-4 text-white" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-white">
-                  {formatNumber(currentSummary?.netProfit || 0)}
-                </div>
-                <p className="text-[10px] text-white/70 mt-1">
-                  = Gross Profit - Little Hotelier
-                </p>
-              </CardContent>
-            </Card>
             </div>
 
             {/* Additional Summary Cards */}
