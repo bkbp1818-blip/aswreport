@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.21.0 |
+| **Version** | 1.21.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -78,11 +78,12 @@
 
 ## Pages & Features
 
-### 1. Dashboard (`/`)
-- Summary Cards 8 กล่อง (gradient backgrounds)
-- กราฟเปรียบเทียบรายได้-รายจ่าย
-- กราฟกำไรสุทธิ
-- ดูข้อมูลย้อนหลัง 3/6/12 เดือน
+### 1. Dashboard (`/`) ✨ UPDATED v1.21.1
+- **Summary Cards 3 ใบ** (gradient): รวมรายได้ / รวมค่าใช้จ่าย / Gross Profit
+- **Additional Cards 2 ใบ**: ค่าเช่าอาคาร / เงินเดือนพนักงาน
+- กราฟเปรียบเทียบอาคาร (ทุกอาคาร) — รายรับ/รายจ่าย/กำไรสุทธิ
+- กราฟย้อนหลัง 3/6/12/custom เดือน (อาคารเดียว) — เปรียบเทียบ + รายรับ + รายจ่าย + กำไรสุทธิ
+- **AbortController** ใน fetch history ป้องกัน race condition เมื่อสลับช่วงเวลา ✨ NEW v1.21.1
 
 ### 2. กรอกข้อมูล (`/transactions`)
 - เลือกอาคาร/เดือน/ปี
@@ -296,24 +297,26 @@
 ## Calculation Formulas
 
 ```
-รวมรายได้         = ผลรวม INCOME
-รวมค่าใช้จ่าย      = ผลรวม EXPENSE + ค่าเช่าอาคาร + ค่า Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลาง
-Gross Profit     = รายได้ - ค่าใช้จ่าย
-Management Fee   = รายได้ค่าเช่า × 13.5% (เฉพาะค่าเช่า ไม่รวมค่าอาหาร/ทัวร์)
-VAT             = Management Fee × 7%
-Net Profit       = Gross Profit - Management Fee - VAT - Little Hotelier
-Amount to Pay    = Management Fee + VAT
+รวมรายได้         = ผลรวม INCOME categories + special income fields
+รวมค่าใช้จ่าย      = ผลรวม EXPENSE (ไม่รวม "เงินเดือนพนักงาน")
+                  + ค่าเช่าอาคาร (จาก Settings) + ค่า Coway
+                  + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลาง (16 fields)
+                  + เงินสมทบประกันสังคม + ค่าแรงวันหยุดชดเชย
+                  + รายจ่ายให้ ASW + งานเสริม FD + คืนยอดค้างจ่าย
+Gross Profit     = รวมรายได้ - รวมค่าใช้จ่าย
 ```
 
-**หมายเหตุ:**
-- อาคาร FUNNS81 (สุขุมวิท 81), FUNNLP (ลาดพร้าว 21) ไม่คำนวณ Management Fee และ VAT ✨ UPDATED v1.16.0
+**หมายเหตุ:** ✨ UPDATED v1.21.1
+- **Management Fee และ VAT ถูกยกเลิก** — Card "Net Profit (Owner)" และ "Amount to be Paid" ลบออกจาก Dashboard แล้ว
+- อาคาร FUNNS81 (สุขุมวิท 81), FUNNLP (ลาดพร้าว 21) ใช้สูตรเดียวกันทั้งหมด ✨ UPDATED v1.16.0
 - **เงินเดือนพนักงาน** หาร 3 อาคาร (CT, YW, NANA) — Funn D กรอกเองแยกอาคาร
 - **เงินสมทบประกันสังคม** — CT/YW/NANA: คำนวณ auto จาก effectiveSalary (5%, สูงสุด 875 บาท ตามกฎหมาย 2569) หาร 3 อาคาร, Funn D: กรอกเองผ่าน ExpenseHistory ✨ UPDATED v1.15.0
-- **ค่าใช้จ่ายส่วนกลาง 13 รายการ** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
+- **ค่าใช้จ่ายส่วนกลาง 16 fields** — **แยกตามอาคาร** (targetType=SETTINGS, targetId=buildingId) ทุกอาคารกรอกแยกกัน ✨ UPDATED v1.11.0
 - **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
 - **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
 - **Site Minder Dynamic Revenue Plus** — ทุกอาคารกรอกแยกผ่าน ExpenseHistory ✨ NEW v1.12.0
 - **ค่าแรงวันหยุดชดเชย** — เฉพาะ CT/YW/NANA — สูตร per-holiday: `Σ(salary_ของเดือนของวันหยุด ÷ 30 × 2) ÷ 3 อาคาร` (skip 0 + carry forward จากเดือนล่าสุดที่ > 0) ✨ NEW v1.21.0
+- **คืนยอดค้างจ่าย (Reimbursement)** — filter ตาม column `month/year` (ไม่ใช่ `paidDate`) ทั้ง Dashboard และ /transactions ใช้ source of truth เดียวกัน ✨ FIXED v1.21.1
 
 ---
 
@@ -335,7 +338,28 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.21.0 (Current - May 2026)
+### v1.21.1 (Current - May 2026) — Dashboard accuracy fixes
+
+ปรับ Dashboard ให้ตัวเลขตรงกับหน้า `/transactions` ทุกเดือน + cleanup UI:
+
+- **Fix: ตัวเลขรวมค่าใช้จ่ายไม่ตรงระหว่าง Dashboard และหน้ากรอกข้อมูล:**
+  - เพิ่ม `holidayCompensation` ใน `/api/summary` และ `/api/summary/history` (เดิมขาดไป → Dashboard < /transactions อาคารละ 1,644.44 ใน เม.ย. 2026)
+  - แก้ `/api/reimbursements?details=...` ให้ filter ตาม column `month/year` (เดิมใช้ `paidDate` ทำให้ ก.พ. 2026 มี 3 records ที่ paidDate=3/2026 ไปอยู่ผิดเดือน รวม 3,414.94 บาท)
+  - **Data migration:** ย้าย 3 records จาก `sugarExpense` → `coffeeExpense` (NANA/CT/YW ก.พ. 2026 อาคารละ 146 บาท) — เพราะ `/transactions` รวม น้ำตาล+คอฟฟี่เมท ไว้ในตัว `coffeeExpense` ตัวเดียว
+- **Fix: กราฟย้อนหลังตัวเลขไม่ตรงกับ Card สรุปของเดือนเดียวกัน:**
+  - `salaryPerBuilding` ของ FUNNLP/FUNNS81 ใน history API เคย hardcode = 0 → แก้ใช้ `perBuildingTotals.salaryExpense` เหมือน summary
+  - `sugarExpense` + `coffeeMateExpense` ขาดใน `totalGlobalExpensePerBuilding` ของ history API → เพิ่มเข้าไปและแยก keys ใน `expenseByCategory` ตรงกับ summary
+- **Fix: กราฟย้อนหลังเปลี่ยนเป็น 6 เดือนเอง (race condition):**
+  - เมื่อสลับช่วงเวลา (3 → 6 เดือน) เร็วๆ response เก่ามาทีหลังแล้ว overwrite ข้อมูลใหม่
+  - ใช้ `AbortController` ใน `useEffect` cleanup เพื่อยกเลิก fetch ที่ยังค้าง
+- **UI cleanup:**
+  - **ลบ Card "Amount to be Paid (รวม VAT)"** — ค่าเป็น 0 เสมอตั้งแต่ Management Fee ถูกยกเลิก แต่ label "= VAT 7%" ทำให้สับสน
+  - **ลบ Card "Net Profit (Owner)"** — ปรับ Summary Cards จาก 4 → 3 ใบ (รวมรายได้ / รวมค่าใช้จ่าย / Gross Profit) + grid `sm:grid-cols-3`
+  - ลบ import `Wallet` icon ที่ไม่ใช้แล้ว (`netProfit` field คงไว้ใน interface เพราะใช้ในกราฟ)
+- **ไฟล์ใหม่:** `scripts/migrate-sugar-to-coffee.js`
+- **ไฟล์แก้:** `src/app/api/summary/route.ts`, `src/app/api/summary/history/route.ts`, `src/app/api/reimbursements/route.ts`, `src/app/page.tsx`
+
+### v1.21.0 (May 2026)
 - **ฟีเจอร์ใหม่: ค่าแรงวันหยุดชดเชย + หน้า `/holidays` (Partner only):**
   - **Schema:** เพิ่ม `Holiday` model + `groupId String?` (+ index) ใน `ExpenseHistory` (Prisma db push บน Neon)
   - **API ใหม่:**
