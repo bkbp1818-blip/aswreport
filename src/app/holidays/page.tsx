@@ -411,6 +411,7 @@ export default function HolidaysPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Section 1: รายการวันหยุดราชการ */}
       <Card>
         <CardHeader>
@@ -569,69 +570,72 @@ export default function HolidaysPage() {
               <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead className="text-right">รวมทุกอาคาร</TableHead>
-                  <TableHead className="text-right">/ อาคาร</TableHead>
-                  <TableHead className="text-right">การจัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hcItems.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-sm text-[#666] py-6">
-                      ยังไม่มีรายการจ่ายค่าแรงในเดือนนี้
-                    </TableCell>
+                    <TableHead className="w-[40px] px-2 text-xs">#</TableHead>
+                    <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
+                    <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
+                    <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
+                    <TableHead className="w-[44px] px-2" />
                   </TableRow>
-                ) : (
-                  hcItems.map((item, idx) => (
-                    <TableRow key={item.groupId}>
-                      <TableCell className="font-medium">{idx + 1}</TableCell>
-                      <TableCell className="text-xs sm:text-sm text-gray-700">
-                        {item.description}
-                      </TableCell>
-                      <TableCell className="text-right text-xs sm:text-sm font-medium text-[#F28482]">
-                        {formatNumber(item.totalAmount)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs sm:text-sm font-medium text-[#84A59D]">
-                        {formatNumber(item.amount)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-red-600 hover:bg-red-100"
-                          disabled={hcDeletingGroupId === item.groupId}
-                          onClick={() => handleHcDelete(item.groupId)}
-                        >
-                          {hcDeletingGroupId === item.groupId ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {hcItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-sm text-[#666] py-6">
+                        ยังไม่มีรายการจ่ายค่าแรงในเดือนนี้
                       </TableCell>
                     </TableRow>
-                  ))
+                  ) : (
+                    hcItems.map((item, idx) => (
+                      <TableRow key={item.groupId}>
+                        <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
+                        <TableCell className="px-2 text-[11px] leading-relaxed text-gray-700 break-words">
+                          {item.description}
+                        </TableCell>
+                        <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
+                          {formatNumber(item.totalAmount)}
+                        </TableCell>
+                        <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
+                          {formatNumber(item.amount)}
+                        </TableCell>
+                        <TableCell className="text-right px-1 align-top pt-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600 hover:bg-red-100"
+                            disabled={hcDeletingGroupId === item.groupId}
+                            onClick={() => handleHcDelete(item.groupId)}
+                          >
+                            {hcDeletingGroupId === item.groupId ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+                {hcItems.length > 0 && (
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={2} className="px-2 text-xs font-semibold">รวม</TableCell>
+                      <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">{formatNumber(hcTotalAll)}</TableCell>
+                      <TableCell className="text-right px-2 text-xs font-bold text-[#84A59D] whitespace-nowrap">{formatNumber(hcTotalPerBuilding)}</TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableFooter>
                 )}
-              </TableBody>
-              {hcItems.length > 0 && (
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={2} className="font-semibold">รวม</TableCell>
-                    <TableCell className="text-right font-bold text-[#F28482]">{formatNumber(hcTotalAll)}</TableCell>
-                    <TableCell className="text-right font-bold text-[#84A59D]">{formatNumber(hcTotalPerBuilding)}</TableCell>
-                    <TableCell />
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* Dialog: เพิ่ม/แก้ไขวันหยุด */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
