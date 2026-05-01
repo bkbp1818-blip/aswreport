@@ -12,20 +12,18 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month')
     const year = searchParams.get('year')
 
-    // details mode: ดึงรายละเอียดยอดที่คืนแล้ว อ้างอิงตามวันที่ยืมจ่าย (ใช้ในหน้า transactions)
+    // details mode: ดึงรายละเอียดยอดที่คืนแล้ว filter ตาม month/year (ใช้ในหน้า transactions)
+    // ใช้ column month/year เพื่อให้ตรงกับ /api/summary ที่ Dashboard ใช้
     if (searchParams.get('details') === 'returned') {
       const where: Record<string, unknown> = { isReturned: true }
       if (buildingId) where.buildingId = parseInt(buildingId)
 
-      // filter ตาม paidDate (วันที่ยืมจ่าย) เพื่อแสดงในเดือนที่ยืมจ่าย
-      const paidMonth = searchParams.get('paidMonth')
-      const paidYear = searchParams.get('paidYear')
-      if (paidMonth && paidYear) {
-        const m = parseInt(paidMonth)
-        const y = parseInt(paidYear)
-        const startDate = new Date(Date.UTC(y, m - 1, 1))
-        const endDate = new Date(Date.UTC(y, m, 1))
-        where.paidDate = { gte: startDate, lt: endDate }
+      // รองรับทั้ง paidMonth/paidYear (legacy) และ month/year — ทั้งสองตอนนี้ filter ที่ column month/year
+      const filterMonth = searchParams.get('paidMonth') || searchParams.get('month')
+      const filterYear = searchParams.get('paidYear') || searchParams.get('year')
+      if (filterMonth && filterYear) {
+        where.month = parseInt(filterMonth)
+        where.year = parseInt(filterYear)
       }
 
       const items = await prisma.reimbursement.findMany({
@@ -39,19 +37,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(items)
     }
 
-    // details mode: ดึงรายการค้างจ่าย (ใช้ในหน้า transactions)
+    // details mode: ดึงรายการค้างจ่าย filter ตาม month/year (ใช้ในหน้า transactions)
     if (searchParams.get('details') === 'pending') {
       const where: Record<string, unknown> = { isReturned: false }
       if (buildingId) where.buildingId = parseInt(buildingId)
 
-      const paidMonth = searchParams.get('paidMonth')
-      const paidYear = searchParams.get('paidYear')
-      if (paidMonth && paidYear) {
-        const m = parseInt(paidMonth)
-        const y = parseInt(paidYear)
-        const startDate = new Date(Date.UTC(y, m - 1, 1))
-        const endDate = new Date(Date.UTC(y, m, 1))
-        where.paidDate = { gte: startDate, lt: endDate }
+      const filterMonth = searchParams.get('paidMonth') || searchParams.get('month')
+      const filterYear = searchParams.get('paidYear') || searchParams.get('year')
+      if (filterMonth && filterYear) {
+        where.month = parseInt(filterMonth)
+        where.year = parseInt(filterYear)
       }
 
       const items = await prisma.reimbursement.findMany({
