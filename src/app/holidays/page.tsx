@@ -288,7 +288,7 @@ export default function HolidaysPage() {
   }
 
   // ========== Holiday Compensation ==========
-  const loadDialogData = useCallback(async (yearStr: string) => {
+  const loadDialogData = useCallback(async (yearStr: string): Promise<{ holidays: Holiday[] } | null> => {
     setPayLoadingDialog(true)
     try {
       const [empRes, hRes] = await Promise.all([
@@ -297,11 +297,16 @@ export default function HolidaysPage() {
       ])
       const empData = await empRes.json()
       const hData = await hRes.json()
+      const allHolidays = (Array.isArray(hData) ? hData : []) as Holiday[]
+      // สำหรับ display ใน Dialog แสดงเฉพาะ active
+      // แต่ตอน edit อาจต้อง match กับ inactive ด้วย → return ทั้งหมด
       setPayEmployees(empData.employees || [])
-      setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
+      setPayHolidays(allHolidays.filter(h => h.isActive))
+      return { holidays: allHolidays }
     } catch (e) {
       console.error('loadDialogData error', e)
       alert('ดึงข้อมูลไม่สำเร็จ')
+      return null
     } finally {
       setPayLoadingDialog(false)
     }
@@ -319,17 +324,72 @@ export default function HolidaysPage() {
 
   const openEditPayDialog = async (item: HcItem) => {
     const parsed = parseHcDescription(item.description)
-    if (!parsed || !parsed.employeeId || !parsed.holidayIds || parsed.holidayIds.length === 0) {
+    if (!parsed || !parsed.employeeId) {
       alert('รายการนี้เป็นรูปแบบเก่าที่แก้ไขไม่ได้ — ลบและบันทึกใหม่แทน')
       return
     }
     setEditingGroupId(item.groupId)
     setPayEmployeeId(parsed.employeeId)
-    setPaySelectedHolidayIds(parsed.holidayIds)
+    setPaySelectedHolidayIds([])
     setPayMonth(String(item.month))
     setPayYear(String(item.year))
     setPayDialogOpen(true)
-    await loadDialogData(String(item.year))
+
+    // เริ่มโหลด: ใช้ปีของวันหยุดแรก (item.year อาจเป็นเดือนที่ลงรายจ่าย ไม่ใช่ปีของวันหยุด)
+    const yearsInItems = new Set<number>()
+    if (parsed.items && parsed.items.length > 0) {
+      parsed.items.forEach(it => {
+        const parts = it.date.split('/')
+        if (parts.length === 3) {
+          const y = parseInt(parts[2])
+          if (!Number.isNaN(y)) yearsInItems.add(y)
+        }
+      })
+    }
+    if (yearsInItems.size === 0) yearsInItems.add(item.year)
+
+    // โหลดของปีหลัก (ปี dropdown จะแสดงปีนี้) — ใช้ปีแรกของ items
+    const primaryYear = Array.from(yearsInItems).sort()[0]
+    setPayYear(String(primaryYear))
+    const primaryRes = await loadDialogData(String(primaryYear))
+
+    // ถ้ามี holidayIds ใน description → ใช้เลย
+    if (parsed.holidayIds && parsed.holidayIds.length > 0) {
+      setPaySelectedHolidayIds(parsed.holidayIds)
+      return
+    }
+
+    // ถ้าไม่มี → derive จาก date matching ใน holidays
+    // รวม holidays ของทุกปีที่ items อ้างถึง (ปกติปีเดียว — แต่อาจข้ามปี)
+    const allHolidays: Holiday[] = []
+    if (primaryRes) allHolidays.push(...primaryRes.holidays)
+    const otherYears = Array.from(yearsInItems).filter(y => y !== primaryYear)
+    for (const y of otherYears) {
+      try {
+        const hRes = await fetch(`/api/holidays?year=${y}`)
+        const hData = await hRes.json()
+        if (Array.isArray(hData)) allHolidays.push(...hData)
+      } catch {
+        // ignore
+      }
+    }
+
+    const dateToId = new Map<string, number>()
+    allHolidays.forEach(h => {
+      const d = new Date(h.date)
+      const dd = d.getUTCDate()
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+      const yy = d.getUTCFullYear()
+      dateToId.set(`${dd}/${mm}/${yy}`, h.id)
+    })
+    const ids = parsed.items
+      .map(it => dateToId.get(it.date))
+      .filter((x): x is number => typeof x === 'number')
+    setPaySelectedHolidayIds(ids)
+
+    if (ids.length < parsed.items.length) {
+      console.warn(`Edit: matched ${ids.length}/${parsed.items.length} holidays — บางวันหยุดอาจถูกลบไปแล้ว`)
+    }
   }
 
   const handlePayDialogClose = (open: boolean) => {
@@ -685,9 +745,9 @@ export default function HolidaysPage() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 text-blue-600 hover:bg-blue-100 disabled:opacity-30"
-                                disabled={!parsed || !parsed.employeeId || !parsed.holidayIds}
+                                disabled={!parsed || !parsed.employeeId}
                                 onClick={() => openEditPayDialog(item)}
-                                title={parsed && parsed.employeeId && parsed.holidayIds ? 'แก้ไข' : 'รายการเก่าแก้ไขไม่ได้'}
+                                title={parsed && parsed.employeeId ? 'แก้ไข' : 'รายการเก่าแก้ไขไม่ได้'}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
