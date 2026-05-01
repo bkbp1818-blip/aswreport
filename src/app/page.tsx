@@ -358,13 +358,23 @@ export default function DashboardPage() {
       url += `&months=${historyRangeMode}`
     }
 
-    fetch(url)
+    // ป้องกัน race condition: ถ้าผู้ใช้กดเปลี่ยนช่วง (เช่น 6 → 3) ก่อน response เก่ากลับมา
+    // response เก่าจะถูก ignore แทนที่จะ overwrite ข้อมูลใหม่
+    const controller = new AbortController()
+    fetch(url, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         setHistoryData(data)
+        setLoadingHistory(false)
       })
-      .catch((err) => console.error('Error loading history:', err))
-      .finally(() => setLoadingHistory(false))
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('Error loading history:', err)
+          setLoadingHistory(false)
+        }
+      })
+
+    return () => controller.abort()
   }, [selectedBuilding, historyRangeMode, customStartMonth, customStartYear, customEndMonth, customEndYear])
 
   const currentSummary = summaryData?.total
