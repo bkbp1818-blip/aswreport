@@ -229,9 +229,25 @@ async function calculateBuildingSummary(
     }
   }
 
+  // ดึงค่าใช้จ่ายส่วนกลางแยกตามอาคาร จาก ExpenseHistory (ทุกอาคาร)
+  // ต้องคำนวณก่อน salaryPerBuilding เพราะ Funn D ใช้ค่าจาก perBuildingTotals.salaryExpense
+  const perBuildingSettingsHistory = await prisma.expenseHistory.findMany({
+    where: { targetType: 'SETTINGS', targetId: buildingId, month, year },
+  })
+  const perBuildingTotals: Record<string, number> = {}
+  for (const item of perBuildingSettingsHistory) {
+    const fieldName = item.fieldName
+    if (fieldName === 'cowayWaterFilterExpense') continue // Coway จัดการแยก
+    const amount = Number(item.amount)
+    perBuildingTotals[fieldName] = (perBuildingTotals[fieldName] || 0) + (item.actionType === 'ADD' ? amount : -amount)
+  }
+  // ไม่ให้ติดลบ
+  for (const key of Object.keys(perBuildingTotals)) {
+    perBuildingTotals[key] = Math.max(0, perBuildingTotals[key])
+  }
+
   // ดึงข้อมูลเงินเดือนพนักงาน (หาร 3 อาคาร: CT, YW, NANA)
   // ใช้เงินเดือนรายเดือน (MonthlySalary) ถ้ามี ไม่มีก็ fallback ไป Employee.salary
-  const buildings = await prisma.building.findMany()
   const employees = await prisma.employee.findMany({
     where: { isActive: true },
   })
@@ -248,39 +264,16 @@ async function calculateBuildingSummary(
   const isFunnD = !isEligibleForSalary
   const salaryPerBuilding = isEligibleForSalary
     ? totalSalary / salaryDivisor
-    : 0
+    : (perBuildingTotals.salaryExpense || 0)
 
-  // ดึงข้อมูลเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
+  // ดึงข้อมูลเงินสมทบประกันสังคม
+  // CT/YW/NANA: คำนวณ auto จาก effectiveSalary (5%, max 875), Funn D: ใช้ ExpenseHistory
   const socialSecurityContributions = await prisma.socialSecurityContribution.findMany({
     where: { month, year },
   })
-  const totalSocialSecurity = socialSecurityContributions.reduce(
-    (sum, c) => sum + Number(c.amount),
-    0
-  )
-  const socialSecurityDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
-  const eligibleBuildingsForSocialSecurity = ['CT', 'YW', 'NANA']
-  const isEligibleForSocialSecurity = eligibleBuildingsForSocialSecurity.includes(building.code)
-  // socialSecurityPerBuilding จะคำนวณหลัง perBuildingTotals
-  let socialSecurityPerBuilding = 0
+  const socialSecurityDivisor = 3
 
-  // ดึงค่าใช้จ่ายส่วนกลางแยกตามอาคาร จาก ExpenseHistory (ทุกอาคาร)
-  const perBuildingSettingsHistory = await prisma.expenseHistory.findMany({
-    where: { targetType: 'SETTINGS', targetId: buildingId, month, year },
-  })
-  const perBuildingTotals: Record<string, number> = {}
-  for (const item of perBuildingSettingsHistory) {
-    const fieldName = item.fieldName
-    if (fieldName === 'cowayWaterFilterExpense') continue // Coway จัดการแยก
-    const amount = Number(item.amount)
-    perBuildingTotals[fieldName] = (perBuildingTotals[fieldName] || 0) + (item.actionType === 'ADD' ? amount : -amount)
-  }
-  // ไม่ให้ติดลบ
-  for (const key of Object.keys(perBuildingTotals)) {
-    perBuildingTotals[key] = Math.max(0, perBuildingTotals[key])
-  }
-
-  // เงินสมทบประกันสังคม: CT/YW/NANA คำนวณ auto จาก effectiveSalary, Funn D ใช้ ExpenseHistory
+  // คำนวณ auto จาก effectiveSalary สำหรับพนักงานที่มี contribution > 0
   const ssContribMap = new Map(socialSecurityContributions.map((c) => [c.employeeId, Number(c.amount)]))
   let calculatedSocialSecurityTotal = 0
   for (const emp of employees) {
@@ -290,7 +283,7 @@ async function calculateBuildingSummary(
       calculatedSocialSecurityTotal += calculateSocialSecurity(effectiveSalary)
     }
   }
-  socialSecurityPerBuilding = isEligibleForSalary
+  const socialSecurityPerBuilding = isEligibleForSalary
     ? calculatedSocialSecurityTotal / socialSecurityDivisor
     : (perBuildingTotals.socialSecurityExpense || 0)
 
@@ -302,6 +295,8 @@ async function calculateBuildingSummary(
   const waterBottleExpensePerBuilding = perBuildingTotals.waterBottleExpense || 0
   const cookieExpensePerBuilding = perBuildingTotals.cookieExpense || 0
   const coffeeExpensePerBuilding = perBuildingTotals.coffeeExpense || 0
+  const sugarExpensePerBuilding = perBuildingTotals.sugarExpense || 0
+  const coffeeMateExpensePerBuilding = perBuildingTotals.coffeeMateExpense || 0
   const fuelExpensePerBuilding = perBuildingTotals.fuelExpense || 0
   const parkingExpensePerBuilding = perBuildingTotals.parkingExpense || 0
   const motorcycleMaintenanceExpensePerBuilding = perBuildingTotals.motorcycleMaintenanceExpense || 0
@@ -348,7 +343,8 @@ async function calculateBuildingSummary(
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpensePerBuilding = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
     shippingExpensePerBuilding + amenityExpensePerBuilding + waterBottleExpensePerBuilding +
-    cookieExpensePerBuilding + coffeeExpensePerBuilding + fuelExpensePerBuilding + parkingExpensePerBuilding +
+    cookieExpensePerBuilding + coffeeExpensePerBuilding + sugarExpensePerBuilding + coffeeMateExpensePerBuilding +
+    fuelExpensePerBuilding + parkingExpensePerBuilding +
     motorcycleMaintenanceExpensePerBuilding + maidTravelExpensePerBuilding +
     cleaningSupplyExpensePerBuilding + foodExpensePerBuilding + siteminderExpensePerBuilding
 
@@ -432,7 +428,9 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่า Amenity (แปรงสีฟัน หมวกคลุมผม)'] = amenityExpensePerBuilding
   expenseByCategory['ค่าน้ำเปล่า'] = waterBottleExpensePerBuilding
   expenseByCategory['ค่าขนมคุ้กกี้'] = cookieExpensePerBuilding
-  expenseByCategory['ค่ากาแฟซอง น้ำตาล คอฟฟี่เมท'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่ากาแฟซอง'] = coffeeExpensePerBuilding
+  expenseByCategory['ค่าน้ำตาลซอง'] = sugarExpensePerBuilding
+  expenseByCategory['ค่าคอฟฟี่เมท'] = coffeeMateExpensePerBuilding
   expenseByCategory['ค่าน้ำมันรถมอเตอร์ไซค์'] = fuelExpensePerBuilding
   expenseByCategory['ค่าเช่าที่จอดรถมอเตอร์ไซค์'] = parkingExpensePerBuilding
   expenseByCategory['ค่าซ่อมบำรุงรถมอเตอร์ไซค์'] = motorcycleMaintenanceExpensePerBuilding
