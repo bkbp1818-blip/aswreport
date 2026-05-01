@@ -71,6 +71,29 @@ interface HcItem {
   recordIds: number[]
 }
 
+interface HcDescriptionPayload {
+  v: number
+  employeeName: string
+  employeeId?: number
+  days: number
+  buildingCount: number
+  totalAllBuildings: number
+  perBuilding: number
+  items: { date: string; name: string; salary: number; amount: number }[]
+}
+
+function parseHcDescription(s: string): HcDescriptionPayload | null {
+  try {
+    const obj = JSON.parse(s)
+    if (obj && typeof obj === 'object' && Array.isArray(obj.items) && obj.employeeName) {
+      return obj as HcDescriptionPayload
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 const THAI_DAY_NAMES = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
 const THAI_MONTH_NAMES = [
   'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
@@ -589,35 +612,56 @@ export default function HolidaysPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    hcItems.map((item, idx) => (
-                      <TableRow key={item.groupId}>
-                        <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
-                        <TableCell className="px-2 text-[11px] leading-relaxed text-gray-700 break-words">
-                          {item.description}
-                        </TableCell>
-                        <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
-                          {formatNumber(item.totalAmount)}
-                        </TableCell>
-                        <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
-                          {formatNumber(item.amount)}
-                        </TableCell>
-                        <TableCell className="text-right px-1 align-top pt-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-red-600 hover:bg-red-100"
-                            disabled={hcDeletingGroupId === item.groupId}
-                            onClick={() => handleHcDelete(item.groupId)}
-                          >
-                            {hcDeletingGroupId === item.groupId ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    hcItems.map((item, idx) => {
+                      const parsed = parseHcDescription(item.description)
+                      return (
+                        <TableRow key={item.groupId}>
+                          <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
+                          <TableCell className="px-2 align-top pt-2.5">
+                            {parsed ? (
+                              <div className="space-y-1">
+                                <div className="text-xs font-semibold text-gray-800">{parsed.employeeName}</div>
+                                <ul className="space-y-0.5">
+                                  {parsed.items.map((it, i) => (
+                                    <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
+                                      <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
+                                      <span className="text-gray-500">·</span>
+                                      <span className="flex-1 truncate">{it.name}</span>
+                                      <span className="text-gray-500 whitespace-nowrap">
+                                        ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <span className="text-[11px] leading-relaxed text-gray-700 break-words">{item.description}</span>
                             )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          </TableCell>
+                          <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
+                            {formatNumber(item.totalAmount)}
+                          </TableCell>
+                          <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
+                            {formatNumber(item.amount)}
+                          </TableCell>
+                          <TableCell className="text-right px-1 align-top pt-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-red-600 hover:bg-red-100"
+                              disabled={hcDeletingGroupId === item.groupId}
+                              onClick={() => handleHcDelete(item.groupId)}
+                            >
+                              {hcDeletingGroupId === item.groupId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
                   )}
                 </TableBody>
                 {hcItems.length > 0 && (

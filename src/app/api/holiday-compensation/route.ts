@@ -183,12 +183,24 @@ export async function POST(request: NextRequest) {
     const perBuilding = totalAllBuildings / buildings.length
     const days = holidays.length
 
-    // 6) สร้าง description (snapshot ของรายละเอียดทุกวันหยุด)
-    // เรียงสรุป: "ชื่อ | วันหยุด: 13/04/2026 (ฐาน 16,000 → 1,066.67) + 14/04/2026 (ฐาน 16,000 → 1,066.67) | รวม 2,133.33 ÷ 3 = 711.11"
-    const detailParts = perHolidayDetails.map(d =>
-      `${d.date} (ฐาน ${d.salary.toLocaleString()} → ${d.amount.toFixed(2)})`
-    ).join(' + ')
-    const description = `${empDisplayName} | ${days} วัน: ${detailParts} | รวม ${totalAllBuildings.toFixed(2)} ÷ ${buildings.length} = ${perBuilding.toFixed(2)}`
+    // 6) สร้าง description เป็น JSON (UI จะ parse แสดงผลแบบจัดเรียง)
+    //    fallback: ถ้า parse ไม่ได้ UI จะแสดง raw text แทน
+    const descriptionPayload = {
+      v: 1,
+      employeeName: empDisplayName,
+      employeeId: empId,
+      days,
+      buildingCount: buildings.length,
+      totalAllBuildings: Number(totalAllBuildings.toFixed(2)),
+      perBuilding: Number(perBuilding.toFixed(2)),
+      items: perHolidayDetails.map(d => ({
+        date: d.date,        // "13/04/2026"
+        name: d.name,        // "วันสงกรานต์"
+        salary: d.salary,    // 16000
+        amount: Number(d.amount.toFixed(2)), // 1066.67
+      })),
+    }
+    const description = JSON.stringify(descriptionPayload)
 
     const groupId = randomUUID()
     const fieldName = 'holidayCompensation'
