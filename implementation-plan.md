@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.20.0 |
+| **Version** | 1.21.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -126,6 +126,10 @@
 - **รายจ่าย Site Minder Dynamic Revenue Plus — ทุกอาคาร:** ✨ NEW v1.12.0
   - fieldName: `siteminderExpense` — สีน้ำเงิน blue (#2563EB)
   - icon Globe, แสดงทุกอาคาร พร้อมปุ่มแก้ไข/เพิ่ม/ลด
+- **ค่าแรงวันหยุดชดเชย — เฉพาะ CT/YW/NANA (read-only):** ✨ NEW v1.21.0
+  - fieldName: `holidayCompensation` — สีเขียว #84A59D
+  - แสดงยอดต่ออาคาร (หาร 3) — ไม่มีปุ่มกดในหน้านี้ จัดการที่หน้า `/holidays` เท่านั้น
+  - รวมเข้า totalExpense → กระทบกำไร/ขาดทุน
 - **รายจ่ายคืนยอดค้างจ่าย — ทุกอาคาร (read-only):** ✨ UPDATED v1.14.0
   - ดึงรายละเอียดจาก Reimbursement ที่ `isReturned=true` ตาม buildingId + paidDate เดือน/ปี
   - แสดงยอดรวมในตารางรายจ่าย (1 แถวสรุป) + ตารางรายละเอียดแยก Card สีเขียว
@@ -191,7 +195,35 @@
   - แต่ละกลุ่มแสดง: วันที่ + จำนวนรายการ + ยอดรวม
 - **เฉพาะ PARTNER** (Staff/Viewer เข้าไม่ได้)
 
-### 5. จัดการผู้ใช้ (`/users`)
+### 5. วันหยุดราชการ (`/holidays`) ✨ NEW v1.21.0
+- **เฉพาะ PARTNER** (จำกัดผ่าน `PARTNER_ONLY_MENUS`)
+- **Layout 2 คอลัมน์ซ้าย-ขวา** (`lg:grid-cols-2`) — มือถือยังเป็น stack
+- **Section ซ้าย: รายการวันหยุดราชการ** (สีเขียว #84A59D)
+  - CRUD ผ่าน Dialog (`<Input type="date">` + ชื่อ)
+  - Filter ตามปี + เพิ่ม/แก้ไข/ลบ (soft delete: `isActive=false`)
+  - Records inactive แสดงในตารางย่อยด้วยปุ่ม "เปิดใช้งาน"
+  - Seed 19 วันหยุดราชการไทย 2026 (สามารถแก้ไข/เพิ่มได้ผ่าน UI)
+- **Section ขวา: จ่ายค่าแรงวันหยุดชดเชย** (สีคอรัล #F28482)
+  - Filter เดือน/ปี ที่ลงรายจ่าย
+  - ปุ่ม "+ จ่ายค่าแรง" เปิด Dialog:
+    - เลือกพนักงาน (MAID/MANAGER เท่านั้น — PARTNER ไม่มีค่าแรงนี้)
+    - เลือกวันหยุดที่ทำงาน (Checkbox หลายวันได้)
+    - เลือกเดือน/ปีที่จะลงรายจ่าย (default = filter ปัจจุบัน)
+    - **Preview การคำนวณ per-holiday:** แต่ละวันแสดงฐานเงินเดือน (* = carry forward) → ยอดต่อวัน → รวม → ÷ 3 อาคาร
+  - **ปุ่มแก้ไข** (ดินสอ) ในแต่ละแถว — Dialog เดียวกับเพิ่ม pre-fill ค่าเดิม → POST ใหม่ก่อน DELETE เก่า (atomicity safe)
+  - **ปุ่มลบ** — ลบทั้ง group 3 อาคาร (CT/YW/NANA) พร้อมกัน
+  - ตารางคอลัมน์: # | ชื่อพนักงาน | รายละเอียด (วันที่ · ชื่อวันหยุด · ฐาน → ยอด) | รวมทุกอาคาร | / อาคาร | แก้ไข/ลบ
+  - มี TableFooter รวมยอดท้าย
+- **สูตรการคำนวณ per-holiday:**
+  - แต่ละวันหยุด: `salary_ของเดือนของวันหยุดนั้น ÷ 30 × 2`
+  - รวมทุกวันหยุด → ÷ 3 อาคาร = ยอดต่ออาคาร
+  - **Skip 0 + carry forward**: ถ้าเดือนของวันหยุดมี salary=0 หรือไม่มี record → ใช้เงินเดือนล่าสุดที่ > 0 ก่อนเดือนนั้น
+- **บันทึกใน ExpenseHistory:**
+  - 3 records (CT/YW/NANA) ต่อการบันทึก 1 ครั้ง — `groupId` เดียวกัน (ใช้ `prisma.$transaction` atomicity)
+  - `targetType=SETTINGS`, `fieldName=holidayCompensation`, `actionType=ADD`
+  - `description` เก็บเป็น **JSON** (v1) — มี employeeName, employeeId, holidayIds, items[date,name,salary,amount], totalAllBuildings, perBuilding (UI parse แสดงแบบจัดเรียง — fallback ไป raw text สำหรับ records เก่า)
+
+### 6. จัดการผู้ใช้ (`/users`)
 - เพิ่ม/แก้ไข/ลบ ผู้ใช้
 - กำหนด role (PARTNER/STAFF/VIEWER)
 - **จัดการสิทธิ์เมนูรายผู้ใช้** — PARTNER เปิด/ปิดเมนูให้ STAFF/VIEWER ด้วย checkbox ✨ NEW v1.14.0
@@ -201,7 +233,7 @@
   - สิทธิ์อัพเดทอัตโนมัติโดยไม่ต้อง logout/login ใหม่ (`/api/auth/me`)
 - เปิด/ปิด บัญชี
 
-### 6. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
+### 7. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
 - **ทั้ง Partner, Staff, และ Viewer เข้าถึงได้** (Viewer ไม่เห็นค่าเช่าอาคาร)
 - **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น**
 - **Tab ตั้งค่าอาคาร:**
@@ -211,7 +243,7 @@
 - ~~**Tab ค่าใช้จ่ายส่วนกลาง:**~~ — **ลบแล้ว** ย้ายไปกรอกในหน้า Transactions แยกตามอาคาร (ไม่มี GLOBAL_SETTINGS อีกแล้ว) ✨ REMOVED
 - **Tab ข้อมูลอาคาร:** แสดงข้อมูลอาคารทั้งหมด + สูตรการคำนวณ
 
-### 7. ดาวน์โหลดรายงาน (`/reports`)
+### 8. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
 - แสดงทุก category (แม้ค่าเป็น 0)
 - รายจ่ายแสดงค่าจาก GlobalSettings พร้อมรายละเอียด
@@ -221,7 +253,7 @@
 - พิมพ์รายงาน (เหมือน PDF)
 - มี emoji ตามหมวดหมู่
 
-### 8. ระบบ Login (`/access`)
+### 9. ระบบ Login (`/access`)
 - เลือกประเภทผู้ใช้ (หุ้นส่วน/พนักงาน)
 - Login ด้วย username/password
 - รหัสผ่านเข้ารหัสด้วย bcrypt
@@ -253,6 +285,11 @@
 | `/api/auth/me` | GET | ดึงข้อมูล user ปัจจุบันจาก DB (refresh allowedMenus) ✨ v1.14.0 | Auth |
 | `/api/reimbursements` | GET, POST, PUT, PATCH, DELETE | จัดการยอดค้างจ่ายคืน (PATCH = bulk, GET: summary/details=returned/details=pending) ✨ | Partner |
 | `/api/categories/add-payment-channels` | POST | เพิ่ม categories ใหม่ ✨ | - |
+| `/api/holidays` | GET, POST | จัดการรายการวันหยุดราชการ (GET filter ?year=) ✨ NEW v1.21.0 | GET=Auth / POST=Partner |
+| `/api/holidays/[id]` | PUT, DELETE | แก้ไข/soft delete (isActive=false) วันหยุด ✨ NEW v1.21.0 | Partner |
+| `/api/holiday-compensation` | GET, POST | GET: list รายการค่าแรง group แบบ groupId / POST: บันทึกค่าแรง 3 records (CT/YW/NANA) per-holiday + JSON description ✨ NEW v1.21.0 | Auth/Partner |
+| `/api/holiday-compensation/[groupId]` | DELETE | ลบรายการค่าแรงทั้ง group 3 อาคาร ✨ NEW v1.21.0 | Partner |
+| `/api/holiday-compensation/eligible-employees` | GET | คืน employees + salaries[1..12] (skip 0 + carry forward) ของปีที่ระบุ — ใช้ใน Dialog ✨ NEW v1.21.0 | Auth |
 
 ---
 
@@ -276,6 +313,7 @@ Amount to Pay    = Management Fee + VAT
 - **CT/YW/NANA:** มีรายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน ✨ NEW v1.11.0
 - **Funn D:** มีรายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน + บริการอื่นๆจาก ASW ✨ NEW v1.11.0
 - **Site Minder Dynamic Revenue Plus** — ทุกอาคารกรอกแยกผ่าน ExpenseHistory ✨ NEW v1.12.0
+- **ค่าแรงวันหยุดชดเชย** — เฉพาะ CT/YW/NANA — สูตร per-holiday: `Σ(salary_ของเดือนของวันหยุด ÷ 30 × 2) ÷ 3 อาคาร` (skip 0 + carry forward จากเดือนล่าสุดที่ > 0) ✨ NEW v1.21.0
 
 ---
 
@@ -297,7 +335,35 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.20.0 (Current - April 2026)
+### v1.21.0 (Current - May 2026)
+- **ฟีเจอร์ใหม่: ค่าแรงวันหยุดชดเชย + หน้า `/holidays` (Partner only):**
+  - **Schema:** เพิ่ม `Holiday` model + `groupId String?` (+ index) ใน `ExpenseHistory` (Prisma db push บน Neon)
+  - **API ใหม่:**
+    - `/api/holidays` (GET list ?year= / POST) + `/api/holidays/[id]` (PUT/DELETE soft)
+    - `/api/holiday-compensation` (GET list group / POST บันทึก 3 records พร้อม groupId)
+    - `/api/holiday-compensation/[groupId]` (DELETE ทั้ง group)
+    - `/api/holiday-compensation/eligible-employees?year=` คืน salaries[1..12] ของแต่ละ employee (skip 0 + carry forward)
+  - **Seed:** `prisma/seed-holidays.ts` — 19 วันหยุดราชการไทย 2026 (สามารถแก้ไข/เพิ่มผ่าน UI)
+  - **Menu:** เพิ่ม `/holidays` ใน `MENU_ITEMS` + `PARTNER_ONLY_MENUS` + `DEFAULT_MENUS_BY_ROLE.PARTNER` + Sidebar (icon `CalendarDays`)
+  - **หน้า `/holidays`:**
+    - **Layout 2 คอลัมน์ (`lg:grid-cols-2`)**: ซ้าย = วันหยุดราชการ (CRUD) / ขวา = จ่ายค่าแรง
+    - **Section ขวา:** Filter เดือน/ปี + ปุ่ม "+ จ่ายค่าแรง" + ตารางรายการ (group แบบ groupId)
+    - **Dialog "จ่ายค่าแรง"**: เลือก employee + holidays (multi checkbox) + เดือน/ปีลงรายจ่าย + Preview per-holiday breakdown
+    - **ปุ่มแก้ไข/ลบ** ในแต่ละแถว — แก้ไข: pre-fill ค่าเดิม → POST ใหม่ → DELETE เก่า (atomicity safe)
+  - **Logic per-holiday calculation:**
+    - แต่ละวันหยุดใช้ `salary_ของเดือนของวันหยุดนั้น ÷ 30 × 2`
+    - **Skip 0 + carry forward**: ถ้าเดือนนั้น salary=0 หรือไม่มี → ใช้เงินเดือนล่าสุดที่ > 0 ก่อนเดือนนั้น
+    - รวมทุกวัน → ÷ 3 อาคาร = ยอดต่ออาคาร (CT/YW/NANA เท่ากัน)
+  - **บันทึกใน ExpenseHistory:**
+    - 3 records (CT/YW/NANA) ต่อการบันทึก 1 ครั้ง — `groupId` UUID เดียวกัน, `prisma.$transaction`
+    - `targetType=SETTINGS`, `fieldName=holidayCompensation`, `actionType=ADD`
+    - `description` เก็บเป็น **JSON v1**: `{employeeName, employeeId, holidayIds, items[date,name,salary,amount], totalAllBuildings, perBuilding}` — UI parse แสดงแบบจัดเรียง (fallback raw text สำหรับ records เก่า)
+  - **หน้า `/transactions`:** เพิ่มแถว "ค่าแรงวันหยุดชดเชย (หาร 3 อาคาร)" สีเขียว `#84A59D` — read-only ดึงจาก `perBuildingExpenses.holidayCompensation` (เพิ่ม `'holidayCompensation'` ใน `perBuildingSettingsFields`)
+  - **Edit support สำหรับ records เก่า:** ถ้า description มี `employeeId` แต่ไม่มี `holidayIds` → derive จาก match `item.date` กับ holidays ในระบบ
+- **ไฟล์ใหม่:** `prisma/seed-holidays.ts`, `src/app/holidays/page.tsx`, `src/app/api/holidays/route.ts`, `src/app/api/holidays/[id]/route.ts`, `src/app/api/holiday-compensation/route.ts`, `src/app/api/holiday-compensation/[groupId]/route.ts`, `src/app/api/holiday-compensation/eligible-employees/route.ts`
+- **ไฟล์แก้:** `prisma/schema.prisma`, `src/app/transactions/page.tsx`, `src/components/Sidebar.tsx`, `src/lib/menu-permissions.ts`
+
+### v1.20.0 (April 2026)
 - **Direct Booking — เหลือ 4 ช่องทาง (เริ่ม เม.ย. 2026):**
   - หน้า `/transactions` กลุ่ม "กรอกข้อมูลรายวัน — Direct Booking"
   - **เม.ย. 2026 ขึ้นไป** → แสดงเพียง **4 แถว** (PayPal / Credit Card / Bank Transfer / Cash) — ไม่แยกตาม OTA — บันทึกด้วย `otaSourceId = null`
@@ -988,6 +1054,21 @@ npx vercel --prod        # Deploy
 | createdAt | DateTime | วันที่สร้าง |
 | updatedAt | DateTime | วันที่อัปเดต |
 
+### Holiday ✨ NEW v1.21.0
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| id | Int | Primary key |
+| name | String | ชื่อวันหยุด (เช่น "วันสงกรานต์") |
+| date | DateTime (@db.Date) | วันที่ (unique — กันซ้ำวันเดียวกัน) |
+| isActive | Boolean | เปิด/ปิดใช้งาน (soft delete รักษาประวัติเก่า) |
+| createdAt | DateTime | วันที่สร้าง |
+| updatedAt | DateTime | วันที่อัปเดต |
+
+### ExpenseHistory.groupId ✨ NEW v1.21.0
+| Field | Type | คำอธิบาย |
+|-------|------|----------|
+| groupId | String? | UUID ผูก records ที่บันทึกพร้อมกัน (เช่น holiday compensation 3 อาคาร CT/YW/NANA) — มี index |
+
 ---
 
 ## Future Plans
@@ -1014,4 +1095,5 @@ npx vercel --prod        # Deploy
 - **ค่าใช้จ่ายส่วนกลางแยกตามอาคาร+เดือน:** ข้อมูลเก็บใน ExpenseHistory (targetType=SETTINGS, targetId=buildingId) แยกตาม month/year — ไม่ใช้ GLOBAL_SETTINGS อีกแล้ว (v1.11.0)
 - **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year — CT/YW/NANA คำนวณ auto จาก effectiveSalary (5%, max 875 ตามกฎหมาย 2569)
 - **เงินเดือนรายเดือน (MonthlySalary):** เก็บแยกตามพนักงาน+เดือน+ปี — ถ้าไม่มี record จะ carry forward จากเดือนก่อน, ถ้าไม่มีเลย fallback ไป Employee.salary
+- **ค่าแรงวันหยุดชดเชย (Holiday Compensation) v1.21.0:** จัดการที่หน้า `/holidays` (Partner only) — บันทึกใน `ExpenseHistory` (`fieldName=holidayCompensation`) แยก 3 records ต่อการบันทึก 1 ครั้ง (CT/YW/NANA) ผูกด้วย `groupId` UUID — ใช้ `prisma.$transaction` รับประกัน atomicity. การคำนวณเป็น **per-holiday**: แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น (skip 0 + carry forward จากเดือนล่าสุดที่ > 0). `description` เก็บเป็น JSON v1 พร้อม snapshot ของ employeeName, holidayIds, items[date,salary,amount] เพื่อ UI parse แสดงแบบจัดเรียง + รองรับการแก้ไข
 - **อัตราประกันสังคม (กฎหมาย 2569-2571):** 5%, เพดาน 17,500 บาท, สูงสุด 875 บาท/คน/เดือน
