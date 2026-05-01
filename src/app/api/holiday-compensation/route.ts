@@ -1,9 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireMenuAccess, handleAuthError } from '@/lib/auth'
+import { requireAuth, requireMenuAccess, handleAuthError } from '@/lib/auth'
 import { randomUUID } from 'crypto'
 
 const ELIGIBLE_BUILDING_CODES = ['CT', 'YW', 'NANA']
+
+// GET - ดึงรายการการจ่ายค่าแรงวันหยุดชดเชย (group แบบ 1 entry ต่อ groupId)
+// query: ?month=&year= (filter ตามเดือน/ปีที่ลง expense)
+export async function GET(request: NextRequest) {
+  try {
+    await requireAuth()
+
+    const { searchParams } = new URL(request.url)
+    const monthParam = searchParams.get('month')
+    const yearParam = searchParams.get('year')
+
+    const where: { fieldName: string; month?: number; year?: number; groupId: { not: null } } = {
+      fieldName: 'holidayCompensation',
+      groupId: { not: null },
+    }
+    if (monthParam) where.month = parseInt(monthParam)
+    if (yearParam) where.year = parseInt(yearParam)
+
+    const records = await prisma.expenseHistory.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    })
+
+    // group ตาม groupId — เลือก record แรกของแต่ละ group มาเป็น representative
+    // (records ใน group เดียวกันมี amount, description, month, year, createdAt เหมือนกัน — ต่างแค่ targetId)
+    const grouped = new Map<string, {
+      groupId: string
+      description: string
+      amount: number       // ยอดต่ออาคาร
+      totalAmount: number  // ยอดรวมทุกอาคาร (amount * จำนวน records)
+      month: number
+      year: number
+      createdAt: string
+      buildingIds: number[]
+      recordIds: number[]
+    }>()
+
+    for (const r of records) {
+      if (!r.groupId) continue
+      const existing = grouped.get(r.groupId)
+      if (existing) {
+        existing.totalAmount += Number(r.amount)
+        existing.recordIds.push(r.id)
+        if (r.targetId !== null) existing.buildingIds.push(r.targetId)
+      } else {
+        grouped.set(r.groupId, {
+          groupId: r.groupId,
+          description: r.description,
+          amount: Number(r.amount),
+          totalAmount: Number(r.amount),
+          month: r.month,
+          year: r.year,
+          createdAt: r.createdAt.toISOString(),
+          buildingIds: r.targetId !== null ? [r.targetId] : [],
+          recordIds: [r.id],
+        })
+      }
+    }
+
+    const items = Array.from(grouped.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    )
+
+    return NextResponse.json({ items })
+  } catch (error) {
+    const authError = handleAuthError(error)
+    if (authError) {
+      return NextResponse.json({ error: authError.error }, { status: authError.status })
+    }
+    console.error('Error listing holiday compensation:', error)
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการดึงข้อมูล' }, { status: 500 })
+  }
+}
 
 // POST - บันทึกค่าแรงวันหยุดชดเชย
 // body: { employeeId, holidayIds[], month, year }
