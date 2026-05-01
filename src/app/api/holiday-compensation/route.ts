@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
       v: 1,
       employeeName: empDisplayName,
       employeeId: empId,
+      holidayIds: holidays.map(h => h.id),
       days,
       buildingCount: buildings.length,
       totalAllBuildings: Number(totalAllBuildings.toFixed(2)),

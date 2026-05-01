@@ -75,6 +75,7 @@ interface HcDescriptionPayload {
   v: number
   employeeName: string
   employeeId?: number
+  holidayIds?: number[]
   days: number
   buildingCount: number
   totalAllBuildings: number
@@ -149,6 +150,7 @@ export default function HolidaysPage() {
   const [paySelectedHolidayIds, setPaySelectedHolidayIds] = useState<number[]>([])
   const [payMonth, setPayMonth] = useState<string>(String(now.getMonth() + 1))
   const [payYear, setPayYear] = useState<string>(String(now.getFullYear()))
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
 
   const loadHolidays = useCallback(async () => {
     setLoading(true)
@@ -306,12 +308,33 @@ export default function HolidaysPage() {
   }, [])
 
   const openPayDialog = async () => {
+    setEditingGroupId(null)
     setPayEmployeeId(null)
     setPaySelectedHolidayIds([])
     setPayMonth(hcMonth)
     setPayYear(hcYear)
     setPayDialogOpen(true)
     await loadDialogData(hcYear)
+  }
+
+  const openEditPayDialog = async (item: HcItem) => {
+    const parsed = parseHcDescription(item.description)
+    if (!parsed || !parsed.employeeId || !parsed.holidayIds || parsed.holidayIds.length === 0) {
+      alert('รายการนี้เป็นรูปแบบเก่าที่แก้ไขไม่ได้ — ลบและบันทึกใหม่แทน')
+      return
+    }
+    setEditingGroupId(item.groupId)
+    setPayEmployeeId(parsed.employeeId)
+    setPaySelectedHolidayIds(parsed.holidayIds)
+    setPayMonth(String(item.month))
+    setPayYear(String(item.year))
+    setPayDialogOpen(true)
+    await loadDialogData(String(item.year))
+  }
+
+  const handlePayDialogClose = (open: boolean) => {
+    setPayDialogOpen(open)
+    if (!open) setEditingGroupId(null)
   }
 
   const togglePayHolidayId = (id: number) => {
@@ -361,6 +384,7 @@ export default function HolidaysPage() {
     }
     setPaySaving(true)
     try {
+      // 1) สร้างรายการใหม่ก่อน (ถ้า fail ของเก่ายังอยู่)
       const res = await fetch('/api/holiday-compensation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -381,6 +405,15 @@ export default function HolidaysPage() {
         alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
+
+      // 2) ถ้า edit → ลบ group เก่า
+      if (editingGroupId) {
+        const delRes = await fetch(`/api/holiday-compensation/${editingGroupId}`, { method: 'DELETE' })
+        if (!delRes.ok) {
+          alert('บันทึกรายการใหม่สำเร็จ แต่ลบรายการเก่าไม่สำเร็จ — กรุณาลบรายการเก่าด้วยตนเอง')
+        }
+      }
+
       // ถ้าเดือน/ปีที่ลงตรงกับ filter ปัจจุบัน → refresh
       if (payMonth === hcMonth && payYear === hcYear) {
         await loadHcItems()
@@ -390,6 +423,7 @@ export default function HolidaysPage() {
         setHcYear(payYear)
       }
       setPayDialogOpen(false)
+      setEditingGroupId(null)
     } catch (e) {
       console.error('handlePaySave error', e)
       alert('เกิดข้อผิดพลาดในการบันทึก')
@@ -602,7 +636,7 @@ export default function HolidaysPage() {
                     <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
                     <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
                     <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
-                    <TableHead className="w-[44px] px-2" />
+                    <TableHead className="w-[80px] px-2" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -646,19 +680,32 @@ export default function HolidaysPage() {
                             {formatNumber(item.amount)}
                           </TableCell>
                           <TableCell className="text-right px-1 align-top pt-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 text-red-600 hover:bg-red-100"
-                              disabled={hcDeletingGroupId === item.groupId}
-                              onClick={() => handleHcDelete(item.groupId)}
-                            >
-                              {hcDeletingGroupId === item.groupId ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
+                            <div className="flex items-center justify-end gap-0.5">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-blue-600 hover:bg-blue-100 disabled:opacity-30"
+                                disabled={!parsed || !parsed.employeeId || !parsed.holidayIds}
+                                onClick={() => openEditPayDialog(item)}
+                                title={parsed && parsed.employeeId && parsed.holidayIds ? 'แก้ไข' : 'รายการเก่าแก้ไขไม่ได้'}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-red-600 hover:bg-red-100"
+                                disabled={hcDeletingGroupId === item.groupId}
+                                onClick={() => handleHcDelete(item.groupId)}
+                                title="ลบ"
+                              >
+                                {hcDeletingGroupId === item.groupId ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -724,12 +771,16 @@ export default function HolidaysPage() {
       </Dialog>
 
       {/* Dialog: จ่ายค่าแรงวันหยุดชดเชย */}
-      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+      <Dialog open={payDialogOpen} onOpenChange={handlePayDialogClose}>
         <DialogContent className="w-[95vw] max-w-[640px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#F28482]">จ่ายค่าแรงวันหยุดชดเชย</DialogTitle>
+            <DialogTitle className="text-[#F28482]">
+              {editingGroupId ? 'แก้ไขค่าแรงวันหยุดชดเชย' : 'จ่ายค่าแรงวันหยุดชดเชย'}
+            </DialogTitle>
             <DialogDescription>
-              เลือกพนักงาน วันหยุดที่ทำงาน และเดือนที่ต้องการลงรายการ
+              {editingGroupId
+                ? 'แก้ไขข้อมูล แล้วกดบันทึก — ระบบจะลบรายการเก่าและสร้างรายการใหม่ให้อัตโนมัติ'
+                : 'เลือกพนักงาน วันหยุดที่ทำงาน และเดือนที่ต้องการลงรายการ'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
