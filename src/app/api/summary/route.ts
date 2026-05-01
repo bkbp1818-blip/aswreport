@@ -94,6 +94,7 @@ export async function GET(request: NextRequest) {
       foodExpense: summaries.reduce((sum, s) => sum + s.foodExpense, 0),
       cowayWaterFilterExpense: summaries.reduce((sum, s) => sum + s.cowayWaterFilterExpense, 0),
       socialSecurityExpense: summaries.reduce((sum, s) => sum + s.socialSecurityExpense, 0),
+      holidayCompensation: summaries.reduce((sum, s) => sum + s.holidayCompensation, 0),
       siteminderExpense: summaries.reduce((sum, s) => sum + s.siteminderExpense, 0),
       reimbursementReturnExpense: summaries.reduce((sum, s) => sum + s.reimbursementReturnExpense, 0),
       netProfit: summaries.reduce((sum, s) => sum + s.netProfit, 0),
@@ -324,6 +325,9 @@ async function calculateBuildingSummary(
   const managerAdminSalaryIncome = isEligibleForSalary ? (perBuildingTotals.managerAdminSalaryIncome || 0) : 0
   const managerAdminSalaryExpense = isFunnD ? (perBuildingTotals.managerAdminSalaryExpense || 0) : 0
 
+  // ค่าแรงวันหยุดชดเชย: เฉพาะ CT/YW/NANA (snapshot ใน ExpenseHistory เป็นยอดต่ออาคารแล้ว)
+  const holidayCompensationPerBuilding = isEligibleForSalary ? (perBuildingTotals.holidayCompensation || 0) : 0
+
   // "งานเสริม FD" (รายจ่ายของ FUNN — เปลี่ยนชื่อจาก "บริการอื่นๆจาก ASW")
   // หลัง cutover ดึงยอดเต็มจาก leave: FUNNLP=raw.ladprao, FUNNS81=raw.sukhumvit
   let aswOtherServiceExpense = 0
@@ -390,8 +394,8 @@ async function calculateBuildingSummary(
 
   // ดึงค่าเช่าอาคารจาก settings เพื่อรวมในรายจ่าย
   const monthlyRentFromSettings = settings ? Number(settings.monthlyRent) : 0
-  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม
-  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense + reimbursementReturnExpense
+  // รวมค่าใช้จ่าย = transactions (ไม่รวมเงินเดือน) + ค่าเช่าอาคาร + ค่าเช่าเครื่องกรองน้ำ Coway + เงินเดือนพนักงาน + ค่าใช้จ่ายส่วนกลางทั้งหมด + เงินสมทบประกันสังคม + ค่าแรงวันหยุดชดเชย
+  const totalExpense = transactionExpenseExcludeSalary + monthlyRentFromSettings + cowayWaterFilterExpense + salaryPerBuilding + totalGlobalExpensePerBuilding + socialSecurityPerBuilding + managerAdminSalaryExpense + aswOtherServiceExpense + reimbursementReturnExpense + holidayCompensationPerBuilding
 
   // แยกรายรับตามช่องทาง
   const incomeByChannel: Record<string, number> = {}
@@ -478,6 +482,10 @@ async function calculateBuildingSummary(
   expenseByCategory['ค่าอาหาร'] = foodExpensePerBuilding
   // เพิ่มเงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
   expenseByCategory['เงินสมทบประกันสังคม'] = socialSecurityPerBuilding
+  // ค่าแรงวันหยุดชดเชย (เฉพาะ CT/YW/NANA)
+  if (holidayCompensationPerBuilding > 0) {
+    expenseByCategory['ค่าแรงวันหยุดชดเชย'] = holidayCompensationPerBuilding
+  }
   if (managerAdminSalaryExpense > 0) {
     expenseByCategory['รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryExpense
   }
@@ -539,6 +547,8 @@ async function calculateBuildingSummary(
     cowayWaterFilterExpense,
     // เงินสมทบประกันสังคม (หาร 3 อาคาร: CT, YW, NANA)
     socialSecurityExpense: socialSecurityPerBuilding,
+    // ค่าแรงวันหยุดชดเชย (เฉพาะ CT/YW/NANA)
+    holidayCompensation: holidayCompensationPerBuilding,
     // Site Minder Dynamic Revenue Plus
     siteminderExpense: siteminderExpensePerBuilding,
     reimbursementReturnExpense,
