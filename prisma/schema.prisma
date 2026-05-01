@@ -56,10 +56,12 @@ model ExpenseHistory {
   year        Int
   createdAt   DateTime   @default(now())
   otaSourceId Int?
+  groupId     String?
   otaSource   OtaSource? @relation(fields: [otaSourceId], references: [id])
 
   @@index([targetType, targetId, fieldName, month, year])
   @@index([otaSourceId])
+  @@index([groupId])
 }
 
 model OtaSource {
@@ -181,6 +183,18 @@ model User {
   allowedMenus Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Holiday {
+  id        Int      @id @default(autoincrement())
+  name      String
+  date      DateTime @db.Date
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date])
+  @@index([date])
 }
 
 enum CategoryType {

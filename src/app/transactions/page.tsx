@@ -41,6 +41,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { getBuildingColor } from '@/lib/building-colors'
 import { useAccess } from '@/contexts/AccessContext'
 
@@ -109,6 +110,7 @@ interface ExpenseHistoryItem {
   createdAt: string
   otaSourceId?: number | null
   otaSource?: OtaSource | null
+  groupId?: string | null
 }
 
 // Daily Entry — รายชื่อ OTA และช่องทางที่จะแสดงใน section
@@ -209,6 +211,20 @@ export default function TransactionsPage() {
   const [dailyHistoryEntries, setDailyHistoryEntries] = useState<ExpenseHistoryItem[]>([])
   const [dailyHistoryLoading, setDailyHistoryLoading] = useState(false)
   const [dailyHistoryDeletingId, setDailyHistoryDeletingId] = useState<number | null>(null)
+
+  // State สำหรับ Dialog ค่าแรงวันหยุดชดเชย (เฉพาะ CT/YW/NANA)
+  const [holidayCompDialogOpen, setHolidayCompDialogOpen] = useState(false)
+  const [hcEmployees, setHcEmployees] = useState<Array<{
+    id: number; firstName: string; lastName: string; nickname: string | null;
+    position: string; effectiveSalary: number; isCarriedForward?: boolean
+  }>>([])
+  const [hcHolidays, setHcHolidays] = useState<Array<{ id: number; name: string; date: string }>>([])
+  const [hcEmployeeId, setHcEmployeeId] = useState<number | null>(null)
+  const [hcSelectedHolidayIds, setHcSelectedHolidayIds] = useState<number[]>([])
+  const [hcSaving, setHcSaving] = useState(false)
+  const [hcLoadingDialog, setHcLoadingDialog] = useState(false)
+  const [hcHistory, setHcHistory] = useState<ExpenseHistoryItem[]>([])
+  const [hcDeletingGroupId, setHcDeletingGroupId] = useState<string | null>(null)
 
   const years = generateYears()
 
@@ -525,6 +541,11 @@ export default function TransactionsPage() {
     ? (socialSecurityData?.calculatedPerBuilding || 0)
     : (perBuildingExpenses.socialSecurityExpense || 0)
 
+  // ค่าแรงวันหยุดชดเชย: เฉพาะ CT/YW/NANA (ยอดต่ออาคาร = total ÷ 3 ที่ snapshot ไว้แล้วใน ExpenseHistory)
+  const holidayCompensationPerBuilding = isEligibleForSalary
+    ? (perBuildingExpenses.holidayCompensation || 0)
+    : 0
+
   const managerAdminSalaryIncome = perBuildingExpenses.managerAdminSalaryIncome || 0
   const managerAdminSalaryExpense = perBuildingExpenses.managerAdminSalaryExpense || 0
 
@@ -562,7 +583,7 @@ export default function TransactionsPage() {
     0
   )
   const cashExpenseAmount = cashExpenseCategory ? (transactionData[cashExpenseCategory.id] || 0) : 0
-  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + reimbursementReturnExpense + (isFunnD ? (managerAdminSalaryExpense + aswOtherServiceExpense) : 0)
+  const totalExpense = salaryExpense + otherExpense + monthlyRent + cowayWaterFilterExpense + totalGlobalExpense + cashExpenseAmount + reimbursementReturnExpense + holidayCompensationPerBuilding + (isFunnD ? (managerAdminSalaryExpense + aswOtherServiceExpense) : 0)
 
   // คำนวณกำไร/ขาดทุน
   const profit = totalIncome - totalExpense
@@ -582,6 +603,7 @@ export default function TransactionsPage() {
     'cleaningSupplyExpense', 'foodExpense',
     'managerAdminSalaryIncome', 'managerAdminSalaryExpense',
     'socialSecurityExpense', 'siteminderExpense',
+    'holidayCompensation',
   ]
 
   // ดึงประวัติค่าใช้จ่าย
@@ -905,6 +927,135 @@ export default function TransactionsPage() {
     const amt = Number(e.amount)
     return e.actionType === 'ADD' ? sum + amt : sum - amt
   }, 0)
+
+  // ดึงประวัติค่าแรงวันหยุดชดเชยของอาคาร/เดือน/ปีปัจจุบัน
+  const fetchHolidayCompHistory = useCallback(async () => {
+    if (!selectedBuilding) return
+    try {
+      const params = new URLSearchParams({
+        targetType: 'SETTINGS',
+        targetId: selectedBuilding,
+        fieldName: 'holidayCompensation',
+        month: selectedMonth,
+        year: selectedYear,
+      })
+      const res = await fetch(`/api/expense-history?${params}`)
+      const data = await res.json()
+      setHcHistory(data.history || [])
+    } catch (e) {
+      console.error('fetchHolidayCompHistory error', e)
+    }
+  }, [selectedBuilding, selectedMonth, selectedYear])
+
+  // เปิด Dialog ค่าแรงวันหยุดชดเชย
+  const openHolidayCompDialog = async () => {
+    if (!isEligibleForSalary) return
+    setHcEmployeeId(null)
+    setHcSelectedHolidayIds([])
+    setHolidayCompDialogOpen(true)
+    setHcLoadingDialog(true)
+    try {
+      const [empRes, hRes] = await Promise.all([
+        fetch(`/api/employees/monthly-salary?month=${selectedMonth}&year=${selectedYear}`),
+        fetch(`/api/holidays?year=${selectedYear}`),
+      ])
+      const empData = await empRes.json()
+      const hData = await hRes.json()
+      const employeesList = (empData.employees || []).filter((e: { position: string; isActive?: boolean }) => e.position !== 'PARTNER')
+      setHcEmployees(employeesList)
+      setHcHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
+      await fetchHolidayCompHistory()
+    } catch (e) {
+      console.error('openHolidayCompDialog error', e)
+      alert('ดึงข้อมูลไม่สำเร็จ')
+    } finally {
+      setHcLoadingDialog(false)
+    }
+  }
+
+  // toggle holiday checkbox
+  const toggleHolidayId = (id: number) => {
+    setHcSelectedHolidayIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  // คำนวณ preview
+  const hcSelectedEmployee = hcEmployees.find(e => e.id === hcEmployeeId)
+  const hcDays = hcSelectedHolidayIds.length
+  const hcEffectiveSalary = hcSelectedEmployee?.effectiveSalary || 0
+  const hcTotalAllBuildings = hcEffectiveSalary > 0 && hcDays > 0
+    ? (hcEffectiveSalary / 30) * hcDays * 2
+    : 0
+  const hcPerBuilding = hcTotalAllBuildings / 3
+
+  // บันทึกค่าแรงวันหยุดชดเชย
+  const handleHolidayCompSave = async () => {
+    if (!hcEmployeeId) {
+      alert('กรุณาเลือกพนักงาน')
+      return
+    }
+    if (hcSelectedHolidayIds.length === 0) {
+      alert('กรุณาเลือกวันหยุดอย่างน้อย 1 วัน')
+      return
+    }
+    setHcSaving(true)
+    try {
+      const res = await fetch('/api/holiday-compensation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: hcEmployeeId,
+          holidayIds: hcSelectedHolidayIds,
+          month: parseInt(selectedMonth),
+          year: parseInt(selectedYear),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบ')
+          window.location.href = '/access/staff'
+          return
+        }
+        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        return
+      }
+      // refresh ข้อมูล + reset form
+      setHcEmployeeId(null)
+      setHcSelectedHolidayIds([])
+      await Promise.all([loadTransactions(), fetchHolidayCompHistory()])
+    } catch (e) {
+      console.error('handleHolidayCompSave error', e)
+      alert('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setHcSaving(false)
+    }
+  }
+
+  // ลบรายการ (ลบทั้ง group 3 อาคาร)
+  const handleHolidayCompDelete = async (groupId: string | null | undefined) => {
+    if (!groupId) {
+      alert('ไม่พบรหัสกลุ่มของรายการนี้ ไม่สามารถลบได้')
+      return
+    }
+    if (!confirm('ยืนยันการลบรายการนี้? (จะลบในทั้ง 3 อาคาร CT/YW/NANA พร้อมกัน)')) return
+    setHcDeletingGroupId(groupId)
+    try {
+      const res = await fetch(`/api/holiday-compensation/${groupId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`ลบไม่สำเร็จ: ${err.error || res.statusText}`)
+        return
+      }
+      await Promise.all([loadTransactions(), fetchHolidayCompHistory()])
+    } catch (e) {
+      console.error('handleHolidayCompDelete error', e)
+      alert('เกิดข้อผิดพลาดในการลบ')
+    } finally {
+      setHcDeletingGroupId(null)
+    }
+  }
 
   // เปิด Dialog เพิ่ม/ลดยอด
   const openAdjustDialog = (type: 'add' | 'subtract' | 'edit', categoryId: number | string, categoryName: string, preSelectedOtaSourceId?: number) => {
@@ -1969,6 +2120,31 @@ export default function TransactionsPage() {
                       </TableCell>
                     </TableRow>
                   )}
+                  {/* ค่าแรงวันหยุดชดเชย - เฉพาะ CT/YW/NANA (กรอกผ่าน Dialog เลือกพนักงาน + วันหยุด) */}
+                  {!isViewer && isEligibleForSalary && (
+                    <TableRow className="bg-[#84A59D]/10">
+                      <TableCell className="font-medium px-2 md:px-4">{(monthlyRent > 0 ? 1 : 0) + (salaryCategory && salarySummary ? 1 : 0) + 1}</TableCell>
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <CategoryIcon name="ค่าแรงวันหยุดชดเชย" className="h-4 w-4 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs md:text-sm font-medium text-[#84A59D]">ค่าแรงวันหยุดชดเชย</span>
+                            <p className="text-[10px] md:text-xs text-[#84A59D] hidden md:block">
+                              (หาร 3 อาคาร: CT, YW, NANA)
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-2 md:px-4">
+                        <div className="flex items-center justify-end gap-1 md:gap-1.5">
+                          <p className="font-medium text-xs md:text-sm text-[#84A59D]">{formatNumber(holidayCompensationPerBuilding)}</p>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700" onClick={openHolidayCompDialog}>
+                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {/* เงินเดือนพนักงาน - Funn D (กรอกเองแยกอาคาร, ซ่อนสำหรับ VIEWER) */}
                   {!isViewer && isFunnD && (
                     <TableRow className="bg-[#84A59D]/10">
@@ -3019,6 +3195,175 @@ export default function TransactionsPage() {
               {savingHistory ? (
                 <Loader2 className="h-2.5 w-2.5 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
               ) : null}
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ค่าแรงวันหยุดชดเชย (CT/YW/NANA) */}
+      <Dialog open={holidayCompDialogOpen} onOpenChange={setHolidayCompDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm sm:text-base text-[#84A59D]">
+              ค่าแรงวันหยุดชดเชย — {getMonthName(parseInt(selectedMonth))} {selectedYear} ({selectedBuildingName})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 sm:space-y-4 py-2">
+            {hcLoadingDialog ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-[#84A59D]" />
+              </div>
+            ) : (
+              <>
+                {/* เลือกพนักงาน */}
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-medium text-gray-700">เลือกพนักงาน</label>
+                  <Select value={hcEmployeeId ? String(hcEmployeeId) : ''} onValueChange={(v) => setHcEmployeeId(v ? parseInt(v) : null)}>
+                    <SelectTrigger className="h-9 text-xs sm:text-sm">
+                      <SelectValue placeholder="-- เลือกพนักงาน --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hcEmployees.map((emp) => {
+                        const display = emp.nickname || `${emp.firstName} ${emp.lastName}`.trim()
+                        return (
+                          <SelectItem key={emp.id} value={String(emp.id)}>
+                            <span className="text-xs sm:text-sm">
+                              {display} (เงินเดือน {formatNumber(emp.effectiveSalary)}{emp.isCarriedForward ? ' *' : ''})
+                            </span>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {hcEmployees.some(e => e.isCarriedForward) && (
+                    <p className="text-[10px] text-gray-500">* คือเงินเดือนที่ดึงจากเดือนก่อนหน้า</p>
+                  )}
+                </div>
+
+                {/* เลือกวันหยุด */}
+                <div className="space-y-1.5">
+                  <label className="text-xs sm:text-sm font-medium text-gray-700">
+                    เลือกวันหยุดราชการ ({hcHolidays.length} วันในปี {selectedYear})
+                  </label>
+                  <div className="border rounded-lg max-h-[180px] overflow-y-auto p-2 space-y-1 bg-slate-50">
+                    {hcHolidays.length === 0 ? (
+                      <p className="text-center text-xs text-gray-500 py-4">
+                        ยังไม่มีวันหยุดของปีนี้ <a href="/holidays" className="text-blue-600 underline">เพิ่มที่นี่</a>
+                      </p>
+                    ) : (
+                      hcHolidays.map((h) => {
+                        const d = new Date(h.date)
+                        const dd = d.getUTCDate()
+                        const mm = d.getUTCMonth() + 1
+                        const yyyy = d.getUTCFullYear()
+                        const checked = hcSelectedHolidayIds.includes(h.id)
+                        return (
+                          <label
+                            key={h.id}
+                            className={`flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-white text-xs sm:text-sm ${checked ? 'bg-white border border-[#84A59D]' : ''}`}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => toggleHolidayId(h.id)}
+                            />
+                            <span className="flex-1">{h.name}</span>
+                            <span className="text-gray-500 text-[11px] sm:text-xs">{dd}/{mm}/{yyyy}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Preview การคำนวณ */}
+                {hcEmployeeId && hcDays > 0 && (
+                  <div className="rounded-lg border border-[#84A59D]/30 bg-[#84A59D]/5 p-3 space-y-1">
+                    <p className="text-[11px] sm:text-xs text-gray-600">การคำนวณ:</p>
+                    <p className="text-xs sm:text-sm">
+                      เงินเดือน <span className="font-bold">{formatNumber(hcEffectiveSalary)}</span> ÷ 30 ×{' '}
+                      <span className="font-bold">{hcDays}</span> วัน × 2 ={' '}
+                      <span className="font-bold text-[#84A59D]">{formatNumber(hcTotalAllBuildings)}</span> บาท
+                    </p>
+                    <p className="text-xs sm:text-sm">
+                      ÷ 3 อาคาร = <span className="font-bold text-[#84A59D]">{formatNumber(hcPerBuilding)}</span> บาท / อาคาร
+                    </p>
+                  </div>
+                )}
+
+                {/* ประวัติเดือนนี้ */}
+                <div className="space-y-1.5">
+                  <p className="text-xs sm:text-sm font-medium text-gray-700">
+                    ประวัติเดือนนี้ ({selectedBuildingName})
+                  </p>
+                  <div className="border rounded-lg max-h-[180px] overflow-y-auto">
+                    {hcHistory.length === 0 ? (
+                      <p className="text-center text-xs text-gray-400 py-6">ยังไม่มีประวัติ</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-[11px] sm:text-xs">รายละเอียด</TableHead>
+                            <TableHead className="text-right text-[11px] sm:text-xs w-[80px]">จำนวน</TableHead>
+                            <TableHead className="w-[40px]" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {hcHistory.map((h) => (
+                            <TableRow key={h.id}>
+                              <TableCell className="text-[11px] sm:text-xs text-gray-700">{h.description}</TableCell>
+                              <TableCell className="text-right text-[11px] sm:text-xs font-medium text-[#84A59D]">
+                                {formatNumber(Number(h.amount))}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-red-600 hover:bg-red-100"
+                                  disabled={hcDeletingGroupId === (h.groupId || '')}
+                                  onClick={() => handleHolidayCompDelete(h.groupId)}
+                                >
+                                  {hcDeletingGroupId === (h.groupId || '') ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell className="text-[11px] sm:text-xs font-semibold">รวมในอาคารนี้</TableCell>
+                            <TableCell className="text-right text-[11px] sm:text-xs font-bold text-[#84A59D]">
+                              {formatNumber(holidayCompensationPerBuilding)}
+                            </TableCell>
+                            <TableCell />
+                          </TableRow>
+                        </TableFooter>
+                      </Table>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[10px] sm:text-[11px] text-gray-500 italic border-l-2 border-amber-400 pl-2">
+                  หมายเหตุ: ค่าแรงคำนวณจากเงินเดือน ณ ตอนบันทึก (snapshot)
+                  หากแก้ไขเงินเดือนภายหลัง ต้องลบรายการเก่าและบันทึกใหม่
+                </p>
+              </>
+            )}
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-1.5 sm:gap-2">
+            <Button variant="outline" onClick={() => setHolidayCompDialogOpen(false)} disabled={hcSaving} className="w-full sm:w-auto">
+              ปิด
+            </Button>
+            <Button
+              onClick={handleHolidayCompSave}
+              disabled={hcSaving || !hcEmployeeId || hcSelectedHolidayIds.length === 0 || hcLoadingDialog}
+              className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6b8a84]"
+            >
+              {hcSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               บันทึก
             </Button>
           </DialogFooter>

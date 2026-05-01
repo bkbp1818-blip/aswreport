@@ -15,6 +15,7 @@ import {
   UserCog,
   LogOut,
   Calendar,
+  CalendarDays,
   Clock,
   HandCoins,
 } from 'lucide-react'
@@ -47,6 +48,7 @@ const allNavigation = [
   { name: 'กรอกข้อมูล', href: '/transactions', icon: Receipt },
   { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users },
   { name: 'ยอดค้างจ่ายคืน', href: '/reimbursements', icon: HandCoins },
+  { name: 'วันหยุดราชการ', href: '/holidays', icon: CalendarDays },
   { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog },
   { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings },
 ]
