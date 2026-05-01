@@ -115,27 +115,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'พนักงานตำแหน่งหุ้นส่วนไม่มีค่าแรงวันหยุดชดเชย' }, { status: 400 })
     }
 
-    // 2) หา effectiveSalary ของเดือน/ปี (carry forward จากเดือนก่อนล่าสุด)
-    const monthlyRecord = await prisma.monthlySalary.findUnique({
-      where: { employeeId_month_year: { employeeId: empId, month: m, year: y } },
+    // 2) หา effectiveSalary สำหรับคำนวณค่าแรงวันหยุดชดเชย
+    //    ใช้เงินเดือนของเดือนปัจจุบันก่อน — ถ้าเป็น 0 หรือไม่มี record ให้หาเดือนก่อนหน้า (skip 0)
+    //    หา record ล่าสุดที่ salary > 0 ในเดือน/ปีนั้น หรือก่อนหน้านั้น
+    const candidate = await prisma.monthlySalary.findFirst({
+      where: {
+        employeeId: empId,
+        salary: { gt: 0 },
+        OR: [
+          { year: { lt: y } },
+          { year: y, month: { lte: m } },
+        ],
+      },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
     })
 
-    let effectiveSalary: number
-    if (monthlyRecord) {
-      effectiveSalary = Number(monthlyRecord.salary)
-    } else {
-      const previous = await prisma.monthlySalary.findFirst({
-        where: {
-          employeeId: empId,
-          OR: [{ year: { lt: y } }, { year: y, month: { lt: m } }],
-        },
-        orderBy: [{ year: 'desc' }, { month: 'desc' }],
-      })
-      effectiveSalary = previous ? Number(previous.salary) : Number(employee.salary)
-    }
+    const effectiveSalary = candidate ? Number(candidate.salary) : Number(employee.salary)
 
     if (effectiveSalary <= 0) {
-      return NextResponse.json({ error: 'พนักงานคนนี้ไม่มีเงินเดือน' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'พนักงานคนนี้ไม่เคยมีเงินเดือนในระบบ ไม่สามารถคำนวณค่าแรงได้' },
+        { status: 400 }
+      )
     }
 
     // 3) ดึง holidays

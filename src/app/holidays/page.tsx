@@ -48,6 +48,8 @@ interface HcEmployee {
   nickname: string | null
   position: string
   effectiveSalary: number
+  salarySourceMonth?: number | null
+  salarySourceYear?: number | null
   isCarriedForward?: boolean
 }
 
@@ -264,13 +266,12 @@ export default function HolidaysPage() {
     setPayLoadingDialog(true)
     try {
       const [empRes, hRes] = await Promise.all([
-        fetch(`/api/employees/monthly-salary?month=${hcMonth}&year=${hcYear}`),
+        fetch(`/api/holiday-compensation/eligible-employees?month=${hcMonth}&year=${hcYear}`),
         fetch(`/api/holidays?year=${hcYear}`),
       ])
       const empData = await empRes.json()
       const hData = await hRes.json()
-      const employeesList = (empData.employees || []).filter((e: { position: string }) => e.position !== 'PARTNER')
-      setPayEmployees(employeesList)
+      setPayEmployees(empData.employees || [])
       setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
     } catch (e) {
       console.error('openPayDialog error', e)
@@ -285,12 +286,12 @@ export default function HolidaysPage() {
     setPayLoadingDialog(true)
     try {
       const [empRes, hRes] = await Promise.all([
-        fetch(`/api/employees/monthly-salary?month=${m}&year=${y}`),
+        fetch(`/api/holiday-compensation/eligible-employees?month=${m}&year=${y}`),
         fetch(`/api/holidays?year=${y}`),
       ])
       const empData = await empRes.json()
       const hData = await hRes.json()
-      setPayEmployees((empData.employees || []).filter((e: { position: string }) => e.position !== 'PARTNER'))
+      setPayEmployees(empData.employees || [])
       setPayHolidays((Array.isArray(hData) ? hData : []).filter((h: { isActive: boolean }) => h.isActive))
     } catch (e) {
       console.error('reloadDialogData error', e)
@@ -722,16 +723,23 @@ export default function HolidaysPage() {
                     <SelectContent>
                       {payEmployees.map((emp) => {
                         const display = emp.nickname || `${emp.firstName} ${emp.lastName}`.trim()
+                        const noSalary = !emp.effectiveSalary || emp.effectiveSalary <= 0
+                        const sourceLabel = emp.isCarriedForward && emp.salarySourceMonth && emp.salarySourceYear
+                          ? ` * ใช้ของ ${getMonthName(emp.salarySourceMonth)} ${emp.salarySourceYear}`
+                          : ''
                         return (
-                          <SelectItem key={emp.id} value={String(emp.id)}>
-                            {display} (เงินเดือน {formatNumber(emp.effectiveSalary)}{emp.isCarriedForward ? ' *' : ''})
+                          <SelectItem key={emp.id} value={String(emp.id)} disabled={noSalary}>
+                            {display}
+                            {noSalary
+                              ? ' (ไม่มีเงินเดือน)'
+                              : ` (เงินเดือน ${formatNumber(emp.effectiveSalary)}${sourceLabel})`}
                           </SelectItem>
                         )
                       })}
                     </SelectContent>
                   </Select>
                   {payEmployees.some(e => e.isCarriedForward) && (
-                    <p className="text-[10px] text-gray-500">* คือเงินเดือนที่ดึงจากเดือนก่อนหน้า</p>
+                    <p className="text-[10px] text-gray-500">* คือเงินเดือนที่ดึงจากเดือนล่าสุดที่มีค่ามากกว่า 0</p>
                   )}
                 </div>
 
