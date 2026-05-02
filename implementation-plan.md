@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.1 |
+| **Version** | 1.22.2 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,26 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.1 (Current - May 2026) — เพิ่มหมายเหตุ Daily Entry + ห้องใน Adjust Dialog
+### v1.22.2 (Current - May 2026) — Inline form สำหรับรายได้พิเศษ 3 รายการ
+
+ปรับ UI ของ "รายได้ค่าเช่า รถรับส่งสนามบิน / Thai Bus Tour / Co Van Kessel" จากรูปแบบ "ปุ่ม +/-/edit เปิด dialog" เปลี่ยนเป็น **inline form** เหมือน "กรอกข้อมูลรายเดือน — OTA" เพื่อให้รูปแบบการกรอกสอดคล้องกันทั้งหน้า:
+
+- **UI ใหม่ของแต่ละรายการ** (1 แถวต่อรายการ):
+  - ชื่อรายการ + ยอดรวมเดือน
+  - Dropdown "ห้อง" (เฉพาะอาคารที่มีห้อง — FUNN ไม่แสดง column นี้)
+  - Input "หมายเหตุ" (optional)
+  - Input "จำนวนเงิน"
+  - ปุ่ม "บันทึก" + "ตรวจสอบ"
+- **ลบ:** ปุ่ม `Pencil` (edit), `Plus` (add), `Minus` (subtract) ที่เปิด Adjust Dialog ออก — ใช้ form ในแถวเดียวกันแทน
+- **Helper functions ใหม่:**
+  - `saveSpecialIncome(fieldName, fieldLabel)` — POST `/api/expense-history` แบบเดียวกับ Daily Entry แต่รับ field-based fieldName (string เช่น `airportShuttleRentIncome`) ไม่ใช่ category id
+  - `openSpecialHistory(fieldName, titleSuffix)` — เปิด dialog ประวัติเดียวกับ Daily Entry, query โดย fieldName ตรงๆ ไม่ผ่าน category lookup
+- **ใช้ state เดียวกันกับ Daily Entry** — `dailyEntryInputs[\`SPECIAL:\${fieldName}\`]` รองรับ `roomId` + `note` + `amount` ที่มีอยู่แล้ว (ไม่ใช้ `day` เพราะรายการเหล่านี้เป็นรายเดือน)
+- **บังคับเลือกห้อง** — สำหรับ CT/YW/NANA, ถ้าไม่ได้เลือก → alert "กรุณาเลือกห้องก่อนบันทึก" เหมือน Direct Booking/OTA
+- **ผลกระทบ:** Adjust Dialog ยังคงใช้กับ category-based income/expense อื่นๆ (รายได้อื่นๆ, ค่าเช่าอาคาร, salary etc.) ไม่กระทบ
+- **ไฟล์แก้:** `src/app/transactions/page.tsx`
+
+### v1.22.1 (May 2026) — เพิ่มหมายเหตุ Daily Entry + ห้องใน Adjust Dialog
 
 ขยายฟีเจอร์ห้องและเพิ่มความยืดหยุ่นในการกรอกข้อมูล:
 

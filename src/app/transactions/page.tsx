@@ -950,6 +950,96 @@ export default function TransactionsPage() {
     return e.actionType === 'ADD' ? sum + amt : sum - amt
   }, 0)
 
+  // บันทึกรายได้พิเศษรายเดือน (รถรับส่งสนามบิน / Thai Bus / Co Van Kessel)
+  // ใช้ field-based fieldName (string) ไม่ใช่ category id เหมือน Daily Entry ปกติ
+  const saveSpecialIncome = async (fieldName: string, fieldLabel: string) => {
+    if (!selectedBuilding) {
+      alert('กรุณาเลือกอาคารก่อน')
+      return
+    }
+    const key = `SPECIAL:${fieldName}`
+    const input = getDailyInput(key)
+    const amount = parseFloat(input.amount)
+    if (!amount || amount <= 0) {
+      alert('กรุณากรอกจำนวนที่มากกว่า 0')
+      return
+    }
+    if (buildingHasRooms && !input.roomId) {
+      alert('กรุณาเลือกห้องก่อนบันทึก')
+      return
+    }
+    const month = parseInt(selectedMonth)
+    const year = parseInt(selectedYear)
+
+    setSavingDailyEntry((prev) => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/expense-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetType: 'TRANSACTION',
+          targetId: parseInt(selectedBuilding),
+          fieldName,
+          fieldLabel,
+          actionType: 'ADD',
+          amount,
+          description: input.note.trim() || `กรอกข้อมูลรายเดือน - ${month}/${year}`,
+          day: null,
+          month,
+          year,
+          otaSourceId: null,
+          roomId: input.roomId ? parseInt(input.roomId) : null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        return
+      }
+      // เคลียร์ amount + note เก็บ roomId ไว้
+      setDailyEntryInputs((prev) => ({
+        ...prev,
+        [key]: { ...getDailyInput(key), amount: '', note: '' },
+      }))
+      await loadTransactions()
+    } catch (e) {
+      console.error('saveSpecialIncome error', e)
+      alert('เกิดข้อผิดพลาดในการบันทึก')
+    } finally {
+      setSavingDailyEntry((prev) => ({ ...prev, [key]: false }))
+    }
+  }
+
+  // เปิด Dialog ประวัติของรายได้พิเศษ (field-based — ไม่ผ่าน category lookup)
+  const openSpecialHistory = async (fieldName: string, titleSuffix: string) => {
+    if (!selectedBuilding) {
+      alert('กรุณาเลือกอาคารก่อน')
+      return
+    }
+    setDailyHistoryTitle(`${titleSuffix} — ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`)
+    setDailyHistoryDialogOpen(true)
+    setDailyHistoryLoading(true)
+    setDailyHistoryEntries([])
+
+    try {
+      const params = new URLSearchParams({
+        targetType: 'TRANSACTION',
+        targetId: selectedBuilding,
+        fieldName,
+        month: selectedMonth,
+        year: selectedYear,
+      })
+      const res = await fetch(`/api/expense-history?${params}`)
+      const data = await res.json()
+      setDailyHistoryEntries(data.history || [])
+    } catch (e) {
+      console.error('openSpecialHistory error', e)
+      alert('เกิดข้อผิดพลาดในการดึงประวัติ')
+    } finally {
+      setDailyHistoryLoading(false)
+    }
+  }
+
   // เปิด Dialog เพิ่ม/ลดยอด
   const openAdjustDialog = (type: 'add' | 'subtract' | 'edit', categoryId: number | string, categoryName: string, preSelectedOtaSourceId?: number) => {
     setAdjustType(type)
@@ -1667,172 +1757,277 @@ export default function TransactionsPage() {
               )}
 
               {/* กลุ่ม 3: รายได้ค่าเช่า รถรับส่งสนามบิน */}
-              {(
-                <>
-                  <div className="bg-emerald-500/10 px-4 py-2 border-y border-emerald-500/20">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-semibold text-emerald-600">รายได้ค่าเช่า รถรับส่งสนามบิน</p>
-                      <p className="text-sm font-bold text-emerald-600">{formatNumber(airportShuttleRentIncome)}</p>
+              {(() => {
+                const fieldName = 'airportShuttleRentIncome'
+                const fieldLabel = 'ค่าเช่า รถรับส่งสนามบิน'
+                const key = `SPECIAL:${fieldName}`
+                const input = getDailyInput(key)
+                const saving = !!savingDailyEntry[key]
+                return (
+                  <>
+                    <div className="bg-emerald-500/10 px-4 py-2 border-y border-emerald-500/20">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-semibold text-emerald-600">รายได้ค่าเช่า รถรับส่งสนามบิน</p>
+                        <p className="text-sm font-bold text-emerald-600">{formatNumber(airportShuttleRentIncome)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <Table>
-                    <TableBody>
-                      <TableRow className="bg-emerald-50/50">
-                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                        <TableCell className="px-2 md:px-4">
-                          <div className="flex items-center gap-1 md:gap-2">
-                            <CategoryIcon name="รถรับส่งสนามบิน" className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs md:text-sm font-medium text-emerald-600">ค่าเช่า รถรับส่งสนามบิน</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right px-2 md:px-4">
-                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-emerald-50 border border-emerald-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-emerald-600">
-                              {formatNumber(airportShuttleRentIncome)}
+                    <Table>
+                      <TableBody>
+                        <TableRow className="bg-white">
+                          <TableCell className="px-2 md:px-4 w-8" />
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center justify-between gap-2 pl-2 md:pl-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name="รถรับส่งสนามบิน" className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm">{fieldLabel}</span>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                {formatNumber(airportShuttleRentIncome)}
+                              </span>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', 'airportShuttleRentIncome', 'ค่าเช่า รถรับส่งสนามบิน')}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </>
-              )}
+                          </TableCell>
+                          {buildingHasRooms && (
+                            <TableCell className="px-1 md:px-2 w-[120px]">
+                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                                <SelectTrigger className="h-8 text-xs md:text-sm">
+                                  <SelectValue placeholder="ห้อง" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rooms.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="text"
+                              value={input.note}
+                              onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                              placeholder="หมายเหตุ"
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={input.amount}
+                              onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                              placeholder="0"
+                              className="h-8 text-xs md:text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 px-2 text-xs"
+                                disabled={saving}
+                                onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => openSpecialHistory(fieldName, fieldLabel)}
+                              >
+                                ตรวจสอบ
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </>
+                )
+              })()}
 
               {/* กลุ่ม 4: รายได้ Thai Bus Tour */}
-              {(
-                <>
-                  <div className="bg-purple-500/10 px-4 py-2 border-y border-purple-500/20">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-semibold text-purple-600">รายได้ Thai Bus Tour</p>
-                      <p className="text-sm font-bold text-purple-600">{formatNumber(thaiBusTourIncome)}</p>
+              {(() => {
+                const fieldName = 'thaiBusTourIncome'
+                const fieldLabel = 'Thai Bus Tour'
+                const key = `SPECIAL:${fieldName}`
+                const input = getDailyInput(key)
+                const saving = !!savingDailyEntry[key]
+                return (
+                  <>
+                    <div className="bg-purple-500/10 px-4 py-2 border-y border-purple-500/20">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-semibold text-purple-600">รายได้ Thai Bus Tour</p>
+                        <p className="text-sm font-bold text-purple-600">{formatNumber(thaiBusTourIncome)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <Table>
-                    <TableBody>
-                      <TableRow className="bg-purple-50/50">
-                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                        <TableCell className="px-2 md:px-4">
-                          <div className="flex items-center gap-1 md:gap-2">
-                            <CategoryIcon name="Thai Bus" className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs md:text-sm font-medium text-purple-600">Thai Bus Tour</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right px-2 md:px-4">
-                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-purple-50 border border-purple-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-purple-600">
-                              {formatNumber(thaiBusTourIncome)}
+                    <Table>
+                      <TableBody>
+                        <TableRow className="bg-white">
+                          <TableCell className="px-2 md:px-4 w-8" />
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center justify-between gap-2 pl-2 md:pl-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name="Thai Bus" className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm">{fieldLabel}</span>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                {formatNumber(thaiBusTourIncome)}
+                              </span>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', 'thaiBusTourIncome', 'Thai Bus Tour')}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </>
-              )}
+                          </TableCell>
+                          {buildingHasRooms && (
+                            <TableCell className="px-1 md:px-2 w-[120px]">
+                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                                <SelectTrigger className="h-8 text-xs md:text-sm">
+                                  <SelectValue placeholder="ห้อง" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rooms.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="text"
+                              value={input.note}
+                              onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                              placeholder="หมายเหตุ"
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={input.amount}
+                              onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                              placeholder="0"
+                              className="h-8 text-xs md:text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 px-2 text-xs"
+                                disabled={saving}
+                                onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => openSpecialHistory(fieldName, fieldLabel)}
+                              >
+                                ตรวจสอบ
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </>
+                )
+              })()}
 
               {/* กลุ่ม 5: รายได้ Co Van Kessel */}
-              {(
-                <>
-                  <div className="bg-orange-500/10 px-4 py-2 border-y border-orange-500/20">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-semibold text-orange-600">รายได้ Co Van Kessel</p>
-                      <p className="text-sm font-bold text-orange-600">{formatNumber(coVanKesselIncome)}</p>
+              {(() => {
+                const fieldName = 'coVanKesselIncome'
+                const fieldLabel = 'Co Van Kessel'
+                const key = `SPECIAL:${fieldName}`
+                const input = getDailyInput(key)
+                const saving = !!savingDailyEntry[key]
+                return (
+                  <>
+                    <div className="bg-orange-500/10 px-4 py-2 border-y border-orange-500/20">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-semibold text-orange-600">รายได้ Co Van Kessel</p>
+                        <p className="text-sm font-bold text-orange-600">{formatNumber(coVanKesselIncome)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <Table>
-                    <TableBody>
-                      <TableRow className="bg-orange-50/50">
-                        <TableCell className="font-medium w-8 md:w-[50px] px-2 md:px-4">1</TableCell>
-                        <TableCell className="px-2 md:px-4">
-                          <div className="flex items-center gap-1 md:gap-2">
-                            <CategoryIcon name="Co Van" className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs md:text-sm font-medium text-orange-600">Co Van Kessel</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right px-2 md:px-4">
-                          <div className="flex items-center justify-end gap-1 md:gap-1.5">
-                            <div className="text-right px-2 py-1 md:px-3 md:py-2 bg-orange-50 border border-orange-200 rounded-md text-xs md:text-sm font-medium min-w-[60px] md:min-w-[80px] text-orange-600">
-                              {formatNumber(coVanKesselIncome)}
+                    <Table>
+                      <TableBody>
+                        <TableRow className="bg-white">
+                          <TableCell className="px-2 md:px-4 w-8" />
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center justify-between gap-2 pl-2 md:pl-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name="Co Van" className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm">{fieldLabel}</span>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                {formatNumber(coVanKesselIncome)}
+                              </span>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                              onClick={() => openAdjustDialog('edit', 'coVanKesselIncome', 'Co Van Kessel')}
-                            >
-                              <Pencil className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => openAdjustDialog('add', 'coVanKesselIncome', 'Co Van Kessel')}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-red-600 hover:bg-red-100 hover:text-red-700"
-                              onClick={() => openAdjustDialog('subtract', 'coVanKesselIncome', 'Co Van Kessel')}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </>
-              )}
+                          </TableCell>
+                          {buildingHasRooms && (
+                            <TableCell className="px-1 md:px-2 w-[120px]">
+                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                                <SelectTrigger className="h-8 text-xs md:text-sm">
+                                  <SelectValue placeholder="ห้อง" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rooms.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="text"
+                              value={input.note}
+                              onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                              placeholder="หมายเหตุ"
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={input.amount}
+                              onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                              placeholder="0"
+                              className="h-8 text-xs md:text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 px-2 text-xs"
+                                disabled={saving}
+                                onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => openSpecialHistory(fieldName, fieldLabel)}
+                              >
+                                ตรวจสอบ
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </>
+                )
+              })()}
 
               {/* กลุ่ม 6: งานเสริม FD - เฉพาะ CT/YW/NANA (ดึงจาก leave system, หาร 3 อาคาร) */}
               {isEligibleForSalary && (
