@@ -110,6 +110,17 @@ interface ExpenseHistoryItem {
   otaSourceId?: number | null
   otaSource?: OtaSource | null
   groupId?: string | null
+  roomId?: number | null
+  room?: { id: number; name: string; buildingId: number } | null
+}
+
+interface Room {
+  id: number
+  buildingId: number
+  name: string
+  note: string | null
+  order: number
+  isActive: boolean
 }
 
 // Daily Entry — รายชื่อ OTA และช่องทางที่จะแสดงใน section
@@ -203,7 +214,9 @@ export default function TransactionsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // State สำหรับ Daily Entry section
-  const [dailyEntryInputs, setDailyEntryInputs] = useState<Record<string, { day: string; amount: string }>>({})
+  const [dailyEntryInputs, setDailyEntryInputs] = useState<Record<string, { day: string; amount: string; roomId: string }>>({})
+  // ห้องของอาคารที่เลือก (master list — กรองเฉพาะ active)
+  const [rooms, setRooms] = useState<Room[]>([])
   const [savingDailyEntry, setSavingDailyEntry] = useState<Record<string, boolean>>({})
   const [dailyHistoryDialogOpen, setDailyHistoryDialogOpen] = useState(false)
   const [dailyHistoryTitle, setDailyHistoryTitle] = useState('')
@@ -233,6 +246,21 @@ export default function TransactionsPage() {
       .catch((err) => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
   }, [])
+
+  // โหลดห้องของอาคารที่เลือก (ใช้ใน dropdown ของ Daily Entry)
+  useEffect(() => {
+    if (!selectedBuilding) {
+      setRooms([])
+      return
+    }
+    fetch(`/api/rooms?buildingId=${selectedBuilding}`)
+      .then((res) => res.json())
+      .then((data) => setRooms(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error('Error loading rooms:', err)
+        setRooms([])
+      })
+  }, [selectedBuilding])
 
   // โหลดข้อมูล transactions และ settings เมื่อเลือกอาคาร/เดือน/ปี
   const loadTransactions = useCallback(async () => {
@@ -505,6 +533,8 @@ export default function TransactionsPage() {
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(selectedBuildingCode)
   const isFunnD = !isEligibleForSalary && selectedBuildingCode !== ''
+  // อาคารที่มีห้องแยก (FUNN ไม่มีห้อง) — ใช้ในการแสดง dropdown ห้องและบังคับเลือกตอนบันทึก
+  const buildingHasRooms = selectedBuildingCode !== '' && !['FUNNLP', 'FUNNS81'].includes(selectedBuildingCode)
   // ค่าใช้จ่ายส่วนกลาง: แยกตามอาคาร (ทุกอาคารใช้ perBuildingExpenses)
   const maxCareExpensePerBuilding = perBuildingExpenses.maxCareExpense || 0
   const trafficCareExpensePerBuilding = perBuildingExpenses.trafficCareExpense || 0
@@ -678,10 +708,10 @@ export default function TransactionsPage() {
   }
 
   const getDailyInput = (key: string) => {
-    return dailyEntryInputs[key] || { day: getTodayIso(), amount: '' }
+    return dailyEntryInputs[key] || { day: getTodayIso(), amount: '', roomId: '' }
   }
 
-  const setDailyInputField = (key: string, field: 'day' | 'amount', value: string) => {
+  const setDailyInputField = (key: string, field: 'day' | 'amount' | 'roomId', value: string) => {
     setDailyEntryInputs((prev) => ({
       ...prev,
       [key]: { ...getDailyInput(key), [field]: value },
@@ -764,6 +794,12 @@ export default function TransactionsPage() {
       return
     }
 
+    // อาคารที่มีห้องต้องเลือกห้องก่อนบันทึก (FUNN ไม่บังคับ — ไม่มีห้องแยก)
+    if (buildingHasRooms && !input.roomId) {
+      alert('กรุณาเลือกห้องก่อนบันทึก')
+      return
+    }
+
     // กลุ่ม OTA: ไม่มี date picker — ใช้เดือน/ปีของหน้าหลัก, day = null
     // กลุ่ม DB / CHANNEL: ใช้ date picker
     let day: number | null
@@ -818,6 +854,7 @@ export default function TransactionsPage() {
           month,
           year,
           otaSourceId,
+          roomId: input.roomId ? parseInt(input.roomId) : null,
         }),
       })
       if (!res.ok) {
@@ -1274,6 +1311,20 @@ export default function TransactionsPage() {
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>
+                          {buildingHasRooms && (
+                            <TableCell className="px-1 md:px-2 w-[120px]">
+                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                                <SelectTrigger className="h-8 text-xs md:text-sm">
+                                  <SelectValue placeholder="ห้อง" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rooms.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
                           <TableCell className="px-1 md:px-2 w-[110px]">
                             <Input
                               type="number"
@@ -1425,6 +1476,20 @@ export default function TransactionsPage() {
                             </span>
                           </div>
                         </TableCell>
+                        {buildingHasRooms && (
+                          <TableCell className="px-1 md:px-2 w-[120px]">
+                            <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                              <SelectTrigger className="h-8 text-xs md:text-sm">
+                                <SelectValue placeholder="ห้อง" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {rooms.map((r) => (
+                                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        )}
                         <TableCell className="px-1 md:px-2 w-[140px]">
                           <Input
                             type="number"
@@ -3073,6 +3138,7 @@ export default function TransactionsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[110px]">วันที่</TableHead>
+                    <TableHead className="w-[80px]">ห้อง</TableHead>
                     <TableHead className="text-right w-[110px]">จำนวน</TableHead>
                     <TableHead>รายละเอียด</TableHead>
                     <TableHead className="w-[60px]" />
@@ -3088,6 +3154,7 @@ export default function TransactionsPage() {
                     return (
                       <TableRow key={entry.id}>
                         <TableCell className="text-xs">{dt}</TableCell>
+                        <TableCell className="text-xs">{entry.room?.name ?? '—'}</TableCell>
                         <TableCell className={`text-right text-xs font-medium ${entry.actionType === 'ADD' ? 'text-green-700' : 'text-red-700'}`}>
                           {sign}{formatNumber(amt)}
                         </TableCell>
@@ -3113,7 +3180,7 @@ export default function TransactionsPage() {
                 </TableBody>
                 <TableFooter>
                   <TableRow>
-                    <TableCell className="text-xs font-semibold">ยอดรวม</TableCell>
+                    <TableCell colSpan={2} className="text-xs font-semibold">ยอดรวม</TableCell>
                     <TableCell className="text-right text-xs font-bold">{formatNumber(Math.max(0, dailyHistorySum))}</TableCell>
                     <TableCell colSpan={2} />
                   </TableRow>

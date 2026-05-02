@@ -14,8 +14,25 @@ model Building {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   reimbursements Reimbursement[]
+  rooms         Room[]
   settings      Settings?
   transactions  Transaction[]
+}
+
+model Room {
+  id             Int              @id @default(autoincrement())
+  buildingId     Int
+  name           String
+  note           String?
+  order          Int              @default(0)
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  building       Building         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  expenseHistory ExpenseHistory[]
+
+  @@unique([buildingId, name])
+  @@index([buildingId, isActive])
 }
 
 model Category {
@@ -57,11 +74,14 @@ model ExpenseHistory {
   createdAt   DateTime   @default(now())
   otaSourceId Int?
   groupId     String?
+  roomId      Int?
   otaSource   OtaSource? @relation(fields: [otaSourceId], references: [id])
+  room        Room?      @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   @@index([targetType, targetId, fieldName, month, year])
   @@index([otaSourceId])
   @@index([groupId])
+  @@index([roomId])
 }
 
 model OtaSource {

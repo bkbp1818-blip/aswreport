@@ -47,11 +47,11 @@ export async function GET(request: NextRequest) {
       where.targetId = null
     }
 
-    // ดึงประวัติ พร้อมข้อมูล OTA Source
+    // ดึงประวัติ พร้อมข้อมูล OTA Source และ Room
     const history = await prisma.expenseHistory.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { otaSource: true },
+      include: { otaSource: true, room: true },
     })
 
     // คำนวณยอดรวมของเดือน
@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
       month,
       year,
       otaSourceId,
+      roomId,
     } = body
 
     // Validate required fields
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         month: parseInt(month),
         year: parseInt(year),
         otaSourceId: otaSourceId ? parseInt(otaSourceId) : null,
+        roomId: roomId ? parseInt(roomId) : null,
       },
     })
 
@@ -156,7 +158,7 @@ export async function POST(request: NextRequest) {
     const allHistory = await prisma.expenseHistory.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { otaSource: true },
+      include: { otaSource: true, room: true },
     })
 
     // คำนวณยอดรวม

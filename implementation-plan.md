@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.21.2 |
+| **Version** | 1.22.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,42 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.21.2 (Current - May 2026) — Direct Booking 4 ช่องทาง ใช้กับทุกเดือน
+### v1.22.0 (Current - May 2026) — เพิ่มระบบ "ห้อง" ให้พนักงานเลือกตอนกรอกข้อมูล
+
+เพิ่มมิติ "ห้อง" (Room) ในการบันทึกรายได้รายวัน/รายเดือน เพื่อให้ track ได้ว่ายอดของห้องไหน:
+
+- **ฟีเจอร์ใหม่:**
+  - **Schema:** เพิ่ม model `Room` (id, buildingId, name, note, order, isActive, timestamps) — `@@unique([buildingId, name])` — relation `Building hasMany Room` + `ExpenseHistory.roomId Int?` (nullable, onDelete: SetNull) เก็บข้อมูลเก่าที่ยังไม่มี roomId เป็น null
+  - **API ใหม่:**
+    - `/api/rooms` GET (public, filter `?buildingId=&includeInactive=`) / POST (Partner)
+    - `/api/rooms/[id]` PUT / DELETE (Partner, soft delete `isActive=false`)
+  - **Seed:** `prisma/seed-rooms.ts` — 19 ห้องใน 3 อาคาร (CT: 7, YW: 6, NANA: 6) — idempotent ผ่าน upsert
+  - **Menu:** เพิ่ม `/rooms` ใน `MENU_ITEMS` + `PARTNER_ONLY_MENUS` + `DEFAULT_MENUS_BY_ROLE.PARTNER` + Sidebar (icon `DoorOpen`)
+  - **หน้า `/rooms` (Partner only):**
+    - เลือกอาคารผ่าน Select → ตารางห้อง (name + note + ปุ่ม edit/delete)
+    - Dialog "+ เพิ่มห้อง" / "แก้ไขห้อง" — รองรับ note (textarea optional)
+    - Soft delete: ห้องถูกซ่อนจาก dropdown แต่ประวัติเก่ายังอยู่ — มีปุ่ม "เปิดใช้งานอีกครั้ง"
+    - **อาคาร FUNN** (FUNNLP/FUNNS81): แสดงข้อความ "อาคารนี้ไม่มีห้องแยก" — ไม่มีตาราง/ปุ่มเพิ่ม
+- **ผลกับหน้า `/transactions`:**
+  - เพิ่ม dropdown "เลือกห้อง" ในทุกแถวของ "กรอกข้อมูลรายวัน — Direct Booking" (4 ช่องทาง) และ "กรอกข้อมูลรายเดือน — OTA" (5 OTA)
+  - ดึงห้องผ่าน `useEffect` เมื่อ `selectedBuilding` เปลี่ยน (`/api/rooms?buildingId=`)
+  - Helper `buildingHasRooms` = `code !== '' && !['FUNNLP', 'FUNNS81'].includes(code)` — ใช้แสดง column และ validate
+  - **Validation ตอนบันทึก:** ถ้า `buildingHasRooms` แต่ไม่ได้เลือกห้อง → alert "กรุณาเลือกห้องก่อนบันทึก"
+  - Dialog "ตรวจสอบ" เพิ่ม column "ห้อง" (ดึงจาก `entry.room?.name` — fallback "—" สำหรับ entry เก่าก่อนเพิ่มฟีเจอร์)
+- **State + types:**
+  - `dailyEntryInputs` shape เพิ่ม `roomId: string` — `setDailyInputField` รับ field `'roomId'`
+  - `interface ExpenseHistoryItem` เพิ่ม `roomId?: number | null` + `room?: { id, name, buildingId } | null`
+- **API expense-history:**
+  - POST destructure `roomId` + ใส่ใน `prisma.expenseHistory.create({ data: { ..., roomId: roomId ? parseInt(roomId) : null } })`
+  - GET include `room: true` (เดิม include แค่ `otaSource`)
+  - ไม่กระทบ logic ยอดรวม — `/api/expense-history/totals` ไม่ filter ตาม roomId (ยังรวมทุกห้องเข้าด้วยกันเหมือนเดิม)
+- **ข้อมูลเก่า (ก่อนเพิ่มฟีเจอร์):**
+  - `roomId = NULL` — ไม่ migrate ย้อนหลัง
+  - แสดงเป็น "—" ใน column "ห้อง" ของ dialog ตรวจสอบ
+- **ไฟล์ใหม่:** `prisma/seed-rooms.ts`, `src/app/api/rooms/route.ts`, `src/app/api/rooms/[id]/route.ts`, `src/app/rooms/page.tsx`
+- **ไฟล์แก้:** `prisma/schema.prisma`, `src/lib/menu-permissions.ts`, `src/components/Sidebar.tsx`, `src/app/api/expense-history/route.ts`, `src/app/transactions/page.tsx`
+
+### v1.21.2 (May 2026) — Direct Booking 4 ช่องทาง ใช้กับทุกเดือน
 
 ขยายรูปแบบใหม่ของ Direct Booking (ที่เริ่มใช้ใน v1.20.0 ตั้งแต่ เม.ย. 2026) ให้ครอบคลุม **ทุกเดือนย้อนหลัง**:
 

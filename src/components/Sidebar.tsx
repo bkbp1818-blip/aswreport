@@ -18,6 +18,7 @@ import {
   CalendarDays,
   Clock,
   HandCoins,
+  DoorOpen,
 } from 'lucide-react'
 import { useAccess } from '@/contexts/AccessContext'
 
@@ -49,6 +50,7 @@ const allNavigation = [
   { name: 'เงินเดือนพนักงาน', href: '/employees', icon: Users },
   { name: 'ยอดค้างจ่ายคืน', href: '/reimbursements', icon: HandCoins },
   { name: 'วันหยุดราชการ', href: '/holidays', icon: CalendarDays },
+  { name: 'จัดการห้อง', href: '/rooms', icon: DoorOpen },
   { name: 'จัดการผู้ใช้', href: '/users', icon: UserCog },
   { name: 'จัดการค่าใช้จ่ายส่วนกลาง', href: '/settings', icon: Settings },
 ]
