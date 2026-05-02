@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.21.1 |
+| **Version** | 1.21.2 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,27 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.21.1 (Current - May 2026) — Dashboard accuracy fixes
+### v1.21.2 (Current - May 2026) — Direct Booking 4 ช่องทาง ใช้กับทุกเดือน
+
+ขยายรูปแบบใหม่ของ Direct Booking (ที่เริ่มใช้ใน v1.20.0 ตั้งแต่ เม.ย. 2026) ให้ครอบคลุม **ทุกเดือนย้อนหลัง**:
+
+- **เปลี่ยน `hideRentalIncomeOtaGroup` ในหน้า `/transactions` ให้เป็น `true` คงที่:**
+  - เดิม: `_selYear > 2026 || (_selYear === 2026 && _selMonth >= 4)` — แยกพฤติกรรมระหว่างก่อน/หลัง เม.ย. 2026
+  - ใหม่: `true` เสมอ — ทุกเดือนใช้รูปแบบเดียวกัน
+  - ลบตัวแปร `_selMonth`, `_selYear` ที่ไม่ใช้แล้วออกพร้อมกัน
+- **ผลลัพธ์ที่หน้า `/transactions`:**
+  - "กรอกข้อมูลรายวัน — Direct Booking" แสดง **4 แถว** (PayPal / Credit Card / Bank Transfer / Cash) ทุกเดือน
+  - กลุ่ม "รายได้ค่าเช่า (OTA)" (Agoda/Booking/AirBnB/Trip/Expedia/RB) ถูกซ่อนทุกเดือน
+  - ส่วน "กรอกข้อมูลรายเดือน — OTA" ยังคงแสดงปกติ (ไม่ผูกกับ flag นี้)
+- **ไม่มี data migration / schema change:**
+  - ข้อมูลเก่าที่กรอกผ่านตาราง 5 OTA × 4 Channel ของเดือนก่อน เม.ย. 2026 ยังอยู่ครบใน `ExpenseHistory`
+  - ยอดของแต่ละช่องทาง (PayPal/CC/BT/Cash) จะ**รวมยอดเก่าจากทุก otaSource อัตโนมัติ** เพราะ `getDisplayAmount(categoryId)` คืนผลรวมระดับ category-id (ไม่แยกตาม `otaSourceId`)
+  - ผู้ใช้ดูประวัติแยกตาม OTA ของเดือนเก่าได้โดยกดปุ่ม "ตรวจสอบ" ในแต่ละช่องทาง (entry เก่ายังโผล่ตามปกติ)
+- **ผลข้างเคียงที่ต้องรับทราบ:**
+  - ไม่สามารถแก้ค่าของ OTA categories (Agoda/Booking/AirBnB/Trip/Expedia/RB) ผ่านหน้า `/transactions` ได้อีก — ถ้าจำเป็นต้องไปแก้ผ่าน ExpenseHistory โดยตรง หรือ revert flag ชั่วคราว
+- **ไฟล์แก้:** `src/app/transactions/page.tsx` (บรรทัด 489–491 + comment ที่ 1465)
+
+### v1.21.1 (May 2026) — Dashboard accuracy fixes
 
 ปรับ Dashboard ให้ตัวเลขตรงกับหน้า `/transactions` ทุกเดือน + cleanup UI:
 
@@ -393,6 +413,7 @@ npx vercel --prod        # Deploy
   - **เม.ย. 2026 ขึ้นไป** → แสดงเพียง **4 แถว** (PayPal / Credit Card / Bank Transfer / Cash) — ไม่แยกตาม OTA — บันทึกด้วย `otaSourceId = null`
   - **มี.ค. 2026 ย้อนหลัง** → ยังคงเป็น Matrix 5 OTA × 4 Channel (20 แถว) เหมือนเดิม เพื่อรักษาประวัติ
   - ใช้ flag `hideRentalIncomeOtaGroup` เดิม + `saveDailyEntry('CHANNEL', ...)` ที่มีอยู่แล้ว — ไม่เพิ่ม helper / state / API / DB schema ใหม่
+  - > **อัปเดต v1.21.2:** flag ถูกตั้งเป็น `true` เสมอ → รูปแบบ 4 ช่องทางใช้กับ**ทุกเดือนย้อนหลังด้วย** (ดู v1.21.2)
 - **Fix: ปุ่ม "เปิดเงินเดือนเดือนนี้" ดูเหมือนกดไม่ได้** ที่หน้า `/employees`:
   - เดิม: เมื่อ user กด toggle เพื่อเปิดเงินเดือนกลับ state ตั้ง `editingMonthlySalary[id] = '-1'` แต่ `showAsDisabled` คำนวณจาก server data อย่างเดียว — ปุ่มยังเป็นสีแดง ดูเหมือนกดไม่ได้
   - แก้: เพิ่ม `isEditingToReopen` (= true เมื่อ editing === '-1') ในเงื่อนไข — ปุ่มเปลี่ยนเป็นเขียวทันที
@@ -427,6 +448,7 @@ npx vercel --prod        # Deploy
   - **เดือน ≥ เม.ย. 2026** → ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) เดิม — ใช้ Daily Entry แทน
   - **เดือน < เม.ย. 2026** → ยังแสดงกลุ่มเดิมตามปกติ (ไม่กระทบรายงานย้อนหลัง)
   - ยอดยังนับเข้า `totalRentalIncome` → "รวมรายได้" ทุกช่วง (ใช้ category เดียวกัน)
+  - > **อัปเดต v1.21.2:** เงื่อนไขนี้ถูกยกเลิก — ทุกเดือนซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) (ดู v1.21.2)
 - **Cleanup ของเดิม:**
   - ลบ section "Direct Booking" บนสุดของ Card รายรับ (PayPal/CC/BT/Cash + OTA breakdown แบบเดิม)
   - ลบปุ่ม +/-/แก้ไข ของ Direct Booking row ระดับ channel (ผ่าน Daily Entry แทน)
