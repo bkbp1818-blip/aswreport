@@ -87,38 +87,36 @@
 
 ### 2. กรอกข้อมูล (`/transactions`)
 - เลือกอาคาร/เดือน/ปี
-- กรอกรายรับ-รายจ่ายผ่านปุ่ม +/- (ExpenseHistory)
+- กรอกรายรับ-รายจ่ายผ่านปุ่ม +/- (ExpenseHistory) หรือ inline form (สำหรับรายได้รายวัน)
 - **ระบบประวัติการเพิ่ม/ลดยอด:**
-  - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด
+  - บันทึกแต่ละรายการแยกกัน พร้อมรายละเอียด, ห้อง, วันที่
   - ยอดรวม Reset เป็น 0 ทุกเดือน
   - ดูประวัติ/ลบรายการได้
-- **Daily Entry Sections:** ✨ NEW v1.19.0
+- **Daily Entry Sections (inline form ทุกเดือน):** ✨ UPDATED v1.21.2
   - **กลุ่ม "กรอกข้อมูลรายวัน — Direct Booking"** (สีม่วง `#a78bfa`):
-    - matrix 5 OTA × 4 Channel = 20 rows (Agoda, Booking, AirBnB, Trip, Expedia × PayPal, Credit Card, Bank Transfer, Cash)
-    - แต่ละ row: date picker + amount input + ปุ่ม "บันทึก" + "ตรวจสอบ"
-    - แสดงยอดสะสมต่อ row (ตัวเล็ก เทา) + ยอดรวมต่อ OTA (font-bold สีม่วง) ที่ header row
-    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [Channel]` + `otaSourceId` + `day`
+    - **4 ช่องทาง** (PayPal, Credit Card, Bank Transfer, Cash) — เลิก matrix 5 OTA × 4 Channel ในทุกเดือนแล้ว
+    - แต่ละแถว: date picker + dropdown ห้อง + หมายเหตุ + amount + ปุ่ม "บันทึก" + "ตรวจสอบ"
+    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [Channel]` + `roomId` + `day` (`otaSourceId=null` ตั้งแต่ เม.ย. 2026)
   - **กลุ่ม "กรอกข้อมูลรายเดือน — OTA"** (สีเหลือง `#fbbf24`):
-    - 5 OTA (Agoda, Booking, AirBnB, Trip, Expedia) — ไม่มี date picker (ใช้เดือน/ปีของหน้า) เพราะกรอกเดือนละครั้ง
-    - แต่ละ row: amount input + ปุ่ม "บันทึก" + "ตรวจสอบ" + ยอดสะสม
-    - Grand Total ของกลุ่มที่ header (สี theme `#b97500`)
-    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [OTA]` (ไม่มี channel)
-  - **Dialog "ตรวจสอบ"** ของแต่ละ row:
-    - แสดง entries รายวันของเดือนปัจจุบัน + ปุ่มลบรายตัว
-    - footer: ยอดรวมของ entries
-- **เงื่อนไขการแสดงตาม period:**
-  - **ก่อน เม.ย. 2026** → แสดงกลุ่ม "รายได้ค่าเช่า" (OTA AirBNB/Booking/Agoda/Trip/Expedia/RB) ตามเดิม
-  - **ตั้งแต่ เม.ย. 2026** → ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) — ใช้ Daily Entry sections แทน (ยอดยังบวกเข้า "รวมรายได้")
+    - 5 OTA (Agoda, Booking, AirBnB, Trip, Expedia)
+    - แต่ละแถว: date picker + dropdown ห้อง + หมายเหตุ + amount + ปุ่ม "บันทึก" + "ตรวจสอบ" ✨ UPDATED v1.22.3
+    - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [OTA]` + `roomId` + `day` (ไม่มี channel)
+  - **กลุ่ม "รายได้ค่าเช่า (OTA)" (Agoda/Booking/AirBnB/Trip/Expedia/RB):** ซ่อนทุกเดือน — ใช้ Daily Entry แทน ✨ UPDATED v1.21.2
+  - **Dialog "ตรวจสอบ"** ของแต่ละแถว: column วันที่/ห้อง/จำนวน/รายละเอียด + ปุ่มลบรายตัว + footer ยอดรวม
+  - **DateBox component** ✨ NEW v1.22.4: text input แสดง `DD/MM/YYYY` + click เปิด native date picker (`showPicker()`) — ไม่เพิ่ม dependency
+  - **Reset state หลังบันทึก** ✨ NEW v1.22.4: ทุก field กลับ default (`day=today, roomId='', amount='', note=''`) เพื่อพร้อมกรอกครั้งถัดไป
+  - **บังคับเลือกห้อง:** อาคาร CT/YW/NANA (FUNN ไม่มีห้อง — ไม่แสดง dropdown) ✨ NEW v1.22.0
 - **OTA Source สำหรับ Direct Booking:** ✨ NEW v1.17.0
   - รายชื่อ OTA: Direct, AirBNB, Booking.com, Agoda, Expedia, **Trip** (เพิ่มใน v1.19.0)
   - เก็บใน OtaSource master table
 - ค่าใช้จ่ายส่วนกลาง **แยกตามอาคาร** (ไม่ใช่ GlobalSettings อีกแล้ว) ✨ UPDATED
 - Input เป็น read-only (ต้องกดปุ่ม +/- เท่านั้น)
 - **กรองน้ำ Coway** - กรอกได้โดยตรงในหน้านี้ (ย้ายมาจากหน้า Settings) ✨ MOVED
-- **รายได้พิเศษ (Special Income):**
-  - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald)
-  - Thai Bus Tour (สีม่วง purple)
-  - Co Van Kessel (สีส้ม orange)
+- **รายได้พิเศษ (Special Income) — inline form (ห้อง+หมายเหตุ+วันที่+จำนวน+บันทึก/ตรวจสอบ):** ✨ UPDATED v1.22.2
+  - ค่าเช่า รถรับส่งสนามบิน (สีเขียว emerald) — fieldName `airportShuttleRentIncome`
+  - Thai Bus Tour (สีม่วง purple) — fieldName `thaiBusTourIncome`
+  - Co Van Kessel (สีส้ม orange) — fieldName `coVanKesselIncome`
+  - **3 รายการนี้ใช้ helpers** `saveSpecialIncome()` + `openSpecialHistory()` (field-based ไม่ใช่ category id) — รูปแบบเดียวกับ OTA monthly entry
   - งานเสริม FD (สีเขียว teal) — เฉพาะ CT/YW/NANA แยก 2 อาคาร: ลาดพร้าว 21, สุขุมวิท 81 ✨ UPDATED v1.16.0
   - รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet) — เฉพาะ CT/YW/NANA ✨ NEW
 - **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:**
@@ -224,7 +222,19 @@
   - `targetType=SETTINGS`, `fieldName=holidayCompensation`, `actionType=ADD`
   - `description` เก็บเป็น **JSON** (v1) — มี employeeName, employeeId, holidayIds, items[date,name,salary,amount], totalAllBuildings, perBuilding (UI parse แสดงแบบจัดเรียง — fallback ไป raw text สำหรับ records เก่า)
 
-### 6. จัดการผู้ใช้ (`/users`)
+### 6. จัดการห้อง (`/rooms`) ✨ NEW v1.22.0
+- **เฉพาะ PARTNER** (จำกัดผ่าน `PARTNER_ONLY_MENUS`)
+- เลือกอาคารผ่าน Select → แสดงตารางห้องของอาคารนั้น
+- **Master List ที่ seed ไว้:**
+  - **CT (Chinatown):** 7 ห้อง — 101, 201, 202, 301, 302, 401, 402
+  - **YW (Yaowarat):** 6 ห้อง — 138A, 138B, 138AB, 140A, 140B, 140AB
+  - **NANA (103 NANA):** 6 ห้อง — 1, 2, 3, 6, 7, 8
+  - **FUNNLP / FUNNS81:** ไม่มีห้องแยก (แสดงข้อความ "อาคารนี้ไม่มีห้องแยก")
+- **CRUD:** Dialog เพิ่ม/แก้ไข (name + note optional) — soft delete (`isActive=false`) — ปุ่ม "เปิดใช้งานอีกครั้ง" สำหรับห้องที่ถูกซ่อน
+- **Schema:** model `Room` + ExpenseHistory.roomId (Int? nullable, onDelete: SetNull) — ข้อมูลเก่า `roomId=null` แสดงเป็น "—" ในประวัติ
+- **ใช้กับ:** dropdown ห้องในหน้า `/transactions` — ทั้ง Daily Entry (DB+OTA), Special Income (รถรับส่ง/Thai Bus/Co Van Kessel), และ Adjust Dialog (รายได้อื่นๆ)
+
+### 7. จัดการผู้ใช้ (`/users`)
 - เพิ่ม/แก้ไข/ลบ ผู้ใช้
 - กำหนด role (PARTNER/STAFF/VIEWER)
 - **จัดการสิทธิ์เมนูรายผู้ใช้** — PARTNER เปิด/ปิดเมนูให้ STAFF/VIEWER ด้วย checkbox ✨ NEW v1.14.0
@@ -234,7 +244,7 @@
   - สิทธิ์อัพเดทอัตโนมัติโดยไม่ต้อง logout/login ใหม่ (`/api/auth/me`)
 - เปิด/ปิด บัญชี
 
-### 7. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
+### 8. จัดการค่าใช้จ่ายส่วนกลาง (`/settings`)
 - **ทั้ง Partner, Staff, และ Viewer เข้าถึงได้** (Viewer ไม่เห็นค่าเช่าอาคาร)
 - **ทุก field เป็น read-only ต้องกรอกผ่านปุ่มเท่านั้น**
 - **Tab ตั้งค่าอาคาร:**
@@ -244,7 +254,7 @@
 - ~~**Tab ค่าใช้จ่ายส่วนกลาง:**~~ — **ลบแล้ว** ย้ายไปกรอกในหน้า Transactions แยกตามอาคาร (ไม่มี GLOBAL_SETTINGS อีกแล้ว) ✨ REMOVED
 - **Tab ข้อมูลอาคาร:** แสดงข้อมูลอาคารทั้งหมด + สูตรการคำนวณ
 
-### 8. ดาวน์โหลดรายงาน (`/reports`)
+### 9. ดาวน์โหลดรายงาน (`/reports`)
 - ดูตัวอย่างรายงาน
 - แสดงทุก category (แม้ค่าเป็น 0)
 - รายจ่ายแสดงค่าจาก GlobalSettings พร้อมรายละเอียด
@@ -254,7 +264,7 @@
 - พิมพ์รายงาน (เหมือน PDF)
 - มี emoji ตามหมวดหมู่
 
-### 9. ระบบ Login (`/access`)
+### 10. ระบบ Login (`/access`)
 - เลือกประเภทผู้ใช้ (หุ้นส่วน/พนักงาน)
 - Login ด้วย username/password
 - รหัสผ่านเข้ารหัสด้วย bcrypt
@@ -277,7 +287,7 @@
 | `/api/employees/salary-summary` | GET | สรุปเงินเดือน (รับ ?month&year สำหรับเงินเดือนรายเดือน) | Partner |
 | `/api/employees/monthly-salary` | GET, POST | เงินเดือนรายเดือนแต่ละคน (carry forward, batch save) ✨ v1.15.0 | Partner |
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
-| `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย ✨ | Auth |
+| `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย — POST รับ `roomId` + GET include `room` ✨ UPDATED v1.22.0 | Auth |
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
 | `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ (รองรับ `?groupBy=ota` คืน byOta breakdown) ✨ UPDATED v1.17.0 | - |
 | `/api/ota-sources` | GET, POST | รายชื่อ OTA master (Direct, AirBNB, Booking.com, Agoda, Expedia) ✨ NEW v1.17.0 | GET=Auth / POST=Partner |
@@ -291,6 +301,8 @@
 | `/api/holiday-compensation` | GET, POST | GET: list รายการค่าแรง group แบบ groupId / POST: บันทึกค่าแรง 3 records (CT/YW/NANA) per-holiday + JSON description ✨ NEW v1.21.0 | Auth/Partner |
 | `/api/holiday-compensation/[groupId]` | DELETE | ลบรายการค่าแรงทั้ง group 3 อาคาร ✨ NEW v1.21.0 | Partner |
 | `/api/holiday-compensation/eligible-employees` | GET | คืน employees + salaries[1..12] (skip 0 + carry forward) ของปีที่ระบุ — ใช้ใน Dialog ✨ NEW v1.21.0 | Auth |
+| `/api/rooms` | GET, POST | จัดการห้องพัก (GET filter `?buildingId=&includeInactive=`) ✨ NEW v1.22.0 | GET=public / POST=Partner |
+| `/api/rooms/[id]` | PUT, DELETE | แก้ไข/soft delete (isActive=false) ห้อง ✨ NEW v1.22.0 | Partner |
 
 ---
 
