@@ -486,10 +486,9 @@ export default function TransactionsPage() {
   ) + (directBookingCategory ? getDisplayAmount(directBookingCategory.id) : 0)
   // ยอดรวมเฉพาะ "รายได้ค่าเช่า" (OTA ล้วน ไม่รวม Direct Booking)
   const totalNormalRentalIncome = totalRentalIncome - totalDirectBookingIncome
-  // ซ่อนกลุ่ม "รายได้ค่าเช่า" (OTA) ตั้งแต่เมษา 2026 เป็นต้นไป (เดือนก่อนหน้ายังแสดงปกติ)
-  const _selMonth = parseInt(selectedMonth)
-  const _selYear = parseInt(selectedYear)
-  const hideRentalIncomeOtaGroup = _selYear > 2026 || (_selYear === 2026 && _selMonth >= 4)
+  // ใช้รูปแบบใหม่ (Direct Booking 4 ช่องทาง + ซ่อนกลุ่ม "รายได้ค่าเช่า (OTA)") กับทุกเดือน
+  // ข้อมูลเก่าที่เคยกรอกผ่านตาราง 5 OTA × 4 ช่อง ยังคงอยู่ในฐานข้อมูล และจะถูกรวมเข้ายอดของแต่ละช่องทางอัตโนมัติ
+  const hideRentalIncomeOtaGroup = true
   const totalOtherIncome = otherIncomeCategories.reduce(
     (sum, c) => sum + getDisplayAmount(c.id),
     0
@@ -1463,7 +1462,7 @@ export default function TransactionsPage() {
                 </TableBody>
               </Table>
 
-              {/* กลุ่ม 2: รายได้ค่าเช่า (OTA) - ซ่อนสำหรับ VIEWER และตั้งแต่เมษา 2026 เป็นต้นไป */}
+              {/* กลุ่ม 2: รายได้ค่าเช่า (OTA) - ซ่อนทุกเดือน (hideRentalIncomeOtaGroup = true เสมอ) */}
               {!isViewer && !hideRentalIncomeOtaGroup && normalRentalCategories.length > 0 && (
                 <>
                   <div className="bg-[#84A59D]/10 px-4 py-2 border-y border-[#84A59D]/20">
