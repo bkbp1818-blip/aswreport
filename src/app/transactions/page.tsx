@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Fragment } from 'react'
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -158,6 +158,50 @@ interface ReimbursementItem {
   paidDate: string | null
   returnedDate: string | null
   building: { id: number; name: string; code: string }
+}
+
+// แปลงวันที่ ISO (YYYY-MM-DD) เป็น format DD/MM/YYYY สำหรับแสดงผล
+function formatDDMMYYYY(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return ''
+  return `${d}/${m}/${y}`
+}
+
+// DateBox: text input ที่แสดง DD/MM/YYYY และ click เพื่อเปิด native date picker
+function DateBox({ value, onChange, className = '' }: { value: string; onChange: (v: string) => void; className?: string }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const open = () => {
+    const el = ref.current
+    if (!el) return
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return } catch {}
+    }
+    el.focus()
+    el.click()
+  }
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        readOnly
+        value={formatDDMMYYYY(value)}
+        placeholder="วันที่"
+        onClick={open}
+        onFocus={open}
+        className={`cursor-pointer ${className}`}
+      />
+      <input
+        ref={ref}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="absolute inset-0 opacity-0 pointer-events-none"
+      />
+    </div>
+  )
 }
 
 export default function TransactionsPage() {
@@ -854,10 +898,10 @@ export default function TransactionsPage() {
         alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
-      // เคลียร์ amount + note เก็บ day กับ roomId ไว้
+      // หลังบันทึก: reset ทุก field — day เป็นวันนี้, ห้องเป็น placeholder, amount + note ว่าง
       setDailyEntryInputs((prev) => ({
         ...prev,
-        [key]: { ...getDailyInput(key), amount: '', note: '' },
+        [key]: { day: getTodayIso(), amount: '', roomId: '', note: '' },
       }))
       await loadTransactions()
     } catch (e) {
@@ -997,10 +1041,10 @@ export default function TransactionsPage() {
         alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
-      // เคลียร์ amount + note เก็บ roomId ไว้
+      // หลังบันทึก: reset ทุก field — day เป็นวันนี้, ห้องเป็น placeholder, amount + note ว่าง
       setDailyEntryInputs((prev) => ({
         ...prev,
-        [key]: { ...getDailyInput(key), amount: '', note: '' },
+        [key]: { day: getTodayIso(), amount: '', roomId: '', note: '' },
       }))
       await loadTransactions()
     } catch (e) {
@@ -1398,10 +1442,9 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="px-1 md:px-2 w-[140px]">
-                            <Input
-                              type="date"
+                            <DateBox
                               value={input.day}
-                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              onChange={(v) => setDailyInputField(key, 'day', v)}
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>
@@ -1498,10 +1541,9 @@ export default function TransactionsPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="px-1 md:px-2 w-[140px]">
-                                <Input
-                                  type="date"
+                                <DateBox
                                   value={input.day}
-                                  onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                                  onChange={(v) => setDailyInputField(key, 'day', v)}
                                   className="h-8 text-xs md:text-sm"
                                 />
                               </TableCell>
@@ -1580,10 +1622,9 @@ export default function TransactionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="px-1 md:px-2 w-[140px]">
-                          <Input
-                            type="date"
+                          <DateBox
                             value={input.day}
-                            onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                            onChange={(v) => setDailyInputField(key, 'day', v)}
                             className="h-8 text-xs md:text-sm"
                           />
                         </TableCell>
@@ -1796,10 +1837,9 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="px-1 md:px-2 w-[140px]">
-                            <Input
-                              type="date"
+                            <DateBox
                               value={input.day}
-                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              onChange={(v) => setDailyInputField(key, 'day', v)}
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>
@@ -1895,10 +1935,9 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="px-1 md:px-2 w-[140px]">
-                            <Input
-                              type="date"
+                            <DateBox
                               value={input.day}
-                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              onChange={(v) => setDailyInputField(key, 'day', v)}
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>
@@ -1994,10 +2033,9 @@ export default function TransactionsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="px-1 md:px-2 w-[140px]">
-                            <Input
-                              type="date"
+                            <DateBox
                               value={input.day}
-                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              onChange={(v) => setDailyInputField(key, 'day', v)}
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>

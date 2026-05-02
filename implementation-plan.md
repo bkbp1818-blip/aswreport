@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.3 |
+| **Version** | 1.22.4 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,23 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.3 (Current - May 2026) — เพิ่ม date picker ให้ OTA + รายได้พิเศษ
+### v1.22.4 (Current - May 2026) — Format วันที่ DD/MM/YYYY + reset state หลังบันทึก
+
+ปรับ UX การกรอกข้อมูลให้สะอาดและพร้อมใช้งานครั้งถัดไปทันที:
+
+- **Date picker — แสดง format DD/MM/YYYY:**
+  - HTML `<input type="date">` ปกติแสดง format ตาม locale (เช่น mm/dd/yyyy หรือ yyyy-mm-dd)
+  - สร้าง `<DateBox>` component ใหม่: readonly text input แสดง `DD/MM/YYYY` + ซ่อน native date picker ไว้ click → เปิดผ่าน `el.showPicker()` (HTML5 API ที่ Chrome/Edge/Firefox รุ่นใหม่รองรับ)
+  - ไม่ต้องเพิ่ม dependency (ไม่ใช้ react-day-picker / date-fns)
+  - Helper `formatDDMMYYYY(iso)` แปลง `YYYY-MM-DD` → `DD/MM/YYYY`
+- **Reset state หลังบันทึก:**
+  - Daily Entry (DB/CHANNEL/OTA) และ Special Income (รถรับส่ง/Thai Bus/Co Van Kessel) — เดิมเก็บ `day` กับ `roomId` ไว้หลังบันทึก
+  - ใหม่: reset ทุก field → `{ day: today, amount: '', roomId: '', note: '' }`
+  - พนักงานพร้อมกรอกครั้งถัดไป — dropdown ห้องกลับเป็น placeholder "ห้อง", date กลับเป็นวันนี้
+- **จุดที่ใช้ DateBox:** Direct Booking 4 ช่องทาง / OTA monthly 5 รายการ / รถรับส่งสนามบิน / Thai Bus Tour / Co Van Kessel — รวม 5 sections (และ DB matrix branch ที่ยังคงโค้ดไว้สำหรับอนาคต)
+- **ไฟล์แก้:** `src/app/transactions/page.tsx`
+
+### v1.22.3 (May 2026) — เพิ่ม date picker ให้ OTA + รายได้พิเศษ
 
 ขยาย date picker (ที่มีใน Direct Booking อยู่แล้ว) ให้กับทุก section ของรายได้รายวัน เพื่อให้พนักงานระบุวันที่จริงได้:
 
