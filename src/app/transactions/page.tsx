@@ -801,29 +801,22 @@ export default function TransactionsPage() {
       return
     }
 
-    // กลุ่ม OTA: ไม่มี date picker — ใช้เดือน/ปีของหน้าหลัก, day = null
-    // กลุ่ม DB / CHANNEL: ใช้ date picker
+    // ทุก group ใช้ date picker (input.day) เพื่อระบุวันที่จริง
     let day: number | null
     let month: number
     let year: number
-    if (group === 'OTA') {
-      day = null
-      month = parseInt(selectedMonth)
-      year = parseInt(selectedYear)
-    } else {
-      if (!input.day) {
-        alert('กรุณาเลือกวันที่')
-        return
-      }
-      const dt = new Date(input.day)
-      if (Number.isNaN(dt.getTime())) {
-        alert('วันที่ไม่ถูกต้อง')
-        return
-      }
-      day = dt.getDate()
-      month = dt.getMonth() + 1
-      year = dt.getFullYear()
+    if (!input.day) {
+      alert('กรุณาเลือกวันที่')
+      return
     }
+    const dt = new Date(input.day)
+    if (Number.isNaN(dt.getTime())) {
+      alert('วันที่ไม่ถูกต้อง')
+      return
+    }
+    day = dt.getDate()
+    month = dt.getMonth() + 1
+    year = dt.getFullYear()
 
     // หา otaSourceId (เฉพาะกลุ่ม DB)
     let otaSourceId: number | null = null
@@ -848,9 +841,7 @@ export default function TransactionsPage() {
           fieldLabel: category.name,
           actionType: 'ADD',
           amount,
-          description: input.note.trim() || (group === 'OTA'
-            ? `กรอกข้อมูลรายเดือน - ${month}/${year}`
-            : `กรอกข้อมูลรายวัน - ${input.day}`),
+          description: input.note.trim() || `กรอกข้อมูลรายวัน - ${input.day}`,
           day,
           month,
           year,
@@ -968,8 +959,18 @@ export default function TransactionsPage() {
       alert('กรุณาเลือกห้องก่อนบันทึก')
       return
     }
-    const month = parseInt(selectedMonth)
-    const year = parseInt(selectedYear)
+    if (!input.day) {
+      alert('กรุณาเลือกวันที่')
+      return
+    }
+    const dt = new Date(input.day)
+    if (Number.isNaN(dt.getTime())) {
+      alert('วันที่ไม่ถูกต้อง')
+      return
+    }
+    const day = dt.getDate()
+    const month = dt.getMonth() + 1
+    const year = dt.getFullYear()
 
     setSavingDailyEntry((prev) => ({ ...prev, [key]: true }))
     try {
@@ -983,8 +984,8 @@ export default function TransactionsPage() {
           fieldLabel,
           actionType: 'ADD',
           amount,
-          description: input.note.trim() || `กรอกข้อมูลรายเดือน - ${month}/${year}`,
-          day: null,
+          description: input.note.trim() || `กรอกข้อมูลรายวัน - ${input.day}`,
+          day,
           month,
           year,
           otaSourceId: null,
@@ -1578,6 +1579,14 @@ export default function TransactionsPage() {
                             </span>
                           </div>
                         </TableCell>
+                        <TableCell className="px-1 md:px-2 w-[140px]">
+                          <Input
+                            type="date"
+                            value={input.day}
+                            onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                            className="h-8 text-xs md:text-sm"
+                          />
+                        </TableCell>
                         {buildingHasRooms && (
                           <TableCell className="px-1 md:px-2 w-[120px]">
                             <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
@@ -1786,6 +1795,14 @@ export default function TransactionsPage() {
                               </span>
                             </div>
                           </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="date"
+                              value={input.day}
+                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
@@ -1877,6 +1894,14 @@ export default function TransactionsPage() {
                               </span>
                             </div>
                           </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="date"
+                              value={input.day}
+                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
@@ -1967,6 +1992,14 @@ export default function TransactionsPage() {
                                 {formatNumber(coVanKesselIncome)}
                               </span>
                             </div>
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="date"
+                              value={input.day}
+                              onChange={(e) => setDailyInputField(key, 'day', e.target.value)}
+                              className="h-8 text-xs md:text-sm"
+                            />
                           </TableCell>
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">

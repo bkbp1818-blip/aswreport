@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.2 |
+| **Version** | 1.22.3 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,24 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.2 (Current - May 2026) — Inline form สำหรับรายได้พิเศษ 3 รายการ
+### v1.22.3 (Current - May 2026) — เพิ่ม date picker ให้ OTA + รายได้พิเศษ
+
+ขยาย date picker (ที่มีใน Direct Booking อยู่แล้ว) ให้กับทุก section ของรายได้รายวัน เพื่อให้พนักงานระบุวันที่จริงได้:
+
+- **กรอกข้อมูลรายเดือน — OTA** (5 OTA: Agoda/Booking/AirBnB/Trip/Expedia):
+  - เพิ่ม `<Input type="date">` ในแต่ละแถวระหว่างชื่อ OTA และ dropdown ห้อง
+  - บังคับเลือกวันที่ก่อนบันทึก
+  - บันทึกเข้า ExpenseHistory ด้วย `day/month/year` จากวันที่ที่เลือก (เดิม `day=null`, ใช้ month/year ของหน้าหลัก)
+- **รายได้พิเศษ 3 รายการ** (รถรับส่งสนามบิน / Thai Bus Tour / Co Van Kessel):
+  - เพิ่ม date picker เหมือน OTA — ตำแหน่งระหว่างชื่อรายการและ dropdown ห้อง
+  - `saveSpecialIncome` parse `input.day` เป็น `day/month/year` ก่อน POST
+- **saveDailyEntry refactor:**
+  - รวม branch `OTA` กับ `DB`/`CHANNEL` — ทุก group ใช้ date picker เหมือนกัน
+  - description default เปลี่ยนเป็น `กรอกข้อมูลรายวัน - YYYY-MM-DD` ทุก group
+- **Backward-compatible:** entry เก่าที่มี `day=null` ยังแสดงในประวัติได้ (fallback ไป `createdAt`)
+- **ไฟล์แก้:** `src/app/transactions/page.tsx`
+
+### v1.22.2 (May 2026) — Inline form สำหรับรายได้พิเศษ 3 รายการ
 
 ปรับ UI ของ "รายได้ค่าเช่า รถรับส่งสนามบิน / Thai Bus Tour / Co Van Kessel" จากรูปแบบ "ปุ่ม +/-/edit เปิด dialog" เปลี่ยนเป็น **inline form** เหมือน "กรอกข้อมูลรายเดือน — OTA" เพื่อให้รูปแบบการกรอกสอดคล้องกันทั้งหน้า:
 
