@@ -203,6 +203,7 @@ export default function TransactionsPage() {
   const [adjustAmount, setAdjustAmount] = useState<string>('')
   const [adjustDescription, setAdjustDescription] = useState<string>('')
   const [adjustOtaSourceId, setAdjustOtaSourceId] = useState<number | null>(null)
+  const [adjustRoomId, setAdjustRoomId] = useState<string>('')
 
   // State สำหรับประวัติค่าใช้จ่าย
   const [adjustMonth, setAdjustMonth] = useState<string>(String(new Date().getMonth() + 1))
@@ -214,7 +215,7 @@ export default function TransactionsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   // State สำหรับ Daily Entry section
-  const [dailyEntryInputs, setDailyEntryInputs] = useState<Record<string, { day: string; amount: string; roomId: string }>>({})
+  const [dailyEntryInputs, setDailyEntryInputs] = useState<Record<string, { day: string; amount: string; roomId: string; note: string }>>({})
   // ห้องของอาคารที่เลือก (master list — กรองเฉพาะ active)
   const [rooms, setRooms] = useState<Room[]>([])
   const [savingDailyEntry, setSavingDailyEntry] = useState<Record<string, boolean>>({})
@@ -708,10 +709,10 @@ export default function TransactionsPage() {
   }
 
   const getDailyInput = (key: string) => {
-    return dailyEntryInputs[key] || { day: getTodayIso(), amount: '', roomId: '' }
+    return dailyEntryInputs[key] || { day: getTodayIso(), amount: '', roomId: '', note: '' }
   }
 
-  const setDailyInputField = (key: string, field: 'day' | 'amount' | 'roomId', value: string) => {
+  const setDailyInputField = (key: string, field: 'day' | 'amount' | 'roomId' | 'note', value: string) => {
     setDailyEntryInputs((prev) => ({
       ...prev,
       [key]: { ...getDailyInput(key), [field]: value },
@@ -847,9 +848,9 @@ export default function TransactionsPage() {
           fieldLabel: category.name,
           actionType: 'ADD',
           amount,
-          description: group === 'OTA'
+          description: input.note.trim() || (group === 'OTA'
             ? `กรอกข้อมูลรายเดือน - ${month}/${year}`
-            : `กรอกข้อมูลรายวัน - ${input.day}`,
+            : `กรอกข้อมูลรายวัน - ${input.day}`),
           day,
           month,
           year,
@@ -862,10 +863,10 @@ export default function TransactionsPage() {
         alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
-      // เคลียร์ amount เก็บ day ไว้
+      // เคลียร์ amount + note เก็บ day กับ roomId ไว้
       setDailyEntryInputs((prev) => ({
         ...prev,
-        [key]: { ...getDailyInput(key), amount: '' },
+        [key]: { ...getDailyInput(key), amount: '', note: '' },
       }))
       await loadTransactions()
     } catch (e) {
@@ -957,6 +958,7 @@ export default function TransactionsPage() {
     setAdjustAmount('')
     setAdjustDescription('')
     setAdjustOtaSourceId(preSelectedOtaSourceId ?? null)
+    setAdjustRoomId('')
     // ใช้เดือน/ปีที่เลือกในหน้าหลัก
     setAdjustMonth(selectedMonth)
     setAdjustYear(selectedYear)
@@ -1029,6 +1031,7 @@ export default function TransactionsPage() {
           month: requestMonth,
           year: requestYear,
           otaSourceId: isDirectBookingChannel(currentCategoryId) ? adjustOtaSourceId : null,
+          roomId: adjustRoomId ? parseInt(adjustRoomId) : null,
         }),
       })
 
@@ -1325,6 +1328,15 @@ export default function TransactionsPage() {
                               </Select>
                             </TableCell>
                           )}
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="text"
+                              value={input.note}
+                              onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                              placeholder="หมายเหตุ"
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
                           <TableCell className="px-1 md:px-2 w-[110px]">
                             <Input
                               type="number"
@@ -1490,6 +1502,15 @@ export default function TransactionsPage() {
                             </Select>
                           </TableCell>
                         )}
+                        <TableCell className="px-1 md:px-2 w-[140px]">
+                          <Input
+                            type="text"
+                            value={input.note}
+                            onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                            placeholder="หมายเหตุ"
+                            className="h-8 text-xs md:text-sm"
+                          />
+                        </TableCell>
                         <TableCell className="px-1 md:px-2 w-[140px]">
                           <Input
                             type="number"
@@ -3064,6 +3085,26 @@ export default function TransactionsPage() {
                       {otaSources.map((ota) => (
                         <SelectItem key={ota.id} value={String(ota.id)}>
                           {ota.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {buildingHasRooms && rooms.length > 0 && (
+                <div>
+                  <label className="text-[10px] sm:text-sm text-gray-500">ห้อง</label>
+                  <Select
+                    value={adjustRoomId}
+                    onValueChange={(v) => setAdjustRoomId(v)}
+                  >
+                    <SelectTrigger className="mt-0.5 h-7 sm:h-10 text-[11px] sm:text-sm">
+                      <SelectValue placeholder="เลือกห้อง (ไม่บังคับ)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rooms.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

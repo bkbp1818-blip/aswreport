@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.0 |
+| **Version** | 1.22.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -338,7 +338,30 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.0 (Current - May 2026) — เพิ่มระบบ "ห้อง" ให้พนักงานเลือกตอนกรอกข้อมูล
+### v1.22.1 (Current - May 2026) — เพิ่มหมายเหตุ Daily Entry + ห้องใน Adjust Dialog
+
+ขยายฟีเจอร์ห้องและเพิ่มความยืดหยุ่นในการกรอกข้อมูล:
+
+- **Daily Entry — เพิ่มช่อง "หมายเหตุ":**
+  - หน้า `/transactions` ทั้ง section "กรอกข้อมูลรายวัน — Direct Booking" (4 ช่องทาง) และ "กรอกข้อมูลรายเดือน — OTA" (5 OTA)
+  - เพิ่ม `<TableCell>` ใหม่ระหว่าง room dropdown และ amount — Input ข้อความ optional
+  - ถ้ากรอกหมายเหตุ → ใช้แทน auto description (`กรอกข้อมูลรายวัน - YYYY-MM-DD`)
+  - ถ้าเว้นว่าง → ใช้ auto description เดิม (backward-compat 100%)
+  - หลังบันทึก: clear `amount + note` เก็บ `day + roomId` ไว้ (ลด friction การกรอกซ้ำ)
+- **State change:**
+  - `dailyEntryInputs` shape: เพิ่ม `note: string` → `{ day, amount, roomId, note }`
+  - `setDailyInputField` รับ field `'note'` ด้วย
+- **Adjust Dialog — เพิ่ม dropdown "ห้อง" (สำหรับ "รายได้อื่นๆ" และทุก section ที่ใช้ dialog นี้):**
+  - หน้า `/transactions` ส่วน "รายได้อื่นๆ" (รวมถึง รับส่งสนามบิน / Thai Bus Tour / Co Van Kessel ฯลฯ) เปิด Adjust Dialog เพื่อกรอก
+  - เพิ่ม Select "เลือกห้อง" ในตัว dialog (ไม่บังคับ — เลือกหรือไม่เลือกก็ได้)
+  - แสดงเฉพาะอาคารที่มีห้อง (`buildingHasRooms`) — FUNN ไม่แสดง
+  - description ในตัว dialog ยังบังคับเหมือนเดิม (ผู้ใช้กรอกเองอยู่แล้ว)
+  - state ใหม่: `adjustRoomId: string` — reset ใน `openAdjustDialog`, ส่งใน POST body ของ `handleAdjustConfirm`
+- **API expense-history:**
+  - ไม่ต้องแก้ — POST รับ `roomId` จาก v1.22.0 อยู่แล้ว ทั้ง daily entry และ adjust dialog ใช้ field เดียวกัน
+- **ไฟล์แก้:** `src/app/transactions/page.tsx`
+
+### v1.22.0 (May 2026) — เพิ่มระบบ "ห้อง" ให้พนักงานเลือกตอนกรอกข้อมูล
 
 เพิ่มมิติ "ห้อง" (Room) ในการบันทึกรายได้รายวัน/รายเดือน เพื่อให้ track ได้ว่ายอดของห้องไหน:
 
