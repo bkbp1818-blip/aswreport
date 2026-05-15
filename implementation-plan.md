@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.4 |
+| **Version** | 1.22.5 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -350,7 +350,17 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.4 (Current - May 2026) — Format วันที่ DD/MM/YYYY + reset state หลังบันทึก
+### v1.22.5 (Current - May 2026) — แก้บั๊ก toggle ปิดตอนพิมพ์เงินเดือนหลังเปิดกลับ
+
+แก้บั๊กในหน้า `/employees` ที่ทำให้ไม่สามารถกรอกเงินเดือนให้พนักงานที่เคยถูก "ปิดเงินเดือน" ได้:
+
+- **อาการ:** พนักงานที่มี monthlySalary = 0 (ปิดเงินเดือนไว้) — เมื่อกด toggle เพื่อเปิดกลับมาแก้ไข พอเริ่มพิมพ์ตัวเลขจริง input ถูก disable ทันที (toggle ปิดตัวเอง)
+- **สาเหตุ:** logic `showAsDisabled` เดิมพึ่ง `editingMonthlySalary[id] === '-1'` เป็นตัวกำหนดว่ากำลัง "เปิดกลับ" — พอ user พิมพ์เลขจริง state เปลี่ยนจาก `'-1'` เป็น `'5'` เงื่อนไขจึง false ทันที → กลับไป disabled
+- **แก้ไข:** เปลี่ยน logic เป็น "ถ้า isEditing ให้ดูแค่ค่าใน state ว่าเป็น `'0'` หรือไม่ — ค่าอื่นๆ ทั้งหมดถือว่าเปิด" ไม่ดู isDisabledThisMonth จาก DB ระหว่างแก้ไข
+- **ผลกระทบ:** Partner สามารถกรอกเงินเดือนให้พนักงาน OUTSOURCE (เช่น มะแพง) ที่เคยถูกปิดเงินเดือนไว้ได้ตามปกติ
+- **ไฟล์แก้:** `src/app/employees/page.tsx` (3 บรรทัด)
+
+### v1.22.4 (May 2026) — Format วันที่ DD/MM/YYYY + reset state หลังบันทึก
 
 ปรับ UX การกรอกข้อมูลให้สะอาดและพร้อมใช้งานครั้งถัดไปทันที:
 
