@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.22.5 |
+| **Version** | 1.23.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -102,7 +102,7 @@
     - แต่ละแถว: date picker + dropdown ห้อง + หมายเหตุ + amount + ปุ่ม "บันทึก" + "ตรวจสอบ" ✨ UPDATED v1.22.3
     - Save → POST `/api/expense-history` (ADD) → category `ค่าเช่าจาก [OTA]` + `roomId` + `day` (ไม่มี channel)
   - **กลุ่ม "รายได้ค่าเช่า (OTA)" (Agoda/Booking/AirBnB/Trip/Expedia/RB):** ซ่อนทุกเดือน — ใช้ Daily Entry แทน ✨ UPDATED v1.21.2
-  - **Dialog "ตรวจสอบ"** ของแต่ละแถว: column วันที่/ห้อง/จำนวน/รายละเอียด + ปุ่มลบรายตัว + footer ยอดรวม
+  - **Dialog "ตรวจสอบ"** ของแต่ละแถว: column วันที่/ห้อง/จำนวน/ผู้กรอก+เวลาบันทึก + ปุ่มลบรายตัว + footer ยอดรวม ✨ UPDATED v1.23.0
   - **DateBox component** ✨ NEW v1.22.4: text input แสดง `DD/MM/YYYY` + click เปิด native date picker (`showPicker()`) — ไม่เพิ่ม dependency
   - **Reset state หลังบันทึก** ✨ NEW v1.22.4: ทุก field กลับ default (`day=today, roomId='', amount='', note=''`) เพื่อพร้อมกรอกครั้งถัดไป
   - **บังคับเลือกห้อง:** อาคาร CT/YW/NANA (FUNN ไม่มีห้อง — ไม่แสดง dropdown) ✨ NEW v1.22.0
@@ -287,7 +287,7 @@
 | `/api/employees/salary-summary` | GET | สรุปเงินเดือน (รับ ?month&year สำหรับเงินเดือนรายเดือน) | Partner |
 | `/api/employees/monthly-salary` | GET, POST | เงินเดือนรายเดือนแต่ละคน (carry forward, batch save) ✨ v1.15.0 | Partner |
 | `/api/users` | GET, POST, PUT, DELETE | จัดการผู้ใช้ | Partner |
-| `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย — POST รับ `roomId` + GET include `room` ✨ UPDATED v1.22.0 | Auth |
+| `/api/expense-history` | GET, POST | ประวัติเพิ่ม/ลดค่าใช้จ่าย — POST บันทึก `userId` จาก session + GET include `user{id,username,name}` ✨ UPDATED v1.23.0 | Auth |
 | `/api/expense-history/[id]` | DELETE | ลบรายการประวัติ ✨ | Auth |
 | `/api/expense-history/totals` | GET | ยอดรวมจากประวัติ (รองรับ `?groupBy=ota` คืน byOta breakdown) ✨ UPDATED v1.17.0 | - |
 | `/api/ota-sources` | GET, POST | รายชื่อ OTA master (Direct, AirBNB, Booking.com, Agoda, Expedia) ✨ NEW v1.17.0 | GET=Auth / POST=Partner |
@@ -350,7 +350,38 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.22.5 (Current - May 2026) — แก้บั๊ก toggle ปิดตอนพิมพ์เงินเดือนหลังเปิดกลับ
+### v1.23.0 (Current - May 2026) — Audit log: แสดงผู้กรอก + เวลาบันทึก ในตารางตรวจสอบ
+
+เพิ่ม audit log ในระบบกรอกข้อมูล เพื่อให้หุ้นส่วนเช็คได้ว่าใครทำอะไรตอนไหน:
+
+- **Schema:** เพิ่ม `ExpenseHistory.userId` (Int?, nullable) + relation `User` + `@@index([userId])` — ใช้ `npx prisma db push` apply กับ production
+- **API:**
+  - POST `/api/expense-history` บันทึก `userId` จาก session ที่ login ทุกครั้ง (จาก `requireMenuAccess('/transactions')` ที่ return AuthUser)
+  - GET include `user { id, username, name }` ใน response (พร้อม `otaSource`, `room`)
+- **UI Dialog "ตรวจสอบ":**
+  - เปลี่ยนคอลัมน์สุดท้าย "รายละเอียด" → "ผู้กรอก / เวลาบันทึก" แสดง 2-3 บรรทัด:
+    - บรรทัด 1: ชื่อผู้กรอก (`user.name` หรือ `user.username` หรือ "—" สำหรับ rows เก่า)
+    - บรรทัด 2: timestamp `DD/MM/YYYY HH:mm` จาก `createdAt`
+    - บรรทัด 3: หมายเหตุที่ user กรอกเอง (เฉพาะที่ไม่ใช่ default "กรอกข้อมูลรายวัน - YYYY-MM-DD")
+  - แก้ format วันที่คอลัมน์แรก `YYYY-MM-DD` → `DD/MM/YYYY` ให้เข้ากัน
+- **ข้อจำกัด:** rows เก่า 837 รายการ (ธ.ค. 2025 - 18 พ.ค. 2026) ไม่มี userId เพราะ schema เดิมไม่มี column นี้ → แสดง "—" ตามที่ตกลงกับผู้ใช้ (ไม่ bulk update เป็นข้อมูลปลอม)
+- **ไฟล์แก้:** `prisma/schema.prisma`, `src/app/api/expense-history/route.ts`, `src/app/transactions/page.tsx`
+
+### v1.22.6 (May 2026) — ป้องกันบั๊ก "กดบันทึกแล้วเงียบ" ในหน้า Transactions
+
+แก้บั๊กชุดใหญ่ที่ทำให้ผู้ใช้กดบันทึกในหน้า `/transactions` แล้วไม่มีอะไรเกิดขึ้น (validation error ถูก browser ระงับ + ปุ่มไม่มี visual feedback):
+
+- **Permission API ผิด:** `POST` และ `DELETE` ของ `/api/expense-history` เรียก `requireMenuAccess('/settings')` ทั้งที่ฟอร์มอยู่หน้า `/transactions` — Partner ผ่านได้ แต่ Staff/Viewer ที่ admin set `allowedMenus` ไม่มี `/settings` จะถูก 403 → เปลี่ยนเป็น `requireMenuAccess('/transactions')`
+- **`window.alert()` ถูก browser ระงับ:** Chrome/Edge มี feature *"Prevent this page from creating additional dialogs"* — ถ้าผู้ใช้เผลอติ๊ก alert จะหายไปทั้ง tab → เปลี่ยน `notify()` helper จาก `window.alert()` เป็น **DOM toast สีแดงมุมขวาบน** ที่ append เข้า `document.body` + auto-remove หลัง 4 วินาที (browser ระงับไม่ได้)
+- **แทนที่ `alert()` 32 จุดในไฟล์ด้วย `notify()`** + เพิ่ม `console.warn('[transactions]', msg)` ทุกครั้ง เพื่อ debug จาก DevTools ได้
+- **Visual hint ช่องห้อง:**
+  - SelectTrigger ของช่อง "ห้อง" → กรอบสีแดง + ring (`border-red-400 ring-1 ring-red-200`) เมื่อยังไม่ได้เลือก
+  - Placeholder เปลี่ยนจาก "ห้อง" → "เลือกห้อง *" บอกว่าจำเป็น
+- **ปุ่ม "บันทึก" disabled เมื่อขาดห้อง:** ทุกปุ่มใน Direct Booking CHANNEL, OTA monthly, รายได้พิเศษ 3 รายการ — `disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}` + `title="กรุณาเลือกห้องก่อนบันทึก"` (skip key ที่ขึ้นต้น 'DB:' เพราะ row นั้นไม่มีช่องห้อง)
+- **อาคารที่ได้รับผลกระทบ:** ARUN SA WAD ทั้ง 3 อาคาร (NANA, CT, YW) บังคับเลือกห้อง — Funn D 2 อาคาร (FUNNLP, FUNNS81) ไม่มีห้อง ปุ่มทำงานปกติ
+- **ไฟล์แก้:** `src/app/api/expense-history/route.ts`, `src/app/api/expense-history/[id]/route.ts`, `src/app/transactions/page.tsx`
+
+### v1.22.5 (May 2026) — แก้บั๊ก toggle ปิดตอนพิมพ์เงินเดือนหลังเปิดกลับ
 
 แก้บั๊กในหน้า `/employees` ที่ทำให้ไม่สามารถกรอกเงินเดือนให้พนักงานที่เคยถูก "ปิดเงินเดือน" ได้:
 
