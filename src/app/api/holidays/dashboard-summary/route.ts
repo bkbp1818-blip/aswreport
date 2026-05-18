@@ -58,6 +58,9 @@ export async function GET() {
           fieldName: 'holidayCompensation',
           year,
           groupId: { not: null },
+          // exclude records ที่ sync มาจาก leave-bay (ป้องกัน double-count ใน Card 2/3 —
+          // record เดียวกันจะถูกนับใน leave-bay history ฝั่ง "ใหม่" อยู่แล้ว)
+          description: { not: { contains: '"syncedFromLeaveBay":true' } },
         },
         select: { amount: true, month: true, groupId: true },
       }),
