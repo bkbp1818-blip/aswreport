@@ -41,24 +41,6 @@ interface Holiday {
   isActive: boolean
 }
 
-interface SalaryEntry {
-  salary: number
-  sourceMonth: number | null
-  sourceYear: number | null
-  isCarriedForward: boolean
-}
-
-interface HcEmployee {
-  id: number
-  firstName: string
-  lastName: string
-  nickname: string | null
-  position: string
-  defaultSalary: number
-  // salaries[1..12] ของปีที่ระบุ — มาจาก endpoint
-  salaries: Record<number, SalaryEntry>
-}
-
 interface HcItem {
   groupId: string
   description: string
@@ -118,6 +100,82 @@ function toInputDate(dateStr: string): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+// แสดงวันที่ ISO (YYYY-MM-DD) เป็น "วัน DD/MM/YYYY"
+function formatPendingDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const yyyy = d.getUTCFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
+interface PendingEmployee {
+  id: string
+  name: string
+  salary: number
+  pendingCount: number
+  pendingTotal: number
+}
+
+interface PendingRecord {
+  id: string
+  holidayName: string
+  holidayDate: string
+  workDate: string
+  daysEarned: number
+  amountToPay: number
+}
+
+interface PendingDetailResponse {
+  employee: { id: string; name: string; salary: number; dailyRate: number }
+  records: PendingRecord[]
+  summary: { totalRecords: number; totalAmount: number }
+}
+
+type PaymentMethod = 'promptpay' | 'cash' | 'transfer'
+
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  promptpay: 'PromptPay',
+  cash: 'เงินสด',
+  transfer: 'โอนเงิน',
+}
+
+// DOM toast แทน window.alert (browser อาจระงับ alert ใน iframe/multiple-alert)
+function notify(msg: string, variant: 'success' | 'error' = 'error') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const div = document.createElement('div')
+  div.textContent = msg
+  div.setAttribute('role', 'alert')
+  const bg = variant === 'success' ? '#16a34a' : '#dc2626'
+  div.style.cssText = [
+    'position:fixed', 'top:1rem', 'right:1rem', 'z-index:9999',
+    `background:${bg}`, 'color:#fff',
+    'padding:0.75rem 1rem', 'border-radius:0.5rem',
+    'box-shadow:0 4px 12px rgba(0,0,0,0.15)',
+    'font-size:0.875rem', 'max-width:24rem', 'line-height:1.4',
+    'transition:opacity 0.3s ease-out',
+  ].join(';')
+  document.body.appendChild(div)
+  setTimeout(() => {
+    div.style.opacity = '0'
+    setTimeout(() => div.remove(), 300)
+  }, 4000)
+}
+
+// แปลง error code จาก leave-bay → ข้อความที่ user เข้าใจ
+function describePayError(code: string | undefined, fallback: string): string {
+  switch (code) {
+    case 'ALREADY_PAID':
+      return 'รายการนี้จ่ายไปแล้ว — กรุณาเปิด Dialog ใหม่'
+    case 'RECORD_NOT_FOUND':
+      return 'หารายการไม่พบ — ข้อมูลอาจถูกแก้ไข กรุณาเปิด Dialog ใหม่'
+    case 'RECORD_EXPIRED':
+      return 'รายการหมดอายุการเบิกแล้ว'
+    default:
+      return fallback || 'บันทึกไม่สำเร็จ'
+  }
+}
+
 export default function HolidaysPage() {
   const years = generateYears()
   const now = new Date()
@@ -140,17 +198,18 @@ export default function HolidaysPage() {
   const [hcLoading, setHcLoading] = useState(true)
   const [hcDeletingGroupId, setHcDeletingGroupId] = useState<string | null>(null)
 
-  // Pay dialog state
+  // Pay dialog state — ดึงข้อมูลจาก leave-bay ผ่าน proxy
   const [payDialogOpen, setPayDialogOpen] = useState(false)
-  const [payLoadingDialog, setPayLoadingDialog] = useState(false)
+  const [payLoadingEmployees, setPayLoadingEmployees] = useState(false)
+  const [payLoadingRecords, setPayLoadingRecords] = useState(false)
   const [paySaving, setPaySaving] = useState(false)
-  const [payEmployees, setPayEmployees] = useState<HcEmployee[]>([])
-  const [payHolidays, setPayHolidays] = useState<Holiday[]>([])
-  const [payEmployeeId, setPayEmployeeId] = useState<number | null>(null)
-  const [paySelectedHolidayIds, setPaySelectedHolidayIds] = useState<number[]>([])
-  const [payMonth, setPayMonth] = useState<string>(String(now.getMonth() + 1))
-  const [payYear, setPayYear] = useState<string>(String(now.getFullYear()))
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [payEmployees, setPayEmployees] = useState<PendingEmployee[]>([])
+  const [paySelectedEmployeeId, setPaySelectedEmployeeId] = useState<string | null>(null)
+  const [payRecords, setPayRecords] = useState<PendingRecord[]>([])
+  const [paySelectedRecordIds, setPaySelectedRecordIds] = useState<Set<string>>(new Set())
+  const [payPaidByName, setPayPaidByName] = useState<string>('')
+  const [payPaymentMethod, setPayPaymentMethod] = useState<PaymentMethod>('promptpay')
+  const [payPaymentReference, setPayPaymentReference] = useState<string>('')
 
   const loadHolidays = useCallback(async () => {
     setLoading(true)
@@ -287,206 +346,186 @@ export default function HolidaysPage() {
     }
   }
 
-  // ========== Holiday Compensation ==========
-  const loadDialogData = useCallback(async (yearStr: string): Promise<{ holidays: Holiday[] } | null> => {
-    setPayLoadingDialog(true)
+  // ========== Holiday Compensation — ใช้ leave-bay เป็น source of truth ==========
+  const loadPayEmployees = useCallback(async () => {
+    setPayLoadingEmployees(true)
     try {
-      const [empRes, hRes] = await Promise.all([
-        fetch(`/api/holiday-compensation/eligible-employees?year=${yearStr}`),
-        fetch(`/api/holidays?year=${yearStr}`),
-      ])
-      const empData = await empRes.json()
-      const hData = await hRes.json()
-      const allHolidays = (Array.isArray(hData) ? hData : []) as Holiday[]
-      // สำหรับ display ใน Dialog แสดงเฉพาะ active
-      // แต่ตอน edit อาจต้อง match กับ inactive ด้วย → return ทั้งหมด
-      setPayEmployees(empData.employees || [])
-      setPayHolidays(allHolidays.filter(h => h.isActive))
-      return { holidays: allHolidays }
+      const res = await fetch('/api/holidays/employees-with-pending')
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = '/access'
+          return
+        }
+        const err = await res.json().catch(() => ({}))
+        notify(err.error || 'ดึงรายชื่อพนักงานไม่สำเร็จ')
+        setPayEmployees([])
+        return
+      }
+      const data = await res.json()
+      setPayEmployees(Array.isArray(data) ? (data as PendingEmployee[]) : [])
     } catch (e) {
-      console.error('loadDialogData error', e)
-      alert('ดึงข้อมูลไม่สำเร็จ')
-      return null
+      console.error('loadPayEmployees error', e)
+      notify('ไม่สามารถเชื่อมต่อ leave-bay ได้ ลองใหม่')
+      setPayEmployees([])
     } finally {
-      setPayLoadingDialog(false)
+      setPayLoadingEmployees(false)
+    }
+  }, [])
+
+  const loadPayRecords = useCallback(async (employeeId: string) => {
+    setPayLoadingRecords(true)
+    setPayRecords([])
+    setPaySelectedRecordIds(new Set())
+    try {
+      const res = await fetch(`/api/holidays/pending/${encodeURIComponent(employeeId)}`)
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = '/access'
+          return
+        }
+        const err = await res.json().catch(() => ({}))
+        notify(err.error || 'ดึงรายการค้างจ่ายไม่สำเร็จ')
+        return
+      }
+      const data = (await res.json()) as PendingDetailResponse
+      const records = Array.isArray(data?.records) ? data.records : []
+      setPayRecords(records)
+      setPaySelectedRecordIds(new Set(records.map(r => r.id)))
+    } catch (e) {
+      console.error('loadPayRecords error', e)
+      notify('ไม่สามารถเชื่อมต่อ leave-bay ได้ ลองใหม่')
+    } finally {
+      setPayLoadingRecords(false)
     }
   }, [])
 
   const openPayDialog = async () => {
-    setEditingGroupId(null)
-    setPayEmployeeId(null)
-    setPaySelectedHolidayIds([])
-    setPayMonth(hcMonth)
-    setPayYear(hcYear)
+    setPaySelectedEmployeeId(null)
+    setPayRecords([])
+    setPaySelectedRecordIds(new Set())
+    setPayPaidByName('')
+    setPayPaymentMethod('promptpay')
+    setPayPaymentReference('')
     setPayDialogOpen(true)
-    await loadDialogData(hcYear)
+    await loadPayEmployees()
   }
 
-  const openEditPayDialog = async (item: HcItem) => {
-    const parsed = parseHcDescription(item.description)
-    if (!parsed || !parsed.employeeId) {
-      alert('รายการนี้เป็นรูปแบบเก่าที่แก้ไขไม่ได้ — ลบและบันทึกใหม่แทน')
-      return
-    }
-    setEditingGroupId(item.groupId)
-    setPayEmployeeId(parsed.employeeId)
-    setPaySelectedHolidayIds([])
-    setPayMonth(String(item.month))
-    setPayYear(String(item.year))
-    setPayDialogOpen(true)
+  const handleSelectPayEmployee = async (employeeId: string) => {
+    setPaySelectedEmployeeId(employeeId)
+    await loadPayRecords(employeeId)
+  }
 
-    // เริ่มโหลด: ใช้ปีของวันหยุดแรก (item.year อาจเป็นเดือนที่ลงรายจ่าย ไม่ใช่ปีของวันหยุด)
-    const yearsInItems = new Set<number>()
-    if (parsed.items && parsed.items.length > 0) {
-      parsed.items.forEach(it => {
-        const parts = it.date.split('/')
-        if (parts.length === 3) {
-          const y = parseInt(parts[2])
-          if (!Number.isNaN(y)) yearsInItems.add(y)
-        }
-      })
-    }
-    if (yearsInItems.size === 0) yearsInItems.add(item.year)
-
-    // โหลดของปีหลัก (ปี dropdown จะแสดงปีนี้) — ใช้ปีแรกของ items
-    const primaryYear = Array.from(yearsInItems).sort()[0]
-    setPayYear(String(primaryYear))
-    const primaryRes = await loadDialogData(String(primaryYear))
-
-    // ถ้ามี holidayIds ใน description → ใช้เลย
-    if (parsed.holidayIds && parsed.holidayIds.length > 0) {
-      setPaySelectedHolidayIds(parsed.holidayIds)
-      return
-    }
-
-    // ถ้าไม่มี → derive จาก date matching ใน holidays
-    // รวม holidays ของทุกปีที่ items อ้างถึง (ปกติปีเดียว — แต่อาจข้ามปี)
-    const allHolidays: Holiday[] = []
-    if (primaryRes) allHolidays.push(...primaryRes.holidays)
-    const otherYears = Array.from(yearsInItems).filter(y => y !== primaryYear)
-    for (const y of otherYears) {
-      try {
-        const hRes = await fetch(`/api/holidays?year=${y}`)
-        const hData = await hRes.json()
-        if (Array.isArray(hData)) allHolidays.push(...hData)
-      } catch {
-        // ignore
-      }
-    }
-
-    const dateToId = new Map<string, number>()
-    allHolidays.forEach(h => {
-      const d = new Date(h.date)
-      const dd = d.getUTCDate()
-      const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-      const yy = d.getUTCFullYear()
-      dateToId.set(`${dd}/${mm}/${yy}`, h.id)
+  const togglePayRecord = (id: string) => {
+    setPaySelectedRecordIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
     })
-    const ids = parsed.items
-      .map(it => dateToId.get(it.date))
-      .filter((x): x is number => typeof x === 'number')
-    setPaySelectedHolidayIds(ids)
+  }
 
-    if (ids.length < parsed.items.length) {
-      console.warn(`Edit: matched ${ids.length}/${parsed.items.length} holidays — บางวันหยุดอาจถูกลบไปแล้ว`)
+  const togglePayAllRecords = () => {
+    if (payRecords.length === 0) return
+    if (paySelectedRecordIds.size === payRecords.length) {
+      setPaySelectedRecordIds(new Set())
+    } else {
+      setPaySelectedRecordIds(new Set(payRecords.map(r => r.id)))
     }
   }
 
-  const handlePayDialogClose = (open: boolean) => {
-    setPayDialogOpen(open)
-    if (!open) setEditingGroupId(null)
-  }
+  const paySelectedEmployee = payEmployees.find(e => e.id === paySelectedEmployeeId) || null
+  const paySelectedRecords = payRecords.filter(r => paySelectedRecordIds.has(r.id))
+  const payTotalSelected = paySelectedRecords.reduce((s, r) => s + (Number(r.amountToPay) || 0), 0)
+  const payAllChecked = payRecords.length > 0 && paySelectedRecordIds.size === payRecords.length
+  const payCanSubmit =
+    !!paySelectedEmployeeId &&
+    paySelectedRecords.length > 0 &&
+    payPaidByName.trim().length > 0 &&
+    !paySaving
 
-  const togglePayHolidayId = (id: number) => {
-    setPaySelectedHolidayIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
-  const paySelectedEmployee = payEmployees.find(e => e.id === payEmployeeId)
-  const payDays = paySelectedHolidayIds.length
-
-  // คำนวณ per-holiday: แต่ละวันใช้ salary ของเดือนของวันหยุดนั้น
-  const payPerHoliday = paySelectedHolidayIds.map(id => {
-    const h = payHolidays.find(x => x.id === id)
-    if (!h || !paySelectedEmployee) return null
-    const d = new Date(h.date)
-    const hm = d.getUTCMonth() + 1
-    const entry = paySelectedEmployee.salaries[hm]
-    const sal = entry?.salary || 0
-    const amt = sal > 0 ? (sal / 30) * 2 : 0
-    return {
-      holidayId: id,
-      name: h.name,
-      day: d.getUTCDate(),
-      month: hm,
-      year: d.getUTCFullYear(),
-      salary: sal,
-      amount: amt,
-      isCarriedForward: !!entry?.isCarriedForward,
-      sourceMonth: entry?.sourceMonth ?? null,
-      sourceYear: entry?.sourceYear ?? null,
-    }
-  }).filter((x): x is NonNullable<typeof x> => x !== null)
-
-  const payTotalAllBuildings = payPerHoliday.reduce((s, x) => s + x.amount, 0)
-  const payPerBuilding = payTotalAllBuildings / 3
-  const payHasNoSalaryHoliday = payPerHoliday.some(x => x.salary <= 0)
-
-  const handlePaySave = async () => {
-    if (!payEmployeeId) {
-      alert('กรุณาเลือกพนักงาน')
+  const handlePayConfirm = async () => {
+    if (!paySelectedEmployee) {
+      notify('กรุณาเลือกพนักงาน')
       return
     }
-    if (paySelectedHolidayIds.length === 0) {
-      alert('กรุณาเลือกวันหยุดอย่างน้อย 1 วัน')
+    if (paySelectedRecords.length === 0) {
+      notify('กรุณาเลือกอย่างน้อย 1 รายการ')
       return
     }
+    const paidBy = payPaidByName.trim()
+    if (!paidBy) {
+      notify('กรุณากรอกชื่อผู้อนุมัติ')
+      return
+    }
+
+    const confirmMsg = `ยืนยันจ่าย ${paySelectedRecords.length} รายการ ยอด ${formatNumber(payTotalSelected)} บาท ให้ ${paySelectedEmployee.name}?`
+    if (!confirm(confirmMsg)) return
+
     setPaySaving(true)
     try {
-      // 1) สร้างรายการใหม่ก่อน (ถ้า fail ของเก่ายังอยู่)
-      const res = await fetch('/api/holiday-compensation', {
+      const body: {
+        recordIds: string[]
+        paidByName: string
+        paymentMethod: PaymentMethod
+        paymentReference?: string
+      } = {
+        recordIds: paySelectedRecords.map(r => r.id),
+        paidByName: paidBy,
+        paymentMethod: payPaymentMethod,
+      }
+      const ref = payPaymentReference.trim()
+      if (ref) body.paymentReference = ref
+
+      const res = await fetch('/api/holidays/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: payEmployeeId,
-          holidayIds: paySelectedHolidayIds,
-          month: parseInt(payMonth),
-          year: parseInt(payYear),
-        }),
+        body: JSON.stringify(body),
       })
+      const data = await res.json().catch(() => ({} as Record<string, unknown>))
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
         if (res.status === 401) {
-          alert('กรุณาเข้าสู่ระบบ')
           window.location.href = '/access'
           return
         }
-        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        const code = typeof (data as { code?: unknown }).code === 'string'
+          ? ((data as { code: string }).code)
+          : undefined
+        const errMsg = typeof (data as { error?: unknown }).error === 'string'
+          ? ((data as { error: string }).error)
+          : 'บันทึกไม่สำเร็จ'
+        notify(describePayError(code, errMsg))
         return
       }
 
-      // 2) ถ้า edit → ลบ group เก่า
-      if (editingGroupId) {
-        const delRes = await fetch(`/api/holiday-compensation/${editingGroupId}`, { method: 'DELETE' })
-        if (!delRes.ok) {
-          alert('บันทึกรายการใหม่สำเร็จ แต่ลบรายการเก่าไม่สำเร็จ — กรุณาลบรายการเก่าด้วยตนเอง')
+      const paidCount = typeof (data as { paidCount?: unknown }).paidCount === 'number'
+        ? (data as { paidCount: number }).paidCount
+        : paySelectedRecords.length
+      const totalAmount = typeof (data as { totalAmount?: unknown }).totalAmount === 'number'
+        ? (data as { totalAmount: number }).totalAmount
+        : payTotalSelected
+      notify(`จ่ายสำเร็จ ${paidCount} รายการ ยอดรวม ${formatNumber(totalAmount)} บาท`, 'success')
+
+      // refresh: dropdown employees + records ของคนปัจจุบัน (ถ้ายังเหลือ)
+      const currentEmpId = paySelectedEmployeeId
+      await loadPayEmployees()
+      if (currentEmpId) {
+        try {
+          const updatedRes = await fetch('/api/holidays/employees-with-pending')
+          const updated = (await updatedRes.json()) as PendingEmployee[] | { error?: string }
+          if (Array.isArray(updated) && updated.find(e => e.id === currentEmpId)) {
+            await loadPayRecords(currentEmpId)
+          } else {
+            setPaySelectedEmployeeId(null)
+            setPayRecords([])
+            setPaySelectedRecordIds(new Set())
+          }
+        } catch {
+          // ignore — dropdown ก็อัปเดตแล้ว
         }
       }
-
-      // ถ้าเดือน/ปีที่ลงตรงกับ filter ปัจจุบัน → refresh
-      if (payMonth === hcMonth && payYear === hcYear) {
-        await loadHcItems()
-      } else {
-        // เปลี่ยน filter ให้ตรงกับที่บันทึก เพื่อให้เห็นรายการใหม่
-        setHcMonth(payMonth)
-        setHcYear(payYear)
-      }
-      setPayDialogOpen(false)
-      setEditingGroupId(null)
     } catch (e) {
-      console.error('handlePaySave error', e)
-      alert('เกิดข้อผิดพลาดในการบันทึก')
+      console.error('handlePayConfirm error', e)
+      notify('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setPaySaving(false)
     }
@@ -744,16 +783,6 @@ export default function HolidaysPage() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-7 w-7 text-blue-600 hover:bg-blue-100 disabled:opacity-30"
-                                disabled={!parsed || !parsed.employeeId}
-                                onClick={() => openEditPayDialog(item)}
-                                title={parsed && parsed.employeeId ? 'แก้ไข' : 'รายการเก่าแก้ไขไม่ได้'}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
                                 className="h-7 w-7 text-red-600 hover:bg-red-100"
                                 disabled={hcDeletingGroupId === item.groupId}
                                 onClick={() => handleHcDelete(item.groupId)}
@@ -830,172 +859,175 @@ export default function HolidaysPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: จ่ายค่าแรงวันหยุดชดเชย */}
-      <Dialog open={payDialogOpen} onOpenChange={handlePayDialogClose}>
-        <DialogContent className="w-[95vw] max-w-[640px] max-h-[90vh] overflow-y-auto">
+      {/* Dialog: จ่ายค่าแรงวันหยุดชดเชย (ดึงจาก leave-bay) */}
+      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[720px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#F28482]">
-              {editingGroupId ? 'แก้ไขค่าแรงวันหยุดชดเชย' : 'จ่ายค่าแรงวันหยุดชดเชย'}
-            </DialogTitle>
+            <DialogTitle className="text-[#F28482]">จ่ายค่าแรงวันหยุดชดเชย</DialogTitle>
             <DialogDescription>
-              {editingGroupId
-                ? 'แก้ไขข้อมูล แล้วกดบันทึก — ระบบจะลบรายการเก่าและสร้างรายการใหม่ให้อัตโนมัติ'
-                : 'เลือกพนักงาน วันหยุดที่ทำงาน และเดือนที่ต้องการลงรายการ'}
+              เลือกพนักงาน → ติ๊กรายการที่ต้องการจ่าย → กรอกข้อมูลผู้อนุมัติและกดยืนยัน
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {/* เดือน/ปี ที่จะลงรายการ */}
+
+          <div className="space-y-4 py-2">
+            {/* เลือกพนักงาน */}
             <div className="space-y-1.5">
-              <Label className="text-xs sm:text-sm font-medium">ลงรายการรายจ่ายในเดือน</Label>
-              <div className="flex gap-2">
-                <Select value={payMonth} onValueChange={setPayMonth}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="เดือน" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableMonths(payYear).map((m) => (
-                      <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Label className="text-xs sm:text-sm font-medium">เลือกพนักงาน</Label>
+              {payLoadingEmployees ? (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  กำลังโหลดรายชื่อพนักงาน...
+                </div>
+              ) : payEmployees.length === 0 ? (
+                <p className="text-xs text-gray-500 italic py-2">
+                  ไม่มีรายการค้างจ่ายในระบบ
+                </p>
+              ) : (
                 <Select
-                  value={payYear}
-                  onValueChange={(v) => { setPayYear(v); loadDialogData(v) }}
+                  value={paySelectedEmployeeId ?? ''}
+                  onValueChange={(v) => { if (v) handleSelectPayEmployee(v) }}
                 >
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue placeholder="ปี" />
+                  <SelectTrigger className="h-9 text-xs sm:text-sm">
+                    <SelectValue placeholder="-- เลือกพนักงาน --" />
                   </SelectTrigger>
                   <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    {payEmployees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.name} — {emp.pendingCount} วัน, {formatNumber(emp.pendingTotal)} บาท
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              )}
             </div>
 
-            {payLoadingDialog ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
-              </div>
-            ) : (
-              <>
-                {/* เลือกพนักงาน */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs sm:text-sm font-medium">เลือกพนักงาน</Label>
-                  <Select
-                    value={payEmployeeId ? String(payEmployeeId) : ''}
-                    onValueChange={(v) => setPayEmployeeId(v ? parseInt(v) : null)}
-                  >
-                    <SelectTrigger className="h-9 text-xs sm:text-sm">
-                      <SelectValue placeholder="-- เลือกพนักงาน --" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {payEmployees.map((emp) => {
-                        const display = emp.nickname || `${emp.firstName} ${emp.lastName}`.trim()
-                        const hasAnySalary = Object.values(emp.salaries).some(s => s.salary > 0) || emp.defaultSalary > 0
-                        return (
-                          <SelectItem key={emp.id} value={String(emp.id)} disabled={!hasAnySalary}>
-                            {display}{!hasAnySalary && ' (ไม่มีเงินเดือนในระบบ)'}
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-gray-500">
-                    ระบบจะดึงเงินเดือนตามเดือนของวันหยุดที่เลือก (ถ้าเดือนนั้นไม่มี/เป็น 0 จะใช้เงินเดือนล่าสุดที่ &gt; 0)
+            {/* ตารางรายการของพนักงานที่เลือก */}
+            {paySelectedEmployeeId && (
+              payLoadingRecords ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
+                </div>
+              ) : payRecords.length === 0 ? (
+                <p className="text-xs text-gray-500 italic text-center py-4">
+                  ไม่มีรายการค้างจ่ายสำหรับพนักงานคนนี้
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          <TableHead className="w-[44px] px-2">
+                            <Checkbox
+                              checked={payAllChecked}
+                              onCheckedChange={togglePayAllRecords}
+                              aria-label="เลือกทั้งหมด"
+                            />
+                          </TableHead>
+                          <TableHead className="px-2 text-xs whitespace-nowrap">วันที่</TableHead>
+                          <TableHead className="px-2 text-xs">ชื่อวันหยุด</TableHead>
+                          <TableHead className="text-right px-2 text-xs whitespace-nowrap">ยอดเงิน</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payRecords.map((rec) => {
+                          const checked = paySelectedRecordIds.has(rec.id)
+                          return (
+                            <TableRow key={rec.id} className={checked ? '' : 'opacity-60'}>
+                              <TableCell className="px-2 py-1.5">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={() => togglePayRecord(rec.id)}
+                                  aria-label={`เลือก ${rec.holidayName}`}
+                                />
+                              </TableCell>
+                              <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap">
+                                {formatPendingDate(rec.workDate)}
+                              </TableCell>
+                              <TableCell className="px-2 py-1.5 text-xs">
+                                {rec.holidayName}
+                              </TableCell>
+                              <TableCell className="text-right px-2 py-1.5 text-xs whitespace-nowrap font-medium text-[#F28482]">
+                                {formatNumber(rec.amountToPay)}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={3} className="px-2 text-xs font-semibold">
+                            ยอดรวม ({paySelectedRecords.length}/{payRecords.length} รายการ)
+                          </TableCell>
+                          <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">
+                            {formatNumber(payTotalSelected)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+
+                  {/* ช่องกรอกข้อมูลการจ่าย */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium">
+                        ชื่อผู้อนุมัติ <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={payPaidByName}
+                        onChange={(e) => setPayPaidByName(e.target.value)}
+                        placeholder="เช่น คุณก้อง"
+                        className="h-9 text-xs sm:text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs sm:text-sm font-medium">วิธีจ่าย</Label>
+                      <Select
+                        value={payPaymentMethod}
+                        onValueChange={(v) => setPayPaymentMethod(v as PaymentMethod)}
+                      >
+                        <SelectTrigger className="h-9 text-xs sm:text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="promptpay">{PAYMENT_METHOD_LABEL.promptpay}</SelectItem>
+                          <SelectItem value="cash">{PAYMENT_METHOD_LABEL.cash}</SelectItem>
+                          <SelectItem value="transfer">{PAYMENT_METHOD_LABEL.transfer}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs sm:text-sm font-medium">
+                        เลขอ้างอิง <span className="text-gray-400 font-normal">(ไม่บังคับ)</span>
+                      </Label>
+                      <Input
+                        value={payPaymentReference}
+                        onChange={(e) => setPayPaymentReference(e.target.value)}
+                        placeholder="เลขสลิป / ref ของธนาคาร"
+                        className="h-9 text-xs sm:text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 italic border-l-2 border-amber-400 pl-2">
+                    หมายเหตุ: ระบบจะบันทึกการจ่ายลง leave-bay — รายการที่จ่ายแล้วจะไม่กลับมาแสดงในที่นี้
                   </p>
                 </div>
-
-                {/* เลือกวันหยุด */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs sm:text-sm font-medium">
-                    เลือกวันหยุดราชการ ({payHolidays.length} วันในปี {payYear})
-                  </Label>
-                  <div className="border rounded-lg max-h-[200px] overflow-y-auto p-2 space-y-1 bg-slate-50">
-                    {payHolidays.length === 0 ? (
-                      <p className="text-center text-xs text-gray-500 py-4">
-                        ยังไม่มีวันหยุดของปีนี้ — กดเพิ่มที่ Section ด้านบน
-                      </p>
-                    ) : (
-                      payHolidays.map((h) => {
-                        const d = new Date(h.date)
-                        const dd = d.getUTCDate()
-                        const mm = d.getUTCMonth() + 1
-                        const yyyy = d.getUTCFullYear()
-                        const checked = paySelectedHolidayIds.includes(h.id)
-                        return (
-                          <label
-                            key={h.id}
-                            className={`flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-white text-xs sm:text-sm ${checked ? 'bg-white border border-[#F28482]' : ''}`}
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={() => togglePayHolidayId(h.id)}
-                            />
-                            <span className="flex-1">{h.name}</span>
-                            <span className="text-gray-500 text-[11px] sm:text-xs">{dd}/{mm}/{yyyy}</span>
-                          </label>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Preview การคำนวณ per-holiday */}
-                {payEmployeeId && payDays > 0 && (
-                  <div className="rounded-lg border border-[#F28482]/30 bg-[#F28482]/5 p-3 space-y-2">
-                    <p className="text-[11px] sm:text-xs text-gray-600 font-medium">การคำนวณ (แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น):</p>
-                    <div className="space-y-0.5">
-                      {payPerHoliday.map((d) => (
-                        <div key={d.holidayId} className="text-[11px] sm:text-xs flex items-center justify-between gap-2">
-                          <span className="text-gray-700">
-                            {d.day}/{d.month}/{d.year} — {d.name}
-                            {d.isCarriedForward && d.sourceMonth && d.sourceYear && (
-                              <span className="text-amber-600"> *</span>
-                            )}
-                          </span>
-                          <span className="text-gray-700">
-                            {d.salary > 0
-                              ? <>ฐาน <span className="font-medium">{formatNumber(d.salary)}</span> ÷ 30 × 2 = <span className="font-bold text-[#F28482]">{formatNumber(d.amount)}</span></>
-                              : <span className="text-red-600 font-medium">ไม่มีเงินเดือน</span>
-                            }
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {payPerHoliday.some(d => d.isCarriedForward) && (
-                      <p className="text-[10px] text-amber-600">* ใช้เงินเดือนล่าสุดที่ &gt; 0 ก่อนเดือนของวันหยุดนั้น</p>
-                    )}
-                    <div className="border-t border-[#F28482]/20 pt-1.5 space-y-0.5">
-                      <p className="text-xs sm:text-sm">
-                        รวม {payDays} วัน = <span className="font-bold text-[#F28482]">{formatNumber(payTotalAllBuildings)}</span> บาท
-                      </p>
-                      <p className="text-xs sm:text-sm">
-                        ÷ 3 อาคาร = <span className="font-bold text-[#84A59D]">{formatNumber(payPerBuilding)}</span> บาท / อาคาร
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-[10px] sm:text-[11px] text-gray-500 italic border-l-2 border-amber-400 pl-2">
-                  หมายเหตุ: ค่าแรงคำนวณจากเงินเดือน ณ ตอนบันทึก (snapshot)
-                  หากแก้ไขเงินเดือนภายหลัง ต้องลบรายการเก่าและบันทึกใหม่
-                </p>
-              </>
+              )
             )}
           </div>
+
           <DialogFooter className="flex-col-reverse sm:flex-row gap-1.5 sm:gap-2">
             <Button variant="outline" onClick={() => setPayDialogOpen(false)} disabled={paySaving} className="w-full sm:w-auto">
               ยกเลิก
             </Button>
             <Button
-              onClick={handlePaySave}
-              disabled={paySaving || payLoadingDialog || !payEmployeeId || paySelectedHolidayIds.length === 0 || payHasNoSalaryHoliday}
+              onClick={handlePayConfirm}
+              disabled={!payCanSubmit}
               className="w-full sm:w-auto bg-[#F28482] hover:bg-[#d76b69]"
             >
               {paySaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              บันทึก
+              ยืนยันการจ่ายเงิน
             </Button>
           </DialogFooter>
         </DialogContent>
