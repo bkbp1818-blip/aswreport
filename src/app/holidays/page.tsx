@@ -161,6 +161,24 @@ interface PaidRecord {
 type HistorySource = 'all' | 'new' | 'legacy'
 const HISTORY_PAGE_SIZE = 20
 
+interface DashboardSummary {
+  pending: { totalAmount: number; employeeCount: number; totalDays: number }
+  paidThisMonth: {
+    totalAmount: number; totalCount: number
+    newAmount: number; newCount: number
+    oldAmount: number; oldCount: number
+  }
+  paidThisYear: {
+    totalAmount: number; totalCount: number
+    newAmount: number; newCount: number
+    oldAmount: number; oldCount: number
+  }
+  employeesWithPending: { count: number; avgPerEmployee: number }
+  generatedAt: string
+  currentMonth: number
+  currentYear: number
+}
+
 // pill สีของวิธีการจ่าย
 function paymentMethodPill(method: string): { label: string; className: string } {
   switch (method) {
@@ -254,6 +272,10 @@ export default function HolidaysPage() {
   const [historyPageNew, setHistoryPageNew] = useState(1)
   const [historyPageLegacy, setHistoryPageLegacy] = useState(1)
 
+  // ========== Dashboard summary cards state ==========
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
+  const [dashboardLoading, setDashboardLoading] = useState(true)
+
   const loadHolidays = useCallback(async () => {
     setLoading(true)
     try {
@@ -334,9 +356,32 @@ export default function HolidaysPage() {
     }
   }, [hcMonth, hcYear])
 
+  // โหลด dashboard summary (4 cards) — รวม 3 sources ใน server-side ครั้งเดียว
+  const loadDashboard = useCallback(async () => {
+    setDashboardLoading(true)
+    try {
+      const res = await fetch('/api/holidays/dashboard-summary')
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = '/access'
+          return
+        }
+        console.warn('dashboard-summary fetch failed:', res.status)
+        return
+      }
+      const data = (await res.json()) as DashboardSummary
+      setDashboardSummary(data)
+    } catch (e) {
+      console.error('loadDashboard error', e)
+    } finally {
+      setDashboardLoading(false)
+    }
+  }, [])
+
   useEffect(() => { loadHolidays() }, [loadHolidays])
   useEffect(() => { loadHcItems() }, [loadHcItems])
   useEffect(() => { loadHistory() }, [loadHistory])
+  useEffect(() => { loadDashboard() }, [loadDashboard])
   // reset pagination เมื่อ filter เปลี่ยน
   useEffect(() => {
     setHistoryPageNew(1)
@@ -590,9 +635,9 @@ export default function HolidaysPage() {
         : payTotalSelected
       notify(`จ่ายสำเร็จ ${paidCount} รายการ ยอดรวม ${formatNumber(totalAmount)} บาท`, 'success')
 
-      // refresh: dropdown employees + records ของคนปัจจุบัน (ถ้ายังเหลือ)
+      // refresh: dropdown employees + dashboard summary + history + records ของคนปัจจุบัน (ถ้ายังเหลือ)
       const currentEmpId = paySelectedEmployeeId
-      await loadPayEmployees()
+      await Promise.all([loadPayEmployees(), loadDashboard(), loadHistory()])
       if (currentEmpId) {
         try {
           const updatedRes = await fetch('/api/holidays/employees-with-pending')
@@ -677,6 +722,85 @@ export default function HolidaysPage() {
             จัดการรายการวันหยุดและบันทึกการจ่ายค่าแรงวันหยุดชดเชย (CT/YW/NANA)
           </p>
         </div>
+      </div>
+
+      {/* Summary cards 4 ใบ — โหลดจาก /api/holidays/dashboard-summary ครั้งเดียว */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Card 1: รอจ่าย (amber) */}
+        <Card className="border-amber-300 bg-amber-50/40">
+          <CardHeader className="pb-1.5">
+            <CardDescription className="text-xs text-amber-800/80">รอจ่าย</CardDescription>
+            <CardTitle className="text-2xl text-amber-700">
+              {dashboardLoading && !dashboardSummary
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : formatNumber(dashboardSummary?.pending.totalAmount ?? 0)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-[11px] text-amber-700/80">
+              {dashboardSummary
+                ? `${dashboardSummary.pending.employeeCount} พนักงาน · ${dashboardSummary.pending.totalDays} วัน`
+                : ' '}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: จ่ายแล้วเดือนนี้ (green) */}
+        <Card className="border-green-300 bg-green-50/40">
+          <CardHeader className="pb-1.5">
+            <CardDescription className="text-xs text-green-800/80">จ่ายแล้วเดือนนี้</CardDescription>
+            <CardTitle className="text-2xl text-green-700">
+              {dashboardLoading && !dashboardSummary
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : formatNumber(dashboardSummary?.paidThisMonth.totalAmount ?? 0)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-[11px] text-green-700/80">
+              {dashboardSummary
+                ? `${dashboardSummary.paidThisMonth.totalCount} รายการ · ใหม่ ${dashboardSummary.paidThisMonth.newCount} + เก่า ${dashboardSummary.paidThisMonth.oldCount}`
+                : ' '}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: จ่ายแล้วปีนี้ (กลาง) */}
+        <Card>
+          <CardHeader className="pb-1.5">
+            <CardDescription className="text-xs">จ่ายแล้วปีนี้</CardDescription>
+            <CardTitle className="text-2xl text-gray-800">
+              {dashboardLoading && !dashboardSummary
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : formatNumber(dashboardSummary?.paidThisYear.totalAmount ?? 0)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-[11px] text-gray-600">
+              {dashboardSummary
+                ? `${dashboardSummary.paidThisYear.totalCount} รายการ · ใหม่ ${dashboardSummary.paidThisYear.newCount} + เก่า ${dashboardSummary.paidThisYear.oldCount}`
+                : ' '}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 4: พนักงานค้างจ่าย (กลาง) */}
+        <Card>
+          <CardHeader className="pb-1.5">
+            <CardDescription className="text-xs">พนักงานค้างจ่าย</CardDescription>
+            <CardTitle className="text-2xl text-gray-800">
+              {dashboardLoading && !dashboardSummary
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : `${dashboardSummary?.employeesWithPending.count ?? 0} คน`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-[11px] text-gray-600">
+              {dashboardSummary && dashboardSummary.employeesWithPending.count > 0
+                ? `เฉลี่ย ${formatNumber(dashboardSummary.employeesWithPending.avgPerEmployee)} บาท/คน`
+                : ' '}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="holidays" className="w-full">
