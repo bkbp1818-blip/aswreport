@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.25.0 |
+| **Version** | 1.26.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -350,7 +350,38 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.25.0 (Current - May 2026) — Holiday Phase B: 4 tabs + summary cards + ประวัติการจ่ายรวม 2 แหล่ง
+### v1.26.0 (Current - May 2026) — Holiday: auto-sync ExpenseHistory หลังจ่าย + fix double-count
+
+ปิด accounting gap จาก v1.24.0 — รายการที่จ่ายผ่าน flow ใหม่ตอนนี้บันทึกลง `ExpenseHistory`
+ของ aswreport อัตโนมัติ ทำให้รายงาน `/summary` ช่อง "ค่าแรงวันหยุดชดเชย" รวมยอดถูก
+
+- **Auto-sync ExpenseHistory ใน `POST /api/holidays/pay`** (best-effort, ไม่ rollback):
+  - หลัง leave-bay `/pay` success → เรียก `GET /api/public/compensatory/history`
+    (filter `startDate=today` + `employeeId` hint เพื่อลด payload) → ดึง details ของ records ที่จ่าย
+  - คำนวณ `perBuilding = totalAllBuildings / 3` (precise Decimal — ไม่ปัด)
+  - สร้าง `description` JSON เหมือนระบบเก่า + เพิ่ม flag `syncedFromLeaveBay: true` + `paidAt` timestamp
+  - INSERT 3 records ใน `prisma.$transaction` (CT/YW/NANA จาก `code IN (...)` — ไม่ hardcode id)
+  - **ถ้า fail (history/buildings/INSERT)** → return success + `warning` field พร้อม details ครบ
+    (employeeName, totals, items[], groupId) ให้ user copy ไปกรอกมือ — ไม่ rollback leave-bay
+- **Frontend `handlePayConfirm`**:
+  - ส่ง `employeeId` ของ leave-bay ใน body (ลด payload ฝั่ง backend)
+  - ตรวจ `data.warning` → format text → copy ไป `navigator.clipboard` → DOM toast amber 12 วินาที
+    พร้อมข้อความ "✓ คัดลอกรายละเอียดไปคลิปบอร์ดแล้ว"
+  - ขยาย `notify()` รองรับ variant `'warning'` (`#d97706`) + custom `durationMs` + click-to-close
+- **Fix double-count ใน `dashboard-summary`** (commit ตามมาทันที):
+  - หลัง auto-sync — record เดียวกันถูกนับ 2 ที่: leave-bay history (`paidAt`) + aswreport ExpenseHistory
+    → Card "จ่ายแล้วเดือนนี้" แสดงผิด (e.g. 20,000 แทน 13,466.67)
+  - แก้: เพิ่ม where clause `description: { not: { contains: '"syncedFromLeaveBay":true' } }`
+    ใน query ExpenseHistory → DB-side filter (NOT LIKE) — ไม่ false-positive
+    เพราะ string รวม quote คู่ของ key มาจาก `JSON.stringify` เท่านั้น
+  - กระทบเฉพาะ Card 2 (paidThisMonth) + Card 3 (paidThisYear) — Card 1/4 ไม่ใช้ ExpenseHistory
+- **ผลลัพธ์ลำดับใหม่:**
+  - User กดยืนยันจ่ายเงิน → leave-bay mark `isPaid` → aswreport INSERT 3 records
+  - Card "จ่ายแล้วเดือนนี้" รวม yอดจากแหล่งเดียว (leave-bay history filter `paidAt` ในเดือน) — ไม่ซ้ำ
+  - หน้า `/summary` ช่อง "ค่าแรงวันหยุดชดเชย" รวมยอด ExpenseHistory (รวม synced records) ปกติ
+- **ไฟล์แก้:** `src/app/api/holidays/pay/route.ts`, `src/app/holidays/page.tsx`, `src/app/api/holidays/dashboard-summary/route.ts`
+
+### v1.25.0 (May 2026) — Holiday Phase B: 4 tabs + summary cards + ประวัติการจ่ายรวม 2 แหล่ง
 
 ขยายหน้า `/holidays` จาก Phase A ให้เป็น dashboard เต็มรูปแบบ — ปิด accounting gap
 ที่เปิดไว้ใน v1.24.0 (รายการจ่ายผ่าน flow ใหม่ไม่นับเข้ารายงาน) โดยสร้างหน้า
@@ -1358,6 +1389,7 @@ npx vercel --prod        # Deploy
 - **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year — CT/YW/NANA คำนวณ auto จาก effectiveSalary (5%, max 875 ตามกฎหมาย 2569)
 - **เงินเดือนรายเดือน (MonthlySalary):** เก็บแยกตามพนักงาน+เดือน+ปี — ถ้าไม่มี record จะ carry forward จากเดือนก่อน, ถ้าไม่มีเลย fallback ไป Employee.salary
 - **ค่าแรงวันหยุดชดเชย (Holiday Compensation) v1.21.0:** จัดการที่หน้า `/holidays` (Partner only) — บันทึกใน `ExpenseHistory` (`fieldName=holidayCompensation`) แยก 3 records ต่อการบันทึก 1 ครั้ง (CT/YW/NANA) ผูกด้วย `groupId` UUID — ใช้ `prisma.$transaction` รับประกัน atomicity. การคำนวณเป็น **per-holiday**: แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น (skip 0 + carry forward จากเดือนล่าสุดที่ > 0). `description` เก็บเป็น JSON v1 พร้อม snapshot ของ employeeName, holidayIds, items[date,salary,amount] เพื่อ UI parse แสดงแบบจัดเรียง + รองรับการแก้ไข
-- **Holiday Compensation flow ใหม่ v1.24.0:** Dialog "จ่ายค่าแรง" ใน `/holidays` เปลี่ยน source จาก `Holiday` table ของ aswreport → public API ของ leave-bay (`/api/public/compensatory/*` ผ่าน proxy `/api/holidays/{employees-with-pending,pending/[id],pay}`) — แสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง ไม่ใช่วันหยุดทั้งปี. **รายการที่จ่ายผ่าน flow ใหม่ไม่ลง `ExpenseHistory`** (mark `isPaid` ที่ leave-bay เท่านั้น) — ไม่นับเข้ารายงานสรุป แต่ปรากฏใน Tab "ประวัติการจ่าย" Section A ของ v1.25.0
+- **Holiday Compensation flow ใหม่ v1.24.0:** Dialog "จ่ายค่าแรง" ใน `/holidays` เปลี่ยน source จาก `Holiday` table ของ aswreport → public API ของ leave-bay (`/api/public/compensatory/*` ผ่าน proxy `/api/holidays/{employees-with-pending,pending/[id],pay}`) — แสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง ไม่ใช่วันหยุดทั้งปี
+- **Holiday auto-sync v1.26.0:** หลังจ่ายเงินสำเร็จที่ leave-bay → `POST /api/holidays/pay` ดึง details จาก leave-bay history แล้ว INSERT 3 records (CT/YW/NANA) ใน `ExpenseHistory` พร้อม flag `syncedFromLeaveBay: true` ใน description JSON — best-effort: fail → return `warning` field พร้อม details ให้ user copy ไปกรอกมือ. `dashboard-summary` exclude records ที่มี flag นี้ออกจาก count "เก่า" เพื่อกัน double-count กับ "ใหม่" ที่มาจาก leave-bay history
 - **Holiday dashboard v1.25.0:** หน้า `/holidays` มี **4 tabs** (รายการวันหยุด/รอจ่ายเงิน/ประวัติการจ่าย/รายงาน) + **summary cards 4 ใบ** ด้านบน. Tab "ประวัติการจ่าย" รวมรายการจาก 2 source: "ระบบใหม่" (leave-bay `/api/public/compensatory/history` ผ่าน proxy `/api/holidays/history`) + "ระบบเก่า" (`ExpenseHistory` `fieldName=holidayCompensation`). Endpoint `/api/holidays/dashboard-summary` คำนวณ 4 cards ใน server-side ครั้งเดียว — ดูเฉพาะปีปัจจุบัน + เดือนปัจจุบัน. หลังกดจ่ายเงิน trigger refresh 3 endpoint พร้อมกัน (`Promise.all`)
 - **อัตราประกันสังคม (กฎหมาย 2569-2571):** 5%, เพดาน 17,500 บาท, สูงสุด 875 บาท/คน/เดือน
