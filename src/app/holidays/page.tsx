@@ -30,6 +30,7 @@ import {
   TableFooter,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Pencil, Trash2, Loader2, CalendarDays, Wallet } from 'lucide-react'
 import { generateYears, getAvailableMonths } from '@/lib/calculations'
 import { formatNumber, getMonthName } from '@/lib/utils'
@@ -567,256 +568,306 @@ export default function HolidaysPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* Section 1: รายการวันหยุดราชการ */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-[#84A59D]" />
-                รายการวันหยุดราชการ ปี {selectedYear}
-              </CardTitle>
-              <CardDescription>
-                พบ {activeHolidays.length} วัน{inactiveHolidays.length > 0 && ` (ซ่อน ${inactiveHolidays.length} วัน)`}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[110px] bg-white">
-                  <SelectValue placeholder="ปี" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={openAddDialog} className="bg-[#84A59D] hover:bg-[#6b8a84]">
-                <Plus className="mr-2 h-4 w-4" />
-                เพิ่มวันหยุด
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-[#84A59D]" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>ชื่อ</TableHead>
-                  <TableHead>วันที่</TableHead>
-                  <TableHead className="text-right">การจัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeHolidays.length === 0 && inactiveHolidays.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-sm text-[#666] py-6">
-                      ยังไม่มีรายการวันหยุดของปีนี้
-                    </TableCell>
-                  </TableRow>
-                )}
-                {activeHolidays.map((h, idx) => (
-                  <TableRow key={h.id}>
-                    <TableCell className="font-medium">{idx + 1}</TableCell>
-                    <TableCell>{h.name}</TableCell>
-                    <TableCell>{formatThaiDate(h.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-blue-600 hover:bg-blue-100"
-                          onClick={() => openEditDialog(h)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-red-600 hover:bg-red-100"
-                          onClick={() => handleDelete(h)}
-                          disabled={deletingId === h.id}
-                        >
-                          {deletingId === h.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {inactiveHolidays.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="bg-[#f5f5f5] text-xs font-medium text-[#666] py-2">
-                      ── ซ่อน (Inactive) ──
-                    </TableCell>
-                  </TableRow>
-                )}
-                {inactiveHolidays.map((h) => (
-                  <TableRow key={h.id} className="opacity-60">
-                    <TableCell>—</TableCell>
-                    <TableCell className="line-through">{h.name}</TableCell>
-                    <TableCell className="line-through">{formatThaiDate(h.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => handleReactivate(h)}>
-                        เปิดใช้งาน
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="holidays" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="holidays">รายการวันหยุด</TabsTrigger>
+          <TabsTrigger value="pending">รอจ่ายเงิน</TabsTrigger>
+          <TabsTrigger value="history">ประวัติการจ่าย</TabsTrigger>
+          <TabsTrigger value="report">รายงาน</TabsTrigger>
+        </TabsList>
 
-      {/* Section 2: การจ่ายค่าแรงวันหยุดชดเชย */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
+        {/* Tab 1: รายการวันหยุดราชการ */}
+        <TabsContent value="holidays" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5 text-[#84A59D]" />
+                    รายการวันหยุดราชการ ปี {selectedYear}
+                  </CardTitle>
+                  <CardDescription>
+                    พบ {activeHolidays.length} วัน{inactiveHolidays.length > 0 && ` (ซ่อน ${inactiveHolidays.length} วัน)`}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-[110px] bg-white">
+                      <SelectValue placeholder="ปี" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={openAddDialog} className="bg-[#84A59D] hover:bg-[#6b8a84]">
+                    <Plus className="mr-2 h-4 w-4" />
+                    เพิ่มวันหยุด
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#84A59D]" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>ชื่อ</TableHead>
+                      <TableHead>วันที่</TableHead>
+                      <TableHead className="text-right">การจัดการ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeHolidays.length === 0 && inactiveHolidays.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-sm text-[#666] py-6">
+                          ยังไม่มีรายการวันหยุดของปีนี้
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {activeHolidays.map((h, idx) => (
+                      <TableRow key={h.id}>
+                        <TableCell className="font-medium">{idx + 1}</TableCell>
+                        <TableCell>{h.name}</TableCell>
+                        <TableCell>{formatThaiDate(h.date)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-blue-600 hover:bg-blue-100"
+                              onClick={() => openEditDialog(h)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-red-600 hover:bg-red-100"
+                              onClick={() => handleDelete(h)}
+                              disabled={deletingId === h.id}
+                            >
+                              {deletingId === h.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {inactiveHolidays.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="bg-[#f5f5f5] text-xs font-medium text-[#666] py-2">
+                          ── ซ่อน (Inactive) ──
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {inactiveHolidays.map((h) => (
+                      <TableRow key={h.id} className="opacity-60">
+                        <TableCell>—</TableCell>
+                        <TableCell className="line-through">{h.name}</TableCell>
+                        <TableCell className="line-through">{formatThaiDate(h.date)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="outline" onClick={() => handleReactivate(h)}>
+                            เปิดใช้งาน
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 2: รอจ่ายเงิน — เปิด Dialog ของ Phase A */}
+        <TabsContent value="pending" className="mt-4">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-[#F28482]" />
-                จ่ายค่าแรงวันหยุดชดเชย — {getMonthName(parseInt(hcMonth))} {hcYear}
+                รอจ่ายเงิน
               </CardTitle>
               <CardDescription>
-                หาร 3 อาคาร: CT, YW, NANA — สูตร: เงินเดือน ÷ 30 × วัน × 2
+                ดึงรายการค้างจ่ายของพนักงานจากระบบ leave — เลือกพนักงาน ติ๊กรายการ แล้วยืนยันการจ่าย
               </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={hcMonth} onValueChange={setHcMonth}>
-                <SelectTrigger className="w-[120px] bg-white">
-                  <SelectValue placeholder="เดือน" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getAvailableMonths(hcYear).map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={hcYear} onValueChange={setHcYear}>
-                <SelectTrigger className="w-[90px] bg-white">
-                  <SelectValue placeholder="ปี" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={openPayDialog} className="bg-[#F28482] hover:bg-[#d76b69]">
-                <Plus className="mr-2 h-4 w-4" />
-                จ่ายค่าแรง
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {hcLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px] px-2 text-xs">#</TableHead>
-                    <TableHead className="px-2 text-xs whitespace-nowrap">ชื่อพนักงาน</TableHead>
-                    <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
-                    <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
-                    <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
-                    <TableHead className="w-[80px] px-2" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {hcItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-sm text-[#666] py-6">
-                        ยังไม่มีรายการจ่ายค่าแรงในเดือนนี้
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    hcItems.map((item, idx) => {
-                      const parsed = parseHcDescription(item.description)
-                      return (
-                        <TableRow key={item.groupId}>
-                          <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
-                          <TableCell className="px-2 text-xs font-semibold text-gray-800 align-top pt-3 whitespace-nowrap">
-                            {parsed?.employeeName || '—'}
-                          </TableCell>
-                          <TableCell className="px-2 align-top pt-2.5">
-                            {parsed ? (
-                              <ul className="space-y-0.5">
-                                {parsed.items.map((it, i) => (
-                                  <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
-                                    <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
-                                    <span className="text-gray-500">·</span>
-                                    <span className="flex-1 truncate">{it.name}</span>
-                                    <span className="text-gray-500 whitespace-nowrap">
-                                      ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <span className="text-[11px] leading-relaxed text-gray-700 break-words">{item.description}</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
-                            {formatNumber(item.totalAmount)}
-                          </TableCell>
-                          <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
-                            {formatNumber(item.amount)}
-                          </TableCell>
-                          <TableCell className="text-right px-1 align-top pt-2">
-                            <div className="flex items-center justify-end gap-0.5">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-red-600 hover:bg-red-100"
-                                disabled={hcDeletingGroupId === item.groupId}
-                                onClick={() => handleHcDelete(item.groupId)}
-                                title="ลบ"
-                              >
-                                {hcDeletingGroupId === item.groupId ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center gap-3 py-8">
+                <Button
+                  onClick={openPayDialog}
+                  size="lg"
+                  className="bg-[#F28482] hover:bg-[#d76b69]"
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  จ่ายค่าแรง
+                </Button>
+                <p className="text-xs text-gray-500">
+                  ยอดสรุปรอจ่ายดูได้จาก Card ด้านบนของหน้า
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: ประวัติการจ่าย — Task 3 จะ refactor เป็น Section A (ใหม่) + Section B (เก่า) + filter */}
+        <TabsContent value="history" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-[#F28482]" />
+                    ประวัติการจ่าย — {getMonthName(parseInt(hcMonth))} {hcYear}
+                  </CardTitle>
+                  <CardDescription>
+                    รายการในระบบเก่า (จาก ExpenseHistory) — ส่วนถัดไปจะรวมรายการจาก leave-bay ด้วย
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={hcMonth} onValueChange={setHcMonth}>
+                    <SelectTrigger className="w-[120px] bg-white">
+                      <SelectValue placeholder="เดือน" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableMonths(hcYear).map((m) => (
+                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={hcYear} onValueChange={setHcYear}>
+                    <SelectTrigger className="w-[90px] bg-white">
+                      <SelectValue placeholder="ปี" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {hcLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px] px-2 text-xs">#</TableHead>
+                        <TableHead className="px-2 text-xs whitespace-nowrap">ชื่อพนักงาน</TableHead>
+                        <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
+                        <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
+                        <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
+                        <TableHead className="w-[80px] px-2" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hcItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-sm text-[#666] py-6">
+                            ยังไม่มีรายการในเดือนนี้
                           </TableCell>
                         </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-                {hcItems.length > 0 && (
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={3} className="px-2 text-xs font-semibold">รวม</TableCell>
-                      <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">{formatNumber(hcTotalAll)}</TableCell>
-                      <TableCell className="text-right px-2 text-xs font-bold text-[#84A59D] whitespace-nowrap">{formatNumber(hcTotalPerBuilding)}</TableCell>
-                      <TableCell />
-                    </TableRow>
-                  </TableFooter>
-                )}
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
+                      ) : (
+                        hcItems.map((item, idx) => {
+                          const parsed = parseHcDescription(item.description)
+                          return (
+                            <TableRow key={item.groupId}>
+                              <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
+                              <TableCell className="px-2 text-xs font-semibold text-gray-800 align-top pt-3 whitespace-nowrap">
+                                {parsed?.employeeName || '—'}
+                              </TableCell>
+                              <TableCell className="px-2 align-top pt-2.5">
+                                {parsed ? (
+                                  <ul className="space-y-0.5">
+                                    {parsed.items.map((it, i) => (
+                                      <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
+                                        <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
+                                        <span className="text-gray-500">·</span>
+                                        <span className="flex-1 truncate">{it.name}</span>
+                                        <span className="text-gray-500 whitespace-nowrap">
+                                          ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="text-[11px] leading-relaxed text-gray-700 break-words">{item.description}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
+                                {formatNumber(item.totalAmount)}
+                              </TableCell>
+                              <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
+                                {formatNumber(item.amount)}
+                              </TableCell>
+                              <TableCell className="text-right px-1 align-top pt-2">
+                                <div className="flex items-center justify-end gap-0.5">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-red-600 hover:bg-red-100"
+                                    disabled={hcDeletingGroupId === item.groupId}
+                                    onClick={() => handleHcDelete(item.groupId)}
+                                    title="ลบ"
+                                  >
+                                    {hcDeletingGroupId === item.groupId ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                    {hcItems.length > 0 && (
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={3} className="px-2 text-xs font-semibold">รวม</TableCell>
+                          <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">{formatNumber(hcTotalAll)}</TableCell>
+                          <TableCell className="text-right px-2 text-xs font-bold text-[#84A59D] whitespace-nowrap">{formatNumber(hcTotalPerBuilding)}</TableCell>
+                          <TableCell />
+                        </TableRow>
+                      </TableFooter>
+                    )}
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4: รายงาน */}
+        <TabsContent value="report" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>รายงาน</CardTitle>
+              <CardDescription>สรุปและวิเคราะห์ค่าแรงวันหยุดชดเชย</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="py-16 text-center text-sm text-gray-500">Coming soon</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog: เพิ่ม/แก้ไขวันหยุด */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
