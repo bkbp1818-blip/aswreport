@@ -204,10 +204,26 @@ function DateBox({ value, onChange, className = '' }: { value: string; onChange:
   )
 }
 
-// แสดง feedback ให้ผู้ใช้ + log ไว้ใน console เผื่อ alert ถูก browser ระงับ
+// แสดง feedback แบบ DOM toast (มุมขวาบน) — ไม่ถูก browser ระงับเหมือน window.alert
 function notify(msg: string) {
   console.warn('[transactions]', msg)
-  if (typeof window !== 'undefined') window.alert(msg)
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const div = document.createElement('div')
+  div.textContent = msg
+  div.setAttribute('role', 'alert')
+  div.style.cssText = [
+    'position:fixed', 'top:1rem', 'right:1rem', 'z-index:9999',
+    'background:#dc2626', 'color:#fff',
+    'padding:0.75rem 1rem', 'border-radius:0.5rem',
+    'box-shadow:0 4px 12px rgba(0,0,0,0.15)',
+    'font-size:0.875rem', 'max-width:24rem', 'line-height:1.4',
+    'transition:opacity 0.3s ease-out',
+  ].join(';')
+  document.body.appendChild(div)
+  setTimeout(() => {
+    div.style.opacity = '0'
+    setTimeout(() => div.remove(), 300)
+  }, 4000)
 }
 
 export default function TransactionsPage() {
