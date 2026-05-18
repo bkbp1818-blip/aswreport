@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.23.0 |
+| **Version** | 1.24.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -350,7 +350,28 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.23.0 (Current - May 2026) — Audit log: แสดงผู้กรอก + เวลาบันทึก ในตารางตรวจสอบ
+### v1.24.0 (Current - May 2026) — Holiday compensation: ดึงรายการค้างจ่ายจริงจาก leave-bay
+
+แก้บั๊กที่ Dialog "จ่ายค่าแรง" ใน `/holidays` แสดงวันหยุดราชการ**ทั้งปี**ของระบบ แทนที่จะแสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง (เพราะ aswreport schema ไม่มี relation `Employee ↔ Holiday`)
+
+- **Source of truth:** leave-bay (https://leave-bay.vercel.app) เก็บข้อมูลจริง — เปิด public API ใหม่ 3 endpoints ภายใต้ `/api/public/compensatory/*` ใช้ key เดียวกับ v1.18.0 (`ASWREPORT_SHARED_API_KEY`)
+- **Architecture (aswreport):** browser ไม่เรียก leave-bay ตรง — ผ่าน proxy 3 routes:
+  - `GET /api/holidays/employees-with-pending` → list พนักงานที่มีรายการค้างจ่าย
+  - `GET /api/holidays/pending/[employeeId]` → list records ของพนักงานคนนั้น
+  - `POST /api/holidays/pay` → mark `isPaid=true` ใน leave-bay
+- **Helper `src/lib/leave-bay-client.ts`:** wrapper `fetch()` อ่าน env `LEAVE_API_BASE_URL` + `LEAVE_SHARED_API_KEY` (ตัวเดียวกับ extra-work-sync), header `x-api-key`, timeout 10s, error mapping (401 → 500 "API key ผิด", 5xx/network → 503 "เชื่อมต่อ leave-bay ไม่ได้")
+- **UI Dialog ใหม่:**
+  - dropdown พนักงาน "ชื่อ — N วัน, X.XX บาท" (เฉพาะที่มี pending > 0)
+  - ตาราง 4 คอลัมน์: checkbox / วันที่ / ชื่อวันหยุด / ยอดเงิน — default ติ๊กทุกแถว + checkbox header "เลือก/ยกเลิกทั้งหมด" + ยอดรวม realtime + ตัวนับ "(เลือก/รายการ)"
+  - ช่องกรอก: ชื่อผู้อนุมัติ (required) / วิธีจ่าย (PromptPay/เงินสด/โอน) / เลขอ้างอิง (optional)
+  - confirm dialog ก่อนยิง POST + DOM toast (เขียว success / แดง error) + error code mapping (`ALREADY_PAID` → "รายการนี้จ่ายไปแล้ว", `RECORD_NOT_FOUND`, `RECORD_EXPIRED`)
+  - หลัง success → refresh dropdown + reload records ของพนักงานปัจจุบัน (หรือ reset ถ้าจ่ายหมด)
+- **ไม่แตะ:** schema (`Holiday` table) + Section 1 (รายการวันหยุดราชการ) + `/api/holidays/*` + `/api/holiday-compensation/*` — ตาราง hcItems ใน Section 2 ยังแสดง + ลบรายการเก่าได้ (ลบเฉพาะปุ่ม "แก้ไข" — ระบบใหม่ไม่ลง `ExpenseHistory` ดังนั้นการแก้ไม่มีความหมาย)
+- **ผลกระทบ accounting:** รายการที่จ่ายผ่าน flow ใหม่ **ไม่ลง** `ExpenseHistory` ของ aswreport — ไม่นับเข้ารายงานสรุป (`/summary`) ระบบ Phase B (paused) จะเพิ่ม tab "ประวัติการจ่าย" + summary cards ที่รวม 2 แหล่ง (leave-bay history + ExpenseHistory เดิม) — ดู `plans/holidays-cuddly-umbrella.md`
+- **ไฟล์ใหม่:** `src/lib/leave-bay-client.ts`, `src/app/api/holidays/employees-with-pending/route.ts`, `src/app/api/holidays/pending/[employeeId]/route.ts`, `src/app/api/holidays/pay/route.ts`
+- **ไฟล์แก้:** `src/app/holidays/page.tsx`
+
+### v1.23.0 (May 2026) — Audit log: แสดงผู้กรอก + เวลาบันทึก ในตารางตรวจสอบ
 
 เพิ่ม audit log ในระบบกรอกข้อมูล เพื่อให้หุ้นส่วนเช็คได้ว่าใครทำอะไรตอนไหน:
 
@@ -1305,4 +1326,5 @@ npx vercel --prod        # Deploy
 - **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year — CT/YW/NANA คำนวณ auto จาก effectiveSalary (5%, max 875 ตามกฎหมาย 2569)
 - **เงินเดือนรายเดือน (MonthlySalary):** เก็บแยกตามพนักงาน+เดือน+ปี — ถ้าไม่มี record จะ carry forward จากเดือนก่อน, ถ้าไม่มีเลย fallback ไป Employee.salary
 - **ค่าแรงวันหยุดชดเชย (Holiday Compensation) v1.21.0:** จัดการที่หน้า `/holidays` (Partner only) — บันทึกใน `ExpenseHistory` (`fieldName=holidayCompensation`) แยก 3 records ต่อการบันทึก 1 ครั้ง (CT/YW/NANA) ผูกด้วย `groupId` UUID — ใช้ `prisma.$transaction` รับประกัน atomicity. การคำนวณเป็น **per-holiday**: แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น (skip 0 + carry forward จากเดือนล่าสุดที่ > 0). `description` เก็บเป็น JSON v1 พร้อม snapshot ของ employeeName, holidayIds, items[date,salary,amount] เพื่อ UI parse แสดงแบบจัดเรียง + รองรับการแก้ไข
+- **Holiday Compensation flow ใหม่ v1.24.0:** Dialog "จ่ายค่าแรง" ใน `/holidays` เปลี่ยน source จาก `Holiday` table ของ aswreport → public API ของ leave-bay (`/api/public/compensatory/*` ผ่าน proxy `/api/holidays/{employees-with-pending,pending/[id],pay}`) — แสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง ไม่ใช่วันหยุดทั้งปี. **รายการที่จ่ายผ่าน flow ใหม่ไม่ลง `ExpenseHistory`** (mark `isPaid` ที่ leave-bay เท่านั้น) — ไม่นับเข้ารายงานสรุป จนกว่า Phase B จะ deploy
 - **อัตราประกันสังคม (กฎหมาย 2569-2571):** 5%, เพดาน 17,500 บาท, สูงสุด 875 บาท/คน/เดือน
