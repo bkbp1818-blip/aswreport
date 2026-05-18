@@ -802,6 +802,7 @@ export default function TransactionsPage() {
     otaUiName?: string,
     channelUiName?: string,
   ) => {
+    console.log('[transactions] saveDailyEntry called', { group, otaUiName, channelUiName, selectedBuilding, buildingHasRooms })
     if (!selectedBuilding) {
       notify('กรุณาเลือกอาคารก่อน')
       return
@@ -881,26 +882,30 @@ export default function TransactionsPage() {
 
     setSavingDailyEntry((prev) => ({ ...prev, [key]: true }))
     try {
+      const payload = {
+        targetType: 'TRANSACTION',
+        targetId: parseInt(selectedBuilding),
+        fieldName: String(category.id),
+        fieldLabel: category.name,
+        actionType: 'ADD',
+        amount,
+        description: input.note.trim() || `กรอกข้อมูลรายวัน - ${input.day}`,
+        day,
+        month,
+        year,
+        otaSourceId,
+        roomId: input.roomId ? parseInt(input.roomId) : null,
+      }
+      console.log('[transactions] POST /api/expense-history payload', payload)
       const res = await fetch('/api/expense-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetType: 'TRANSACTION',
-          targetId: parseInt(selectedBuilding),
-          fieldName: String(category.id),
-          fieldLabel: category.name,
-          actionType: 'ADD',
-          amount,
-          description: input.note.trim() || `กรอกข้อมูลรายวัน - ${input.day}`,
-          day,
-          month,
-          year,
-          otaSourceId,
-          roomId: input.roomId ? parseInt(input.roomId) : null,
-        }),
+        body: JSON.stringify(payload),
       })
+      console.log('[transactions] response status', res.status)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
+        console.warn('[transactions] save failed', res.status, err)
         notify(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
