@@ -8,8 +8,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ต้อง login
-    await requireMenuAccess('/settings')
+    // ต้อง login + มีสิทธิ์เข้าหน้า /transactions (API ถูกเรียกจากหน้านี้)
+    await requireMenuAccess('/transactions')
 
     const { id } = await params
     const historyId = parseInt(id)

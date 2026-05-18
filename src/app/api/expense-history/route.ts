@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
 // POST - บันทึกประวัติการเพิ่ม/ลดค่าใช้จ่าย
 export async function POST(request: NextRequest) {
   try {
-    // ต้อง login
-    await requireMenuAccess('/settings')
+    // ต้อง login + มีสิทธิ์เข้าหน้า /transactions (API ถูกเรียกจากหน้านี้)
+    await requireMenuAccess('/transactions')
 
     const body = await request.json()
     const {

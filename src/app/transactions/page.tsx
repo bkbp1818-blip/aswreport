@@ -204,6 +204,12 @@ function DateBox({ value, onChange, className = '' }: { value: string; onChange:
   )
 }
 
+// แสดง feedback ให้ผู้ใช้ + log ไว้ใน console เผื่อ alert ถูก browser ระงับ
+function notify(msg: string) {
+  console.warn('[transactions]', msg)
+  if (typeof window !== 'undefined') window.alert(msg)
+}
+
 export default function TransactionsPage() {
   const { isViewer, user } = useAccess()
   // ซ่อน section "คืนยอดค้างจ่าย / ยอดค้างจ่าย (ยืมจ่ายเดือนนี้)" สำหรับ user เหล่านี้ (case-insensitive)
@@ -715,11 +721,11 @@ export default function TransactionsPage() {
         }
       } else {
         const errorData = await res.json()
-        alert(errorData.error || 'เกิดข้อผิดพลาด')
+        notify(errorData.error || 'เกิดข้อผิดพลาด')
       }
     } catch (error) {
       console.error('Error deleting history:', error)
-      alert('เกิดข้อผิดพลาดในการลบ')
+      notify('เกิดข้อผิดพลาดในการลบ')
     } finally {
       setDeletingId(null)
     }
@@ -797,7 +803,7 @@ export default function TransactionsPage() {
     channelUiName?: string,
   ) => {
     if (!selectedBuilding) {
-      alert('กรุณาเลือกอาคารก่อน')
+      notify('กรุณาเลือกอาคารก่อน')
       return
     }
 
@@ -819,13 +825,13 @@ export default function TransactionsPage() {
       categoryName = DAILY_CHANNEL_CATEGORY_NAME[channelUiName]
     }
     if (!categoryName) {
-      alert('ไม่พบ category สำหรับรายการนี้')
+      notify('ไม่พบ category สำหรับรายการนี้')
       return
     }
 
     const category = resolveCategoryByName(categoryName)
     if (!category) {
-      alert(`ไม่พบ category "${categoryName}" ในระบบ`)
+      notify(`ไม่พบ category "${categoryName}" ในระบบ`)
       return
     }
 
@@ -835,13 +841,13 @@ export default function TransactionsPage() {
     const input = getDailyInput(key)
     const amount = parseFloat(input.amount)
     if (!amount || amount <= 0) {
-      alert('กรุณากรอกจำนวนที่มากกว่า 0')
+      notify('กรุณากรอกจำนวนที่มากกว่า 0')
       return
     }
 
     // อาคารที่มีห้องต้องเลือกห้องก่อนบันทึก (FUNN ไม่บังคับ — ไม่มีห้องแยก)
     if (buildingHasRooms && !input.roomId) {
-      alert('กรุณาเลือกห้องก่อนบันทึก')
+      notify('กรุณาเลือกห้องก่อนบันทึก')
       return
     }
 
@@ -850,12 +856,12 @@ export default function TransactionsPage() {
     let month: number
     let year: number
     if (!input.day) {
-      alert('กรุณาเลือกวันที่')
+      notify('กรุณาเลือกวันที่')
       return
     }
     const dt = new Date(input.day)
     if (Number.isNaN(dt.getTime())) {
-      alert('วันที่ไม่ถูกต้อง')
+      notify('วันที่ไม่ถูกต้อง')
       return
     }
     day = dt.getDate()
@@ -867,7 +873,7 @@ export default function TransactionsPage() {
     if (otaSourceName) {
       const src = resolveOtaSourceByName(otaSourceName)
       if (!src) {
-        alert(`ไม่พบ OTA "${otaSourceName}" ใน OtaSource`)
+        notify(`ไม่พบ OTA "${otaSourceName}" ใน OtaSource`)
         return
       }
       otaSourceId = src.id
@@ -895,7 +901,7 @@ export default function TransactionsPage() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        notify(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
       // หลังบันทึก: reset ทุก field — day เป็นวันนี้, ห้องเป็น placeholder, amount + note ว่าง
@@ -906,7 +912,7 @@ export default function TransactionsPage() {
       await loadTransactions()
     } catch (e) {
       console.error('saveDailyEntry error', e)
-      alert('เกิดข้อผิดพลาดในการบันทึก')
+      notify('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setSavingDailyEntry((prev) => ({ ...prev, [key]: false }))
     }
@@ -919,12 +925,12 @@ export default function TransactionsPage() {
     otaSourceName?: string,
   ) => {
     if (!selectedBuilding) {
-      alert('กรุณาเลือกอาคารก่อน')
+      notify('กรุณาเลือกอาคารก่อน')
       return
     }
     const category = resolveCategoryByName(categoryName)
     if (!category) {
-      alert(`ไม่พบ category "${categoryName}" ในระบบ`)
+      notify(`ไม่พบ category "${categoryName}" ในระบบ`)
       return
     }
     const otaSource = otaSourceName ? resolveOtaSourceByName(otaSourceName) : null
@@ -951,7 +957,7 @@ export default function TransactionsPage() {
       setDailyHistoryEntries(entries)
     } catch (e) {
       console.error('openDailyHistory error', e)
-      alert('เกิดข้อผิดพลาดในการดึงประวัติ')
+      notify('เกิดข้อผิดพลาดในการดึงประวัติ')
     } finally {
       setDailyHistoryLoading(false)
     }
@@ -965,7 +971,7 @@ export default function TransactionsPage() {
       const res = await fetch(`/api/expense-history/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        alert(`ลบไม่สำเร็จ: ${err.error || res.statusText}`)
+        notify(`ลบไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
       // ลบออกจาก list ที่กำลังแสดง
@@ -973,7 +979,7 @@ export default function TransactionsPage() {
       await loadTransactions()
     } catch (e) {
       console.error('deleteDailyEntry error', e)
-      alert('เกิดข้อผิดพลาดในการลบ')
+      notify('เกิดข้อผิดพลาดในการลบ')
     } finally {
       setDailyHistoryDeletingId(null)
     }
@@ -989,27 +995,27 @@ export default function TransactionsPage() {
   // ใช้ field-based fieldName (string) ไม่ใช่ category id เหมือน Daily Entry ปกติ
   const saveSpecialIncome = async (fieldName: string, fieldLabel: string) => {
     if (!selectedBuilding) {
-      alert('กรุณาเลือกอาคารก่อน')
+      notify('กรุณาเลือกอาคารก่อน')
       return
     }
     const key = `SPECIAL:${fieldName}`
     const input = getDailyInput(key)
     const amount = parseFloat(input.amount)
     if (!amount || amount <= 0) {
-      alert('กรุณากรอกจำนวนที่มากกว่า 0')
+      notify('กรุณากรอกจำนวนที่มากกว่า 0')
       return
     }
     if (buildingHasRooms && !input.roomId) {
-      alert('กรุณาเลือกห้องก่อนบันทึก')
+      notify('กรุณาเลือกห้องก่อนบันทึก')
       return
     }
     if (!input.day) {
-      alert('กรุณาเลือกวันที่')
+      notify('กรุณาเลือกวันที่')
       return
     }
     const dt = new Date(input.day)
     if (Number.isNaN(dt.getTime())) {
-      alert('วันที่ไม่ถูกต้อง')
+      notify('วันที่ไม่ถูกต้อง')
       return
     }
     const day = dt.getDate()
@@ -1038,7 +1044,7 @@ export default function TransactionsPage() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        alert(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
+        notify(`บันทึกไม่สำเร็จ: ${err.error || res.statusText}`)
         return
       }
       // หลังบันทึก: reset ทุก field — day เป็นวันนี้, ห้องเป็น placeholder, amount + note ว่าง
@@ -1049,7 +1055,7 @@ export default function TransactionsPage() {
       await loadTransactions()
     } catch (e) {
       console.error('saveSpecialIncome error', e)
-      alert('เกิดข้อผิดพลาดในการบันทึก')
+      notify('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setSavingDailyEntry((prev) => ({ ...prev, [key]: false }))
     }
@@ -1058,7 +1064,7 @@ export default function TransactionsPage() {
   // เปิด Dialog ประวัติของรายได้พิเศษ (field-based — ไม่ผ่าน category lookup)
   const openSpecialHistory = async (fieldName: string, titleSuffix: string) => {
     if (!selectedBuilding) {
-      alert('กรุณาเลือกอาคารก่อน')
+      notify('กรุณาเลือกอาคารก่อน')
       return
     }
     setDailyHistoryTitle(`${titleSuffix} — ${getMonthName(parseInt(selectedMonth))} ${selectedYear}`)
@@ -1079,7 +1085,7 @@ export default function TransactionsPage() {
       setDailyHistoryEntries(data.history || [])
     } catch (e) {
       console.error('openSpecialHistory error', e)
-      alert('เกิดข้อผิดพลาดในการดึงประวัติ')
+      notify('เกิดข้อผิดพลาดในการดึงประวัติ')
     } finally {
       setDailyHistoryLoading(false)
     }
@@ -1122,16 +1128,16 @@ export default function TransactionsPage() {
   const handleAdjustConfirm = async () => {
     if (adjustCategoryId === null || !selectedBuilding) return
     if (!adjustDescription.trim()) {
-      alert('กรุณากรอกรายละเอียด')
+      notify('กรุณากรอกรายละเอียด')
       return
     }
     if (!adjustAmount || parseFloat(adjustAmount) <= 0) {
-      alert('กรุณากรอกจำนวนเงิน')
+      notify('กรุณากรอกจำนวนเงิน')
       return
     }
     // ถ้าเป็น Direct Booking channel ต้องเลือก OTA
     if (isDirectBookingChannel(adjustCategoryId) && !adjustOtaSourceId) {
-      alert('กรุณาเลือก OTA ที่มา')
+      notify('กรุณาเลือก OTA ที่มา')
       return
     }
 
@@ -1208,15 +1214,15 @@ export default function TransactionsPage() {
       } else {
         const errorData = await res.json()
         if (res.status === 401) {
-          alert('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
+          notify('กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล')
           window.location.href = '/access/staff'
           return
         }
-        alert(errorData.error || 'เกิดข้อผิดพลาด')
+        notify(errorData.error || 'เกิดข้อผิดพลาด')
       }
     } catch (error) {
       console.error('Error saving expense history:', error)
-      alert('เกิดข้อผิดพลาดในการบันทึก')
+      notify('เกิดข้อผิดพลาดในการบันทึก')
     } finally {
       setSavingHistory(false)
     }
