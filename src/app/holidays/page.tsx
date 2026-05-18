@@ -141,6 +141,40 @@ const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   transfer: 'โอนเงิน',
 }
 
+interface PaidRecord {
+  id: string
+  employeeId: string
+  employeeName: string
+  holidayName: string
+  holidayDate: string
+  workDate: string
+  paidAt: string
+  paidDailyRate: number
+  paidOtAmount: number
+  paidSalarySnapshot: number
+  paymentMethod: string
+  paymentReference: string | null
+  paidByName: string
+  rawNote?: string
+}
+
+type HistorySource = 'all' | 'new' | 'legacy'
+const HISTORY_PAGE_SIZE = 20
+
+// pill สีของวิธีการจ่าย
+function paymentMethodPill(method: string): { label: string; className: string } {
+  switch (method) {
+    case 'promptpay':
+      return { label: 'PromptPay', className: 'bg-blue-100 text-blue-800' }
+    case 'cash':
+      return { label: 'เงินสด', className: 'bg-green-100 text-green-800' }
+    case 'transfer':
+      return { label: 'โอนเงิน', className: 'bg-purple-100 text-purple-800' }
+    default:
+      return { label: method || '—', className: 'bg-gray-100 text-gray-700' }
+  }
+}
+
 // DOM toast แทน window.alert (browser อาจระงับ alert ใน iframe/multiple-alert)
 function notify(msg: string, variant: 'success' | 'error' = 'error') {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
@@ -212,6 +246,14 @@ export default function HolidaysPage() {
   const [payPaymentMethod, setPayPaymentMethod] = useState<PaymentMethod>('promptpay')
   const [payPaymentReference, setPayPaymentReference] = useState<string>('')
 
+  // ========== Tab "ประวัติการจ่าย" state ==========
+  const [historyRecords, setHistoryRecords] = useState<PaidRecord[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyEmployeeId, setHistoryEmployeeId] = useState<string>('')
+  const [historySource, setHistorySource] = useState<HistorySource>('all')
+  const [historyPageNew, setHistoryPageNew] = useState(1)
+  const [historyPageLegacy, setHistoryPageLegacy] = useState(1)
+
   const loadHolidays = useCallback(async () => {
     setLoading(true)
     try {
@@ -256,8 +298,50 @@ export default function HolidaysPage() {
     }
   }, [hcMonth, hcYear])
 
+  // โหลด history records จาก leave-bay สำหรับ Tab "ประวัติการจ่าย" Section A
+  // filter ตามเดือน/ปี ที่เลือก (ใช้ state เดียวกับ hcMonth/hcYear เพื่อให้ filter sync ทั้งสอง section)
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const y = parseInt(hcYear)
+      const m = parseInt(hcMonth)
+      const lastDay = new Date(y, m, 0).getDate()
+      const mStr = String(m).padStart(2, '0')
+      const startDate = `${y}-${mStr}-01`
+      const endDate = `${y}-${mStr}-${String(lastDay).padStart(2, '0')}`
+
+      const params = new URLSearchParams({ startDate, endDate })
+      const res = await fetch(`/api/holidays/history?${params.toString()}`)
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = '/access'
+          return
+        }
+        const err = await res.json().catch(() => ({}))
+        notify(err.error || 'ดึงประวัติไม่สำเร็จ')
+        setHistoryRecords([])
+        return
+      }
+      const data = await res.json()
+      const records = Array.isArray(data?.records) ? (data.records as PaidRecord[]) : []
+      setHistoryRecords(records)
+    } catch (e) {
+      console.error('loadHistory error', e)
+      notify('ไม่สามารถเชื่อมต่อ leave-bay ได้ ลองใหม่')
+      setHistoryRecords([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [hcMonth, hcYear])
+
   useEffect(() => { loadHolidays() }, [loadHolidays])
   useEffect(() => { loadHcItems() }, [loadHcItems])
+  useEffect(() => { loadHistory() }, [loadHistory])
+  // reset pagination เมื่อ filter เปลี่ยน
+  useEffect(() => {
+    setHistoryPageNew(1)
+    setHistoryPageLegacy(1)
+  }, [hcMonth, hcYear, historyEmployeeId, historySource])
 
   const openAddDialog = () => {
     setEditingId(null)
@@ -557,6 +641,33 @@ export default function HolidaysPage() {
   const hcTotalAll = hcItems.reduce((s, x) => s + x.totalAmount, 0)
   const hcTotalPerBuilding = hcItems.reduce((s, x) => s + x.amount, 0)
 
+  // ========== Tab "ประวัติการจ่าย" — derived ==========
+  // รวม employee list จาก historyRecords (ระบบใหม่) + hcItems parsed (ระบบเก่า) เป็นชุดเดียว
+  // value ของ dropdown ใช้ employeeId ของ leave-bay (string) — ระบบเก่า map ด้วยชื่อ
+  const historyEmployees = (() => {
+    const m = new Map<string, string>()
+    historyRecords.forEach(r => m.set(r.employeeId, r.employeeName))
+    return Array.from(m, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'th'))
+  })()
+  const selectedEmployeeName = historyEmployees.find(e => e.id === historyEmployeeId)?.name ?? ''
+  const filteredHistoryRecords = historyEmployeeId
+    ? historyRecords.filter(r => r.employeeId === historyEmployeeId)
+    : historyRecords
+  const filteredHcItems = selectedEmployeeName
+    ? hcItems.filter(item => {
+        const parsed = parseHcDescription(item.description)
+        return parsed?.employeeName === selectedEmployeeName
+      })
+    : hcItems
+  const showNew = historySource === 'all' || historySource === 'new'
+  const showLegacy = historySource === 'all' || historySource === 'legacy'
+  const startNew = (historyPageNew - 1) * HISTORY_PAGE_SIZE
+  const paginatedNew = filteredHistoryRecords.slice(startNew, startNew + HISTORY_PAGE_SIZE)
+  const totalPagesNew = Math.max(1, Math.ceil(filteredHistoryRecords.length / HISTORY_PAGE_SIZE))
+  const startLegacy = (historyPageLegacy - 1) * HISTORY_PAGE_SIZE
+  const paginatedLegacy = filteredHcItems.slice(startLegacy, startLegacy + HISTORY_PAGE_SIZE)
+  const totalPagesLegacy = Math.max(1, Math.ceil(filteredHcItems.length / HISTORY_PAGE_SIZE))
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -719,136 +830,221 @@ export default function HolidaysPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 3: ประวัติการจ่าย — Task 3 จะ refactor เป็น Section A (ใหม่) + Section B (เก่า) + filter */}
+        {/* Tab 3: ประวัติการจ่าย — Section A (ระบบใหม่ จาก leave-bay) + Section B (ระบบเก่า จาก ExpenseHistory) */}
         <TabsContent value="history" className="mt-4">
           <Card>
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-[#F28482]" />
-                    ประวัติการจ่าย — {getMonthName(parseInt(hcMonth))} {hcYear}
-                  </CardTitle>
-                  <CardDescription>
-                    รายการในระบบเก่า (จาก ExpenseHistory) — ส่วนถัดไปจะรวมรายการจาก leave-bay ด้วย
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select value={hcMonth} onValueChange={setHcMonth}>
-                    <SelectTrigger className="w-[120px] bg-white">
-                      <SelectValue placeholder="เดือน" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableMonths(hcYear).map((m) => (
-                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={hcYear} onValueChange={setHcYear}>
-                    <SelectTrigger className="w-[90px] bg-white">
-                      <SelectValue placeholder="ปี" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-[#F28482]" />
+                  ประวัติการจ่าย — {getMonthName(parseInt(hcMonth))} {hcYear}
+                </CardTitle>
+                <CardDescription>
+                  รวมรายการของ &quot;ระบบใหม่&quot; (จาก leave-bay) และ &quot;ระบบเก่า&quot; (จาก ExpenseHistory) — เปลี่ยน filter เพื่อดูช่วงอื่น
+                </CardDescription>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mt-3">
+                <Select value={hcMonth} onValueChange={setHcMonth}>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="เดือน" /></SelectTrigger>
+                  <SelectContent>
+                    {getAvailableMonths(hcYear).map((m) => (
+                      <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={hcYear} onValueChange={setHcYear}>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="ปี" /></SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={historyEmployeeId || '__all__'}
+                  onValueChange={(v) => setHistoryEmployeeId(v === '__all__' ? '' : v)}
+                >
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="พนักงาน" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">ทุกคน</SelectItem>
+                    {historyEmployees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={historySource} onValueChange={(v) => setHistorySource(v as HistorySource)}>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="ที่มา" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">ทุกที่มา</SelectItem>
+                    <SelectItem value="new">ระบบใหม่</SelectItem>
+                    <SelectItem value="legacy">ระบบเก่า</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
-              {hcLoading ? (
+              {(historyLoading || hcLoading) ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-[#F28482]" />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[40px] px-2 text-xs">#</TableHead>
-                        <TableHead className="px-2 text-xs whitespace-nowrap">ชื่อพนักงาน</TableHead>
-                        <TableHead className="px-2 text-xs">รายละเอียด</TableHead>
-                        <TableHead className="text-right px-2 text-xs whitespace-nowrap">รวม</TableHead>
-                        <TableHead className="text-right px-2 text-xs whitespace-nowrap">/ อาคาร</TableHead>
-                        <TableHead className="w-[80px] px-2" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {hcItems.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-sm text-[#666] py-6">
-                            ยังไม่มีรายการในเดือนนี้
-                          </TableCell>
-                        </TableRow>
+                <div className="space-y-6">
+                  {/* Section A: ระบบใหม่ */}
+                  {showNew && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[#F28482]/10 text-[#F28482]">ระบบใหม่</span>
+                        จาก leave-bay — {filteredHistoryRecords.length} รายการ
+                      </h3>
+                      {filteredHistoryRecords.length === 0 ? (
+                        <p className="py-6 text-center text-xs text-gray-500 border rounded-lg bg-slate-50">ไม่มีรายการในช่วงนี้</p>
                       ) : (
-                        hcItems.map((item, idx) => {
-                          const parsed = parseHcDescription(item.description)
-                          return (
-                            <TableRow key={item.groupId}>
-                              <TableCell className="font-medium px-2 text-xs align-top pt-3">{idx + 1}</TableCell>
-                              <TableCell className="px-2 text-xs font-semibold text-gray-800 align-top pt-3 whitespace-nowrap">
-                                {parsed?.employeeName || '—'}
-                              </TableCell>
-                              <TableCell className="px-2 align-top pt-2.5">
-                                {parsed ? (
-                                  <ul className="space-y-0.5">
-                                    {parsed.items.map((it, i) => (
-                                      <li key={i} className="text-[11px] leading-snug text-gray-600 flex items-baseline gap-1.5">
-                                        <span className="font-medium text-gray-700 whitespace-nowrap">{it.date}</span>
-                                        <span className="text-gray-500">·</span>
-                                        <span className="flex-1 truncate">{it.name}</span>
-                                        <span className="text-gray-500 whitespace-nowrap">
-                                          ฐาน {formatNumber(it.salary)} → <span className="font-medium text-[#F28482]">{formatNumber(it.amount)}</span>
+                        <>
+                          <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                  <TableHead className="px-2 text-xs whitespace-nowrap">วันที่จ่าย</TableHead>
+                                  <TableHead className="px-2 text-xs">พนักงาน</TableHead>
+                                  <TableHead className="px-2 text-xs">วันหยุด</TableHead>
+                                  <TableHead className="px-2 text-xs">วิธีจ่าย</TableHead>
+                                  <TableHead className="text-right px-2 text-xs whitespace-nowrap">ยอด</TableHead>
+                                  <TableHead className="px-2 text-xs">ผู้อนุมัติ</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {paginatedNew.map((r) => {
+                                  const pill = paymentMethodPill(r.paymentMethod)
+                                  return (
+                                    <TableRow key={r.id}>
+                                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap">
+                                        {formatPendingDate(r.paidAt)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs font-medium">{r.employeeName}</TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs">
+                                        <div>{r.holidayName}</div>
+                                        <div className="text-[10px] text-gray-500">{formatPendingDate(r.workDate)}</div>
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${pill.className}`}>
+                                          {pill.label}
                                         </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <span className="text-[11px] leading-relaxed text-gray-700 break-words">{item.description}</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right px-2 text-xs font-medium text-[#F28482] align-top pt-3 whitespace-nowrap">
-                                {formatNumber(item.totalAmount)}
-                              </TableCell>
-                              <TableCell className="text-right px-2 text-xs font-medium text-[#84A59D] align-top pt-3 whitespace-nowrap">
-                                {formatNumber(item.amount)}
-                              </TableCell>
-                              <TableCell className="text-right px-1 align-top pt-2">
-                                <div className="flex items-center justify-end gap-0.5">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-red-600 hover:bg-red-100"
-                                    disabled={hcDeletingGroupId === item.groupId}
-                                    onClick={() => handleHcDelete(item.groupId)}
-                                    title="ลบ"
-                                  >
-                                    {hcDeletingGroupId === item.groupId ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    )}
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })
+                                        {r.paymentReference && (
+                                          <div className="text-[10px] text-gray-500 mt-0.5">ref: {r.paymentReference}</div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right px-2 py-1.5 text-xs font-medium text-[#F28482] whitespace-nowrap">
+                                        {formatNumber(r.paidOtAmount)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs">{r.paidByName || '—'}</TableCell>
+                                    </TableRow>
+                                  )
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          {totalPagesNew > 1 && (
+                            <div className="flex items-center justify-end gap-2 mt-2 text-xs">
+                              <Button size="sm" variant="outline" disabled={historyPageNew <= 1} onClick={() => setHistoryPageNew(historyPageNew - 1)}>‹ ก่อนหน้า</Button>
+                              <span className="text-gray-600">หน้า {historyPageNew} / {totalPagesNew}</span>
+                              <Button size="sm" variant="outline" disabled={historyPageNew >= totalPagesNew} onClick={() => setHistoryPageNew(historyPageNew + 1)}>ถัดไป ›</Button>
+                            </div>
+                          )}
+                        </>
                       )}
-                    </TableBody>
-                    {hcItems.length > 0 && (
-                      <TableFooter>
-                        <TableRow>
-                          <TableCell colSpan={3} className="px-2 text-xs font-semibold">รวม</TableCell>
-                          <TableCell className="text-right px-2 text-xs font-bold text-[#F28482] whitespace-nowrap">{formatNumber(hcTotalAll)}</TableCell>
-                          <TableCell className="text-right px-2 text-xs font-bold text-[#84A59D] whitespace-nowrap">{formatNumber(hcTotalPerBuilding)}</TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableFooter>
-                    )}
-                  </Table>
+                    </section>
+                  )}
+
+                  {/* Section B: ระบบเก่า */}
+                  {showLegacy && (
+                    <section className="opacity-85">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-700">ระบบเก่า</span>
+                        ก่อนระบบใหม่ (ExpenseHistory) — {filteredHcItems.length} รายการ
+                      </h3>
+                      {filteredHcItems.length === 0 ? (
+                        <p className="py-6 text-center text-xs text-gray-500 border rounded-lg bg-slate-50">ไม่มีรายการในช่วงนี้</p>
+                      ) : (
+                        <>
+                          <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                  <TableHead className="px-2 text-xs whitespace-nowrap">วันที่ลงรายการ</TableHead>
+                                  <TableHead className="px-2 text-xs">พนักงาน</TableHead>
+                                  <TableHead className="px-2 text-xs">วันหยุด/รายละเอียด</TableHead>
+                                  <TableHead className="px-2 text-xs">วิธีจ่าย</TableHead>
+                                  <TableHead className="text-right px-2 text-xs whitespace-nowrap">ยอดรวม</TableHead>
+                                  <TableHead className="px-2 text-xs">ผู้อนุมัติ</TableHead>
+                                  <TableHead className="w-[44px] px-1" />
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {paginatedLegacy.map((item) => {
+                                  const parsed = parseHcDescription(item.description)
+                                  return (
+                                    <TableRow key={item.groupId}>
+                                      <TableCell className="px-2 py-1.5 text-xs whitespace-nowrap align-top">
+                                        {formatPendingDate(item.createdAt)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs font-medium align-top whitespace-nowrap">
+                                        {parsed?.employeeName || '—'}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs align-top">
+                                        {parsed ? (
+                                          <ul className="space-y-0.5">
+                                            {parsed.items.map((it, i) => (
+                                              <li key={i} className="text-[10px] text-gray-600">
+                                                {it.date} · {it.name}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <span className="text-[10px] text-gray-500">—</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs text-gray-400 align-top">—</TableCell>
+                                      <TableCell className="text-right px-2 py-1.5 text-xs font-medium text-[#F28482] whitespace-nowrap align-top">
+                                        {formatNumber(item.totalAmount)}
+                                      </TableCell>
+                                      <TableCell className="px-2 py-1.5 text-xs text-gray-400 align-top">—</TableCell>
+                                      <TableCell className="text-right px-1 py-1.5 align-top">
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 text-red-600 hover:bg-red-100"
+                                          disabled={hcDeletingGroupId === item.groupId}
+                                          onClick={() => handleHcDelete(item.groupId)}
+                                          title="ลบ"
+                                        >
+                                          {hcDeletingGroupId === item.groupId ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          )}
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  )
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          {totalPagesLegacy > 1 && (
+                            <div className="flex items-center justify-end gap-2 mt-2 text-xs">
+                              <Button size="sm" variant="outline" disabled={historyPageLegacy <= 1} onClick={() => setHistoryPageLegacy(historyPageLegacy - 1)}>‹ ก่อนหน้า</Button>
+                              <span className="text-gray-600">หน้า {historyPageLegacy} / {totalPagesLegacy}</span>
+                              <Button size="sm" variant="outline" disabled={historyPageLegacy >= totalPagesLegacy} onClick={() => setHistoryPageLegacy(historyPageLegacy + 1)}>ถัดไป ›</Button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </section>
+                  )}
+
+                  {!showNew && !showLegacy && (
+                    <p className="py-6 text-center text-xs text-gray-500">เลือก &quot;ที่มา&quot; เพื่อแสดงรายการ</p>
+                  )}
                 </div>
               )}
             </CardContent>
