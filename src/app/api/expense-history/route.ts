@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const history = await prisma.expenseHistory.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { otaSource: true, room: true },
+      include: { otaSource: true, room: true, user: { select: { id: true, username: true, name: true } } },
     })
 
     // คำนวณยอดรวมของเดือน
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // ต้อง login + มีสิทธิ์เข้าหน้า /transactions (API ถูกเรียกจากหน้านี้)
-    await requireMenuAccess('/transactions')
+    const authUser = await requireMenuAccess('/transactions')
 
     const body = await request.json()
     const {
@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         year: parseInt(year),
         otaSourceId: otaSourceId ? parseInt(otaSourceId) : null,
         roomId: roomId ? parseInt(roomId) : null,
+        userId: authUser.id,
       },
     })
 
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
     const allHistory = await prisma.expenseHistory.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { otaSource: true, room: true },
+      include: { otaSource: true, room: true, user: { select: { id: true, username: true, name: true } } },
     })
 
     // คำนวณยอดรวม

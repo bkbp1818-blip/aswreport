@@ -75,13 +75,16 @@ model ExpenseHistory {
   otaSourceId Int?
   groupId     String?
   roomId      Int?
+  userId      Int?
   otaSource   OtaSource? @relation(fields: [otaSourceId], references: [id])
   room        Room?      @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([targetType, targetId, fieldName, month, year])
   @@index([otaSourceId])
   @@index([groupId])
   @@index([roomId])
+  @@index([userId])
 }
 
 model OtaSource {
@@ -194,15 +197,16 @@ model Transaction {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  password     String
-  name         String
-  role         UserRole
-  isActive     Boolean  @default(true)
-  allowedMenus Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             Int              @id @default(autoincrement())
+  username       String           @unique
+  password       String
+  name           String
+  role           UserRole
+  isActive       Boolean          @default(true)
+  allowedMenus   Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  expenseHistory ExpenseHistory[]
 }
 
 model Holiday {

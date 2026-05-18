@@ -112,6 +112,8 @@ interface ExpenseHistoryItem {
   groupId?: string | null
   roomId?: number | null
   room?: { id: number; name: string; buildingId: number } | null
+  userId?: number | null
+  user?: { id: number; username: string; name: string } | null
 }
 
 interface Room {
@@ -3474,20 +3476,23 @@ export default function TransactionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[110px]">วันที่</TableHead>
-                    <TableHead className="w-[80px]">ห้อง</TableHead>
-                    <TableHead className="text-right w-[110px]">จำนวน</TableHead>
-                    <TableHead>รายละเอียด</TableHead>
+                    <TableHead className="w-[100px]">วันที่</TableHead>
+                    <TableHead className="w-[70px]">ห้อง</TableHead>
+                    <TableHead className="text-right w-[90px]">จำนวน</TableHead>
+                    <TableHead>ผู้กรอก / เวลาบันทึก</TableHead>
                     <TableHead className="w-[60px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {dailyHistoryEntries.map((entry) => {
                     const dt = entry.day != null
-                      ? `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`
-                      : new Date(entry.createdAt).toISOString().slice(0, 10)
+                      ? `${String(entry.day).padStart(2, '0')}/${String(entry.month).padStart(2, '0')}/${entry.year}`
+                      : new Date(entry.createdAt).toLocaleDateString('th-TH')
                     const amt = Number(entry.amount)
                     const sign = entry.actionType === 'ADD' ? '+' : '-'
+                    const created = new Date(entry.createdAt)
+                    const createdLabel = `${String(created.getDate()).padStart(2, '0')}/${String(created.getMonth() + 1).padStart(2, '0')}/${created.getFullYear()} ${String(created.getHours()).padStart(2, '0')}:${String(created.getMinutes()).padStart(2, '0')}`
+                    const userLabel = entry.user?.name || entry.user?.username || '—'
                     return (
                       <TableRow key={entry.id}>
                         <TableCell className="text-xs">{dt}</TableCell>
@@ -3495,7 +3500,13 @@ export default function TransactionsPage() {
                         <TableCell className={`text-right text-xs font-medium ${entry.actionType === 'ADD' ? 'text-green-700' : 'text-red-700'}`}>
                           {sign}{formatNumber(amt)}
                         </TableCell>
-                        <TableCell className="text-xs text-gray-600">{entry.description}</TableCell>
+                        <TableCell className="text-xs text-gray-700">
+                          <div className="font-medium">{userLabel}</div>
+                          <div className="text-[10px] text-gray-500">{createdLabel}</div>
+                          {entry.description && entry.description !== `กรอกข้อมูลรายวัน - ${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day ?? 0).padStart(2, '0')}` && (
+                            <div className="text-[10px] text-gray-500 italic mt-0.5">{entry.description}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="icon"
