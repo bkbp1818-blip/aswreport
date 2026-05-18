@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.24.0 |
+| **Version** | 1.25.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -350,7 +350,39 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.24.0 (Current - May 2026) — Holiday compensation: ดึงรายการค้างจ่ายจริงจาก leave-bay
+### v1.25.0 (Current - May 2026) — Holiday Phase B: 4 tabs + summary cards + ประวัติการจ่ายรวม 2 แหล่ง
+
+ขยายหน้า `/holidays` จาก Phase A ให้เป็น dashboard เต็มรูปแบบ — ปิด accounting gap
+ที่เปิดไว้ใน v1.24.0 (รายการจ่ายผ่าน flow ใหม่ไม่นับเข้ารายงาน) โดยสร้างหน้า
+"ประวัติการจ่าย" ที่รวมข้อมูลจากทั้ง leave-bay (ระบบใหม่) และ ExpenseHistory (ระบบเก่า) ใน UI เดียว
+
+- **Backend proxy 2 routes ใหม่:**
+  - `GET /api/holidays/history` — forward query (`startDate`/`endDate`/`employeeId`) ไป leave-bay
+    `/api/public/compensatory/history` (เพิ่งเปิดฝั่ง leave-bay พร้อม wrapper `{success, records, summary}` และ field `paymentMethod`, `paymentReference`, `paidByName`, `paidAt`, `paidOtAmount` — parse จาก note สำเร็จฝั่ง leave-bay)
+  - `GET /api/holidays/dashboard-summary` — รวม 3 sources ใน server-side ครั้งเดียว
+    (leave-bay pending + leave-bay history ทั้งปี + Prisma `ExpenseHistory`
+    `fieldName=holidayCompensation`) คืนยอดของ 4 cards ใน response เดียว ลด round-trip
+- **UI: refactor หน้า /holidays เป็น 4 tabs** (shadcn `Tabs`):
+  - "รายการวันหยุด" — Section 1 เดิม (เพิ่ม/แก้/ลบวันหยุดราชการ)
+  - "รอจ่ายเงิน" — เปิด Dialog ของ Phase A (`openPayDialog`)
+  - "ประวัติการจ่าย" — Section A (ระบบใหม่) + Section B (ระบบเก่า opacity 0.85) แต่ละ section
+    มี pagination 20 rows · filter bar: เดือน/ปี/พนักงาน/ที่มา (ทั้งหมด/ระบบใหม่/ระบบเก่า)
+    · employee dropdown derive จาก records (Thai-locale sort) · ระบบเก่า match ด้วยชื่อ
+    · pill สี payment method (PromptPay น้ำเงิน / เงินสด เขียว / โอน ม่วง)
+  - "รายงาน" — placeholder "Coming soon"
+- **Summary cards 4 ใบ ด้านบนของหน้า:**
+  - "รอจ่าย" (amber) — `pendingTotal` + "X พนักงาน · Y วัน"
+  - "จ่ายแล้วเดือนนี้" (green) — รวม leave-bay history (filter `paidAt`) + ExpenseHistory
+    (filter `month`) — "ใหม่ X + เก่า Y" breakdown
+  - "จ่ายแล้วปีนี้" (กลาง) — เหมือน Card 2 filter ทั้งปี
+  - "พนักงานค้างจ่าย" (กลาง) — จำนวน + "เฉลี่ย Z บาท/คน"
+- **Refresh hooks หลังกดยืนยันจ่ายเงิน** — เรียก `Promise.all([loadPayEmployees, loadDashboard, loadHistory])` พร้อมกัน
+  → summary cards + tab "ประวัติการจ่าย" + dropdown พนักงาน อัปเดต realtime
+- **ไม่แตะ:** Phase A flow ของการจ่ายเงิน + schema + `/api/holiday-compensation/*` + ระบบนอก `/holidays`
+- **ไฟล์ใหม่:** `src/app/api/holidays/history/route.ts`, `src/app/api/holidays/dashboard-summary/route.ts`
+- **ไฟล์แก้:** `src/app/holidays/page.tsx` (refactor ใหญ่ — 4 tabs + summary + history tab)
+
+### v1.24.0 (May 2026) — Holiday compensation: ดึงรายการค้างจ่ายจริงจาก leave-bay
 
 แก้บั๊กที่ Dialog "จ่ายค่าแรง" ใน `/holidays` แสดงวันหยุดราชการ**ทั้งปี**ของระบบ แทนที่จะแสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง (เพราะ aswreport schema ไม่มี relation `Employee ↔ Holiday`)
 
@@ -1326,5 +1358,6 @@ npx vercel --prod        # Deploy
 - **Social Security แยกตามเดือน:** ข้อมูลเก็บใน SocialSecurityContribution แยกตาม month/year — CT/YW/NANA คำนวณ auto จาก effectiveSalary (5%, max 875 ตามกฎหมาย 2569)
 - **เงินเดือนรายเดือน (MonthlySalary):** เก็บแยกตามพนักงาน+เดือน+ปี — ถ้าไม่มี record จะ carry forward จากเดือนก่อน, ถ้าไม่มีเลย fallback ไป Employee.salary
 - **ค่าแรงวันหยุดชดเชย (Holiday Compensation) v1.21.0:** จัดการที่หน้า `/holidays` (Partner only) — บันทึกใน `ExpenseHistory` (`fieldName=holidayCompensation`) แยก 3 records ต่อการบันทึก 1 ครั้ง (CT/YW/NANA) ผูกด้วย `groupId` UUID — ใช้ `prisma.$transaction` รับประกัน atomicity. การคำนวณเป็น **per-holiday**: แต่ละวันใช้เงินเดือนของเดือนของวันหยุดนั้น (skip 0 + carry forward จากเดือนล่าสุดที่ > 0). `description` เก็บเป็น JSON v1 พร้อม snapshot ของ employeeName, holidayIds, items[date,salary,amount] เพื่อ UI parse แสดงแบบจัดเรียง + รองรับการแก้ไข
-- **Holiday Compensation flow ใหม่ v1.24.0:** Dialog "จ่ายค่าแรง" ใน `/holidays` เปลี่ยน source จาก `Holiday` table ของ aswreport → public API ของ leave-bay (`/api/public/compensatory/*` ผ่าน proxy `/api/holidays/{employees-with-pending,pending/[id],pay}`) — แสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง ไม่ใช่วันหยุดทั้งปี. **รายการที่จ่ายผ่าน flow ใหม่ไม่ลง `ExpenseHistory`** (mark `isPaid` ที่ leave-bay เท่านั้น) — ไม่นับเข้ารายงานสรุป จนกว่า Phase B จะ deploy
+- **Holiday Compensation flow ใหม่ v1.24.0:** Dialog "จ่ายค่าแรง" ใน `/holidays` เปลี่ยน source จาก `Holiday` table ของ aswreport → public API ของ leave-bay (`/api/public/compensatory/*` ผ่าน proxy `/api/holidays/{employees-with-pending,pending/[id],pay}`) — แสดงเฉพาะวันที่พนักงานคนนั้นมาทำงานจริง ไม่ใช่วันหยุดทั้งปี. **รายการที่จ่ายผ่าน flow ใหม่ไม่ลง `ExpenseHistory`** (mark `isPaid` ที่ leave-bay เท่านั้น) — ไม่นับเข้ารายงานสรุป แต่ปรากฏใน Tab "ประวัติการจ่าย" Section A ของ v1.25.0
+- **Holiday dashboard v1.25.0:** หน้า `/holidays` มี **4 tabs** (รายการวันหยุด/รอจ่ายเงิน/ประวัติการจ่าย/รายงาน) + **summary cards 4 ใบ** ด้านบน. Tab "ประวัติการจ่าย" รวมรายการจาก 2 source: "ระบบใหม่" (leave-bay `/api/public/compensatory/history` ผ่าน proxy `/api/holidays/history`) + "ระบบเก่า" (`ExpenseHistory` `fieldName=holidayCompensation`). Endpoint `/api/holidays/dashboard-summary` คำนวณ 4 cards ใน server-side ครั้งเดียว — ดูเฉพาะปีปัจจุบัน + เดือนปัจจุบัน. หลังกดจ่ายเงิน trigger refresh 3 endpoint พร้อมกัน (`Promise.all`)
 - **อัตราประกันสังคม (กฎหมาย 2569-2571):** 5%, เพดาน 17,500 บาท, สูงสุด 875 บาท/คน/เดือน
