@@ -802,7 +802,6 @@ export default function TransactionsPage() {
     otaUiName?: string,
     channelUiName?: string,
   ) => {
-    console.log('[transactions] saveDailyEntry called', { group, otaUiName, channelUiName, selectedBuilding, buildingHasRooms })
     if (!selectedBuilding) {
       notify('กรุณาเลือกอาคารก่อน')
       return
@@ -896,13 +895,11 @@ export default function TransactionsPage() {
         otaSourceId,
         roomId: input.roomId ? parseInt(input.roomId) : null,
       }
-      console.log('[transactions] POST /api/expense-history payload', payload)
       const res = await fetch('/api/expense-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      console.log('[transactions] response status', res.status)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         console.warn('[transactions] save failed', res.status, err)
@@ -1462,8 +1459,8 @@ export default function TransactionsPage() {
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                                <SelectTrigger className="h-8 text-xs md:text-sm">
-                                  <SelectValue placeholder="ห้อง" />
+                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                  <SelectValue placeholder="เลือกห้อง *" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {rooms.map((r) => (
@@ -1498,7 +1495,8 @@ export default function TransactionsPage() {
                                 size="sm"
                                 variant="default"
                                 className="h-8 px-2 text-xs"
-                                disabled={saving}
+                                disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
+                                title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                 onClick={() => saveDailyEntry('CHANNEL', undefined, channelName)}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
@@ -1574,7 +1572,8 @@ export default function TransactionsPage() {
                                     size="sm"
                                     variant="default"
                                     className="h-8 px-2 text-xs"
-                                    disabled={saving}
+                                    disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
+                                    title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                     onClick={() => saveDailyEntry('DB', otaName, channelName)}
                                   >
                                     {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
@@ -1642,8 +1641,8 @@ export default function TransactionsPage() {
                         {buildingHasRooms && (
                           <TableCell className="px-1 md:px-2 w-[120px]">
                             <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                              <SelectTrigger className="h-8 text-xs md:text-sm">
-                                <SelectValue placeholder="ห้อง" />
+                              <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                <SelectValue placeholder="เลือกห้อง *" />
                               </SelectTrigger>
                               <SelectContent>
                                 {rooms.map((r) => (
@@ -1678,7 +1677,8 @@ export default function TransactionsPage() {
                               size="sm"
                               variant="default"
                               className="h-8 px-2 text-xs"
-                              disabled={saving}
+                              disabled={saving || (buildingHasRooms && !input.roomId)}
+                              title={buildingHasRooms && !input.roomId ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                               onClick={() => saveDailyEntry('OTA', otaName)}
                             >
                               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
@@ -1857,8 +1857,8 @@ export default function TransactionsPage() {
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                                <SelectTrigger className="h-8 text-xs md:text-sm">
-                                  <SelectValue placeholder="ห้อง" />
+                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                  <SelectValue placeholder="เลือกห้อง *" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {rooms.map((r) => (
@@ -1893,7 +1893,8 @@ export default function TransactionsPage() {
                                 size="sm"
                                 variant="default"
                                 className="h-8 px-2 text-xs"
-                                disabled={saving}
+                                disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
+                                title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                 onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
@@ -1955,8 +1956,8 @@ export default function TransactionsPage() {
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                                <SelectTrigger className="h-8 text-xs md:text-sm">
-                                  <SelectValue placeholder="ห้อง" />
+                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                  <SelectValue placeholder="เลือกห้อง *" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {rooms.map((r) => (
@@ -1991,7 +1992,8 @@ export default function TransactionsPage() {
                                 size="sm"
                                 variant="default"
                                 className="h-8 px-2 text-xs"
-                                disabled={saving}
+                                disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
+                                title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                 onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
@@ -2053,8 +2055,8 @@ export default function TransactionsPage() {
                           {buildingHasRooms && (
                             <TableCell className="px-1 md:px-2 w-[120px]">
                               <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                                <SelectTrigger className="h-8 text-xs md:text-sm">
-                                  <SelectValue placeholder="ห้อง" />
+                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                  <SelectValue placeholder="เลือกห้อง *" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {rooms.map((r) => (
@@ -2089,7 +2091,8 @@ export default function TransactionsPage() {
                                 size="sm"
                                 variant="default"
                                 className="h-8 px-2 text-xs"
-                                disabled={saving}
+                                disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
+                                title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                 onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
