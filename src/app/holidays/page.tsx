@@ -161,6 +161,45 @@ interface PaidRecord {
 type HistorySource = 'all' | 'new' | 'legacy'
 const HISTORY_PAGE_SIZE = 20
 
+interface PayWarning {
+  type: string
+  message: string
+  details: {
+    paidRecordIds?: string[]
+    employeeName?: string
+    totalAllBuildings?: number
+    perBuilding?: number
+    month?: number
+    year?: number
+    groupId?: string
+    items?: { date: string; name: string; salary: number; amount: number }[]
+  }
+}
+
+// format warning details เป็น text สำหรับ copy ลง clipboard (user เอาไป paste กรอกในหน้า /รายจ่าย)
+function formatPayWarningText(w: PayWarning, paidCount: number, totalAmount: number): string {
+  const d = w.details
+  const lines: string[] = [
+    `[ค่าแรงวันหยุดชดเชย — บันทึกมือ]`,
+    `${w.message}`,
+    ``,
+    `จ่ายสำเร็จ: ${paidCount} รายการ ยอดรวม ${totalAmount.toFixed(2)} บาท`,
+  ]
+  if (d.employeeName) lines.push(`พนักงาน: ${d.employeeName}`)
+  if (typeof d.totalAllBuildings === 'number') lines.push(`ยอดรวมทุกอาคาร: ${d.totalAllBuildings.toFixed(2)} บาท`)
+  if (typeof d.perBuilding === 'number') lines.push(`ต่ออาคาร (× 3): ${d.perBuilding.toFixed(2)} บาท`)
+  if (typeof d.month === 'number' && typeof d.year === 'number') lines.push(`เดือน/ปี: ${d.month}/${d.year}`)
+  if (d.groupId) lines.push(`groupId: ${d.groupId}`)
+  if (Array.isArray(d.items) && d.items.length > 0) {
+    lines.push('')
+    lines.push('รายการ:')
+    d.items.forEach((it) => {
+      lines.push(`  - ${it.date} ${it.name}: ฐาน ${it.salary} → ${it.amount.toFixed(2)}`)
+    })
+  }
+  return lines.join('\n')
+}
+
 interface DashboardSummary {
   pending: { totalAmount: number; employeeCount: number; totalDays: number }
   paidThisMonth: {
@@ -194,25 +233,38 @@ function paymentMethodPill(method: string): { label: string; className: string }
 }
 
 // DOM toast แทน window.alert (browser อาจระงับ alert ใน iframe/multiple-alert)
-function notify(msg: string, variant: 'success' | 'error' = 'error') {
+function notify(
+  msg: string,
+  variant: 'success' | 'error' | 'warning' = 'error',
+  durationMs?: number
+) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   const div = document.createElement('div')
   div.textContent = msg
-  div.setAttribute('role', 'alert')
-  const bg = variant === 'success' ? '#16a34a' : '#dc2626'
+  div.setAttribute('role', variant === 'warning' ? 'alertdialog' : 'alert')
+  const bg =
+    variant === 'success' ? '#16a34a' :
+    variant === 'warning' ? '#d97706' :
+    '#dc2626'
   div.style.cssText = [
     'position:fixed', 'top:1rem', 'right:1rem', 'z-index:9999',
     `background:${bg}`, 'color:#fff',
     'padding:0.75rem 1rem', 'border-radius:0.5rem',
     'box-shadow:0 4px 12px rgba(0,0,0,0.15)',
-    'font-size:0.875rem', 'max-width:24rem', 'line-height:1.4',
+    'font-size:0.875rem', 'max-width:28rem', 'line-height:1.4',
+    'white-space:pre-wrap',
     'transition:opacity 0.3s ease-out',
+    'cursor:pointer',
   ].join(';')
-  document.body.appendChild(div)
-  setTimeout(() => {
+  div.title = 'คลิกเพื่อปิด'
+  const close = () => {
     div.style.opacity = '0'
     setTimeout(() => div.remove(), 300)
-  }, 4000)
+  }
+  div.addEventListener('click', close)
+  document.body.appendChild(div)
+  const fallbackDuration = variant === 'warning' ? 12000 : 4000
+  setTimeout(close, durationMs ?? fallbackDuration)
 }
 
 // แปลง error code จาก leave-bay → ข้อความที่ user เข้าใจ
@@ -598,10 +650,12 @@ export default function HolidaysPage() {
         paidByName: string
         paymentMethod: PaymentMethod
         paymentReference?: string
+        employeeId: string
       } = {
         recordIds: paySelectedRecords.map(r => r.id),
         paidByName: paidBy,
         paymentMethod: payPaymentMethod,
+        employeeId: paySelectedEmployee.id, // ส่งให้ backend filter history endpoint ให้แคบ
       }
       const ref = payPaymentReference.trim()
       if (ref) body.paymentReference = ref
@@ -633,7 +687,27 @@ export default function HolidaysPage() {
       const totalAmount = typeof (data as { totalAmount?: unknown }).totalAmount === 'number'
         ? (data as { totalAmount: number }).totalAmount
         : payTotalSelected
-      notify(`จ่ายสำเร็จ ${paidCount} รายการ ยอดรวม ${formatNumber(totalAmount)} บาท`, 'success')
+
+      // ตรวจ warning จาก backend (เกิดเมื่อ leave-bay สำเร็จ แต่ INSERT ExpenseHistory ฝั่ง aswreport ล้มเหลว)
+      const warning = (data as { warning?: PayWarning }).warning
+      if (warning) {
+        const text = formatPayWarningText(warning, paidCount, totalAmount)
+        let copied = false
+        try {
+          await navigator.clipboard.writeText(text)
+          copied = true
+        } catch {
+          // clipboard ปิด — ไม่เป็นไร แสดงข้อความใน toast แทน
+        }
+        const toastMsg =
+          `${warning.message}\n\n` +
+          (copied
+            ? '✓ คัดลอกรายละเอียดไปคลิปบอร์ดแล้ว — เปิดหน้า /รายจ่าย แล้ว paste'
+            : 'รายละเอียด (กดคลิกเพื่อปิด):\n' + text)
+        notify(toastMsg, 'warning', copied ? 12000 : 20000)
+      } else {
+        notify(`จ่ายสำเร็จ ${paidCount} รายการ ยอดรวม ${formatNumber(totalAmount)} บาท`, 'success')
+      }
 
       // refresh: dropdown employees + dashboard summary + history + records ของคนปัจจุบัน (ถ้ายังเหลือ)
       const currentEmpId = paySelectedEmployeeId
@@ -682,9 +756,6 @@ export default function HolidaysPage() {
 
   const activeHolidays = holidays.filter(h => h.isActive)
   const inactiveHolidays = holidays.filter(h => !h.isActive)
-
-  const hcTotalAll = hcItems.reduce((s, x) => s + x.totalAmount, 0)
-  const hcTotalPerBuilding = hcItems.reduce((s, x) => s + x.amount, 0)
 
   // ========== Tab "ประวัติการจ่าย" — derived ==========
   // รวม employee list จาก historyRecords (ระบบใหม่) + hcItems parsed (ระบบเก่า) เป็นชุดเดียว
