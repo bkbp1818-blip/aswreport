@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.26.0 |
+| **Version** | 1.27.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -117,8 +117,12 @@
   - Thai Bus Tour (สีม่วง purple) — fieldName `thaiBusTourIncome`
   - Co Van Kessel (สีส้ม orange) — fieldName `coVanKesselIncome`
   - **3 รายการนี้ใช้ helpers** `saveSpecialIncome()` + `openSpecialHistory()` (field-based ไม่ใช่ category id) — รูปแบบเดียวกับ OTA monthly entry
+  - **ค่าเช่าอาคารชั้น 1 (สี amber)** — เฉพาะ NANA, fieldName `floor1RentIncome` — prefill default 23,000 (smart fallback ใน summary), ไม่มี dropdown ห้อง, badge "ค่าเริ่มต้น" ถ้ายังไม่บันทึก ✨ NEW v1.27.0
   - งานเสริม FD (สีเขียว teal) — เฉพาะ CT/YW/NANA แยก 2 อาคาร: ลาดพร้าว 21, สุขุมวิท 81 ✨ UPDATED v1.16.0
   - รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet) — เฉพาะ CT/YW/NANA ✨ NEW
+- **รายได้อื่นๆ — Generic Income Categories (gate ตามอาคาร):** ✨ UPDATED v1.27.0
+  - ค่าทำความสะอาด Bitterwell — เฉพาะ CT/YW/NANA (กรอกเองรายเดือน, Bitterwell จ่ายให้)
+  - Gate ผ่าน UI filter ที่ `otherIncomeCategories` — backend summary ใช้ generic flow ปกติ
 - **รายจ่ายพิเศษ (Special Expense) — เฉพาะ Funn D:**
   - รายจ่ายให้ ASW เงินเดือนเมเนเจอร์แอดมิน (สีม่วง violet)
   - บริการอื่นๆจาก ASW (สีส้มอำพัน amber)
@@ -350,7 +354,30 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.26.0 (Current - May 2026) — Holiday: auto-sync ExpenseHistory หลังจ่าย + fix double-count
+### v1.27.0 (Current - June 2026) — Income: เพิ่ม "ค่าทำความสะอาด Bitterwell" + "ค่าเช่าอาคารชั้น 1" (smart fallback)
+
+เพิ่มหมวดรายได้ใหม่ 2 รายการ — ใช้ 2 pattern ต่างกันตามคุณสมบัติ ค่าคงที่ทั้งหมดอยู่ที่
+`src/lib/income-defaults.ts` (แก้ที่เดียวเพื่อปรับยอด default หรือ eligible buildings)
+
+- **ค่าทำความสะอาด Bitterwell** — Generic Income Category + UI gate
+  - เพิ่ม Category row (`type=INCOME`, name="ค่าทำความสะอาด Bitterwell") ผ่าน `prisma/add-income-categories.ts`
+    (script idempotent ใช้ `findFirst` + `create` — ไม่ลบ categories เดิม)
+  - UI gate ใน `otherIncomeCategories.filter()` — แสดงเฉพาะ CT/YW/NANA (ซ่อนจาก FUNNLP/FUNNS81)
+  - Bitterwell เป็นผู้จ่ายค่าทำความสะอาดให้เรา (เป็นรายได้)
+  - Summary route ทำงานอัตโนมัติผ่าน generic flow — ไม่ต้องแก้ backend
+- **ค่าเช่าอาคารชั้น 1** — Special Field `floor1RentIncome` (pattern เดียวกับ coVanKesselIncome) — เฉพาะ NANA
+  - **Smart fallback ใน summary** — ถ้า NANA เดือนนั้นไม่มี record ใน ExpenseHistory ใช้ค่า default 23,000 อัตโนมัติ
+    (ผู้ใช้ไม่ต้องกรอกทุกเดือน) ถ้ามี record ใช้ยอดจริง override default
+  - **UI Card สี amber** — render เฉพาะ NANA, prefill input 23,000 (แก้ก่อนบันทึกได้), badge "ค่าเริ่มต้น" ถ้ายังไม่มี record
+  - **ไม่มี dropdown ห้อง** — เพิ่ม optional param `skipRoom` ใน helper `saveSpecialIncome` เพื่อข้าม validation roomId
+    (รายได้ระดับอาคาร ไม่ผูกห้อง)
+  - แสดงใน `incomeByChannel["ค่าเช่าอาคารชั้น 1"]` ใน summary route + summary/history route
+- **Constants ที่ `src/lib/income-defaults.ts`:** `FLOOR1_RENT_DEFAULT=23000`, `FLOOR1_RENT_ELIGIBLE_BUILDINGS=['NANA']`,
+  `BITTERWELL_ELIGIBLE_BUILDINGS=['CT','YW','NANA']`, `BITTERWELL_CATEGORY_NAME`, `FLOOR1_RENT_CHANNEL_NAME`, `FLOOR1_RENT_FIELD_NAME`
+- **ไฟล์แก้:** `src/lib/income-defaults.ts` (new), `prisma/add-income-categories.ts` (new),
+  `src/app/api/summary/route.ts`, `src/app/api/summary/history/route.ts`, `src/app/transactions/page.tsx`
+
+### v1.26.0 (May 2026) — Holiday: auto-sync ExpenseHistory หลังจ่าย + fix double-count
 
 ปิด accounting gap จาก v1.24.0 — รายการที่จ่ายผ่าน flow ใหม่ตอนนี้บันทึกลง `ExpenseHistory`
 ของ aswreport อัตโนมัติ ทำให้รายงาน `/summary` ช่อง "ค่าแรงวันหยุดชดเชย" รวมยอดถูก
