@@ -1072,7 +1072,7 @@ export default function TransactionsPage() {
 
   // บันทึกรายได้พิเศษรายเดือน (รถรับส่งสนามบิน / Thai Bus / Co Van Kessel)
   // ใช้ field-based fieldName (string) ไม่ใช่ category id เหมือน Daily Entry ปกติ
-  const saveSpecialIncome = async (fieldName: string, fieldLabel: string) => {
+  const saveSpecialIncome = async (fieldName: string, fieldLabel: string, options?: { skipRoom?: boolean }) => {
     if (!selectedBuilding) {
       notify('กรุณาเลือกอาคารก่อน')
       return
@@ -1084,7 +1084,7 @@ export default function TransactionsPage() {
       notify('กรุณากรอกจำนวนที่มากกว่า 0')
       return
     }
-    if (buildingHasRooms && !input.roomId) {
+    if (!options?.skipRoom && buildingHasRooms && !input.roomId) {
       notify('กรุณาเลือกห้องก่อนบันทึก')
       return
     }
@@ -2194,7 +2194,7 @@ export default function TransactionsPage() {
                 )
               })()}
 
-              {/* กลุ่ม 5.1: ค่าเช่าอาคารชั้น 1 — เฉพาะ NANA, prefill default 23,000 (แก้ไขได้) */}
+              {/* กลุ่ม 5.1: ค่าเช่าอาคารชั้น 1 — เฉพาะ NANA, prefill default 23,000 (แก้ไขได้, ไม่ต้องเลือกห้อง) */}
               {isEligibleForFloor1Rent && (() => {
                 const fieldName = FLOOR1_RENT_FIELD_NAME
                 const fieldLabel = FLOOR1_RENT_CHANNEL_NAME
@@ -2241,20 +2241,6 @@ export default function TransactionsPage() {
                               className="h-8 text-xs md:text-sm"
                             />
                           </TableCell>
-                          {buildingHasRooms && (
-                            <TableCell className="px-1 md:px-2 w-[120px]">
-                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
-                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
-                                  <SelectValue placeholder="เลือกห้อง *" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {rooms.map((r) => (
-                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                          )}
                           <TableCell className="px-1 md:px-2 w-[140px]">
                             <Input
                               type="text"
@@ -2280,9 +2266,8 @@ export default function TransactionsPage() {
                                 size="sm"
                                 variant="default"
                                 className="h-8 px-2 text-xs"
-                                disabled={saving || (buildingHasRooms && !input.roomId)}
-                                title={buildingHasRooms && !input.roomId ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
-                                onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
+                                disabled={saving}
+                                onClick={() => saveSpecialIncome(fieldName, fieldLabel, { skipRoom: true })}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
                               </Button>
