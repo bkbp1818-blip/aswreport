@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { requireMenuAccess, handleAuthError } from '@/lib/auth'
 import { calculateSocialSecurity } from '@/lib/calculations'
 import { getFdExtraIncome, shouldUseLeaveSource, getFdExtraExpenseForBuilding } from '@/lib/extra-work-source'
+import {
+  FLOOR1_RENT_DEFAULT,
+  FLOOR1_RENT_ELIGIBLE_BUILDINGS,
+  FLOOR1_RENT_CHANNEL_NAME,
+  FLOOR1_RENT_FIELD_NAME,
+} from '@/lib/income-defaults'
 
 // GET - ดึงข้อมูลสรุป (ต้อง login)
 export async function GET(request: NextRequest) {
@@ -76,6 +82,7 @@ export async function GET(request: NextRequest) {
         0
       ),
       monthlyRent: summaries.reduce((sum, s) => sum + s.monthlyRent, 0),
+      floor1RentIncome: summaries.reduce((sum, s) => sum + s.floor1RentIncome, 0),
       // ค่าใช้จ่ายส่วนกลางทั้งหมด
       maxCareExpense: summaries.reduce((sum, s) => sum + s.maxCareExpense, 0),
       trafficCareExpense: summaries.reduce((sum, s) => sum + s.trafficCareExpense, 0),
@@ -158,6 +165,8 @@ async function calculateBuildingSummary(
   let coVanKesselIncome = 0
   let fdExtraLadpraoIncome = 0
   let fdExtraSukhumvitIncome = 0
+  let floor1RentIncome = 0
+  let hasFloor1RentRecord = false
   const useLeaveForFdExtra = shouldUseLeaveSource(month, year)
   for (const item of expenseHistory) {
     // ถ้าเป็น special income fields ให้เก็บแยก
@@ -185,6 +194,16 @@ async function calculateBuildingSummary(
         coVanKesselIncome += amount
       } else {
         coVanKesselIncome -= amount
+      }
+      continue
+    }
+    if (item.fieldName === FLOOR1_RENT_FIELD_NAME) {
+      const amount = Number(item.amount)
+      hasFloor1RentRecord = true
+      if (item.actionType === 'ADD') {
+        floor1RentIncome += amount
+      } else {
+        floor1RentIncome -= amount
       }
       continue
     }
@@ -218,6 +237,16 @@ async function calculateBuildingSummary(
   coVanKesselIncome = Math.max(0, coVanKesselIncome)
   fdExtraLadpraoIncome = Math.max(0, fdExtraLadpraoIncome)
   fdExtraSukhumvitIncome = Math.max(0, fdExtraSukhumvitIncome)
+  floor1RentIncome = Math.max(0, floor1RentIncome)
+  // Smart fallback: เฉพาะ NANA ถ้าเดือนนั้นไม่มี record ของ floor1RentIncome
+  // ระบบจะเติม default 23,000 ให้อัตโนมัติ (user สามารถ override โดยกดบันทึก/แก้ไข)
+  const eligibleForFloor1Rent = (FLOOR1_RENT_ELIGIBLE_BUILDINGS as readonly string[]).includes(building.code)
+  if (eligibleForFloor1Rent && !hasFloor1RentRecord) {
+    floor1RentIncome = FLOOR1_RENT_DEFAULT
+  }
+  if (!eligibleForFloor1Rent) {
+    floor1RentIncome = 0
+  }
   for (const key of Object.keys(categoryTotals)) {
     categoryTotals[parseInt(key)] = Math.max(0, categoryTotals[parseInt(key)])
   }
@@ -376,7 +405,7 @@ async function calculateBuildingSummary(
   const totalIncome = incomeTransactions.reduce(
     (sum, t) => sum + Number(t.amount),
     0
-  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + fdExtraLadpraoIncome + fdExtraSukhumvitIncome + managerAdminSalaryIncome
+  ) + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + fdExtraLadpraoIncome + fdExtraSukhumvitIncome + managerAdminSalaryIncome + floor1RentIncome
 
   // คำนวณรายได้ค่าเช่า (สำหรับ Management Fee)
   // เฉพาะหมวดหมู่ที่มีคำว่า "ค่าเช่า" เท่านั้น (ไม่รวมค่าอาหาร, รับส่งสนามบิน, ทัวร์, Thai bus, Co van)
@@ -420,6 +449,9 @@ async function calculateBuildingSummary(
   }
   if (managerAdminSalaryIncome > 0) {
     incomeByChannel['รายได้จาก FD เงินเดือนเมเนเจอร์แอดมิน'] = managerAdminSalaryIncome
+  }
+  if (floor1RentIncome > 0) {
+    incomeByChannel[FLOOR1_RENT_CHANNEL_NAME] = floor1RentIncome
   }
 
   // รวม PayPal, Credit Card, Bank Transfer เข้า Direct Booking (สำหรับ Pie Chart)
@@ -527,6 +559,7 @@ async function calculateBuildingSummary(
     vat,
     littleHotelierExpense,
     monthlyRent,
+    floor1RentIncome,
     // ค่าใช้จ่ายส่วนกลางทั้งหมด (หารต่ออาคาร)
     maxCareExpense: maxCareExpensePerBuilding,
     trafficCareExpense: trafficCareExpensePerBuilding,

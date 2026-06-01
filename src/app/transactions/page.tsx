@@ -43,6 +43,14 @@ import {
 } from '@/components/ui/dialog'
 import { getBuildingColor } from '@/lib/building-colors'
 import { useAccess } from '@/contexts/AccessContext'
+import {
+  FLOOR1_RENT_DEFAULT,
+  FLOOR1_RENT_ELIGIBLE_BUILDINGS,
+  FLOOR1_RENT_FIELD_NAME,
+  FLOOR1_RENT_CHANNEL_NAME,
+  BITTERWELL_ELIGIBLE_BUILDINGS,
+  BITTERWELL_CATEGORY_NAME,
+} from '@/lib/income-defaults'
 
 interface Building {
   id: number
@@ -248,6 +256,8 @@ export default function TransactionsPage() {
   const [airportShuttleRentIncome, setAirportShuttleRentIncome] = useState<number>(0)
   const [thaiBusTourIncome, setThaiBusTourIncome] = useState<number>(0)
   const [coVanKesselIncome, setCoVanKesselIncome] = useState<number>(0)
+  const [floor1RentIncome, setFloor1RentIncome] = useState<number>(0)
+  const [hasFloor1RentRecord, setHasFloor1RentRecord] = useState<boolean>(false)
   const [fdExtraLadpraoIncome, setFdExtraLadpraoIncome] = useState<number>(0)
   const [fdExtraSukhumvitIncome, setFdExtraSukhumvitIncome] = useState<number>(0)
   const [fdExtraExpenseLadprao, setFdExtraExpenseLadprao] = useState<number>(0)
@@ -386,6 +396,9 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(amount as number)
           } else if (fieldName === 'coVanKesselIncome') {
             setCoVanKesselIncome(amount as number)
+          } else if (fieldName === FLOOR1_RENT_FIELD_NAME) {
+            setFloor1RentIncome(amount as number)
+            setHasFloor1RentRecord(true)
           } else if (fieldName === 'fdExtraLadpraoIncome' || fieldName === 'fdExtraSukhumvitIncome') {
             // ข้าม — fdExtra* ดึงจาก /api/extra-work-sync แทน (ดูด้านล่าง)
           } else {
@@ -402,6 +415,15 @@ export default function TransactionsPage() {
       }
       if (!historyData.totals?.coVanKesselIncome) {
         setCoVanKesselIncome(0)
+      }
+      // floor1RentIncome: ถ้าไม่มี record ใน DB ให้ตั้ง flag = false
+      // (UI จะ fallback แสดง FLOOR1_RENT_DEFAULT 23,000 สำหรับ NANA)
+      const floor1Total = historyData.totals?.[FLOOR1_RENT_FIELD_NAME]
+      if (floor1Total === undefined || floor1Total === null) {
+        setFloor1RentIncome(0)
+        setHasFloor1RentRecord(false)
+      } else {
+        setHasFloor1RentRecord(true)
       }
       setTransactionData(dataMap)
 
@@ -494,13 +516,44 @@ export default function TransactionsPage() {
     loadTransactions()
   }, [loadTransactions])
 
+  // Prefill ค่าเช่าอาคารชั้น 1 = 23,000 ในช่อง amount เมื่อเลือก NANA + ยังไม่มี record
+  // (ผู้ใช้แก้ตัวเลขได้ก่อนกดบันทึก)
+  useEffect(() => {
+    const code = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+    const eligible = (FLOOR1_RENT_ELIGIBLE_BUILDINGS as readonly string[]).includes(code)
+    if (!eligible) return
+    if (hasFloor1RentRecord) return
+    const key = `SPECIAL:${FLOOR1_RENT_FIELD_NAME}`
+    setDailyEntryInputs((prev) => {
+      const existing = prev[key]
+      if (existing && existing.amount) return prev
+      const today = new Date()
+      const y = today.getFullYear()
+      const m = String(today.getMonth() + 1).padStart(2, '0')
+      const d = String(today.getDate()).padStart(2, '0')
+      return {
+        ...prev,
+        [key]: { day: `${y}-${m}-${d}`, amount: String(FLOOR1_RENT_DEFAULT), roomId: existing?.roomId || '', note: existing?.note || '' },
+      }
+    })
+  }, [selectedBuilding, buildings, hasFloor1RentRecord, selectedMonth, selectedYear])
+
   // แยกหมวดหมู่ตามประเภท
   const incomeCategories = categories.filter((c) => c.type === 'INCOME')
   const expenseCategories = categories.filter((c) => c.type === 'EXPENSE')
 
   // แยกรายได้เป็น 2 กลุ่ม: ค่าเช่า และ รายได้อื่นๆ
   const rentalIncomeCategories = incomeCategories.filter((c) => c.name.includes('ค่าเช่า'))
-  const otherIncomeCategories = incomeCategories.filter((c) => !c.name.includes('ค่าเช่า'))
+  const otherIncomeCategoriesAll = incomeCategories.filter((c) => !c.name.includes('ค่าเช่า'))
+  // gate: ค่าทำความสะอาด Bitterwell แสดงเฉพาะ CT/YW/NANA
+  // (คำนวณ selectedBuildingCode แบบ inline เพราะตัวแปร selectedBuildingCode ปกติ declare ทีหลัง)
+  const _selectedBuildingCodeForGate = buildings.find((b) => String(b.id) === selectedBuilding)?.code || ''
+  const otherIncomeCategories = otherIncomeCategoriesAll.filter((c) => {
+    if (c.name === BITTERWELL_CATEGORY_NAME) {
+      return (BITTERWELL_ELIGIBLE_BUILDINGS as readonly string[]).includes(_selectedBuildingCodeForGate)
+    }
+    return true
+  })
 
   // กลุ่ม Direct Booking sub-items
   const directBookingSubNames = ['ค่าเช่าจาก PayPal', 'ค่าเช่าจาก Credit Card', 'ค่าเช่าจาก Bank Transfer', 'ค่าเช่า Cash']
@@ -648,8 +701,14 @@ export default function TransactionsPage() {
 
   const siteminderExpense = perBuildingExpenses.siteminderExpense || 0
 
+  // ค่าเช่าอาคารชั้น 1 (เฉพาะ NANA): ถ้ายังไม่มี record ใช้ค่า default 23,000 (smart fallback)
+  const isEligibleForFloor1Rent = (FLOOR1_RENT_ELIGIBLE_BUILDINGS as readonly string[]).includes(selectedBuildingCode)
+  const floor1RentDisplay = isEligibleForFloor1Rent
+    ? (hasFloor1RentRecord ? floor1RentIncome : FLOOR1_RENT_DEFAULT)
+    : 0
+
   // รายได้พิเศษ จาก state (เก็บใน ExpenseHistory)
-  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + (isEligibleForSalary ? (fdExtraLadpraoIncome + fdExtraSukhumvitIncome) : 0) + (isEligibleForSalary ? managerAdminSalaryIncome : 0)
+  const totalIncome = totalRentalIncome + totalOtherIncome + airportShuttleRentIncome + thaiBusTourIncome + coVanKesselIncome + (isEligibleForSalary ? (fdExtraLadpraoIncome + fdExtraSukhumvitIncome) : 0) + (isEligibleForSalary ? managerAdminSalaryIncome : 0) + floor1RentDisplay
 
   // รวมค่าใช้จ่ายส่วนกลางทั้งหมด
   const totalGlobalExpense = maxCareExpensePerBuilding + trafficCareExpensePerBuilding +
@@ -1209,6 +1268,9 @@ export default function TransactionsPage() {
             setThaiBusTourIncome(data.total || 0)
           } else if (currentCategoryId === 'coVanKesselIncome') {
             setCoVanKesselIncome(data.total || 0)
+          } else if (currentCategoryId === FLOOR1_RENT_FIELD_NAME) {
+            setFloor1RentIncome(data.total || 0)
+            setHasFloor1RentRecord(true)
           } else if (currentCategoryId === 'cowayWaterFilterExpense') {
             // อัปเดต buildingSettings สำหรับ Coway
             setBuildingSettings(prev => prev ? {
@@ -2111,6 +2173,115 @@ export default function TransactionsPage() {
                                 className="h-8 px-2 text-xs"
                                 disabled={saving || (buildingHasRooms && !input.roomId && !key.startsWith('DB:'))}
                                 title={buildingHasRooms && !input.roomId && !key.startsWith('DB:') ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
+                                onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
+                              >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => openSpecialHistory(fieldName, fieldLabel)}
+                              >
+                                ตรวจสอบ
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </>
+                )
+              })()}
+
+              {/* กลุ่ม 5.1: ค่าเช่าอาคารชั้น 1 — เฉพาะ NANA, prefill default 23,000 (แก้ไขได้) */}
+              {isEligibleForFloor1Rent && (() => {
+                const fieldName = FLOOR1_RENT_FIELD_NAME
+                const fieldLabel = FLOOR1_RENT_CHANNEL_NAME
+                const key = `SPECIAL:${fieldName}`
+                const input = getDailyInput(key)
+                const saving = !!savingDailyEntry[key]
+                return (
+                  <>
+                    <div className="bg-amber-500/10 px-4 py-2 border-y border-amber-500/20">
+                      <div className="flex justify-between items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-amber-700">รายได้ค่าเช่าอาคารชั้น 1</p>
+                          {!hasFloor1RentRecord && (
+                            <span
+                              className="text-[10px] md:text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300"
+                              title={`ระบบเติมค่าเริ่มต้น ${formatNumber(FLOOR1_RENT_DEFAULT)} อัตโนมัติเดือนนี้ — กดบันทึกเพื่อยืนยันยอดจริง`}
+                            >
+                              ค่าเริ่มต้น
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-amber-700">{formatNumber(floor1RentDisplay)}</p>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableBody>
+                        <TableRow className="bg-white">
+                          <TableCell className="px-2 md:px-4 w-8" />
+                          <TableCell className="px-2 md:px-4">
+                            <div className="flex items-center justify-between gap-2 pl-2 md:pl-4">
+                              <div className="flex items-center gap-1 md:gap-2">
+                                <CategoryIcon name="ค่าเช่า" className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs md:text-sm">{fieldLabel}</span>
+                              </div>
+                              <span className="text-[10px] md:text-xs font-normal text-gray-700 tabular-nums whitespace-nowrap">
+                                {formatNumber(floor1RentDisplay)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <DateBox
+                              value={input.day}
+                              onChange={(v) => setDailyInputField(key, 'day', v)}
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          {buildingHasRooms && (
+                            <TableCell className="px-1 md:px-2 w-[120px]">
+                              <Select value={input.roomId || ''} onValueChange={(v) => setDailyInputField(key, 'roomId', v)}>
+                                <SelectTrigger className={`h-8 text-xs md:text-sm ${!input.roomId ? 'border-red-400 ring-1 ring-red-200' : ''}`}>
+                                  <SelectValue placeholder="เลือกห้อง *" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {rooms.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="text"
+                              value={input.note}
+                              onChange={(e) => setDailyInputField(key, 'note', e.target.value)}
+                              placeholder="หมายเหตุ"
+                              className="h-8 text-xs md:text-sm"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 w-[140px]">
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={input.amount}
+                              onChange={(e) => setDailyInputField(key, 'amount', e.target.value)}
+                              placeholder={String(FLOOR1_RENT_DEFAULT)}
+                              className="h-8 text-xs md:text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="px-1 md:px-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 px-2 text-xs"
+                                disabled={saving || (buildingHasRooms && !input.roomId)}
+                                title={buildingHasRooms && !input.roomId ? 'กรุณาเลือกห้องก่อนบันทึก' : undefined}
                                 onClick={() => saveSpecialIncome(fieldName, fieldLabel)}
                               >
                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'บันทึก'}
