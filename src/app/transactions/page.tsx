@@ -1488,9 +1488,9 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
           {/* รายรับ */}
-          <Card className="border-0 shadow-md overflow-hidden">
+          <Card className="border-0 shadow-md overflow-hidden lg:col-span-2">
             <CardHeader className="bg-gradient-to-r from-[#84A59D] to-[#6b8a84] text-white flex flex-row items-center justify-between">
               <CardTitle className="text-white">รายรับ</CardTitle>
               <div className="text-right">
@@ -2418,7 +2418,7 @@ export default function TransactionsPage() {
                 <p className="text-xl font-bold text-white">{formatNumber(totalExpense)}</p>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
