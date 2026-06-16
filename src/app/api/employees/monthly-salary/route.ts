@@ -76,29 +76,32 @@ export async function GET(request: NextRequest) {
       const defaultSalary = Number(emp.salary)
 
       if (ms) {
-        // มี record เดือนนี้
+        // มี record เดือนนี้ — ถ้า isPaused (ปิด/ลาออก) → ไม่นับรวม (effectiveSalary = 0)
         const monthlySalary = Number(ms.salary)
         return {
           ...emp, salary: defaultSalary,
           monthlySalaryId: ms.id, monthlySalary,
-          effectiveSalary: monthlySalary,
+          effectiveSalary: ms.isPaused ? 0 : monthlySalary,
+          isPaused: ms.isPaused,
           isCarriedForward: false,
         }
       } else if (prev) {
-        // ดึงจากเดือนก่อน (carry forward)
+        // ดึงจากเดือนก่อน (carry forward) — รวมสถานะ isPaused ด้วย
         const carriedSalary = Number(prev.salary)
         return {
           ...emp, salary: defaultSalary,
           monthlySalaryId: null, monthlySalary: carriedSalary,
-          effectiveSalary: carriedSalary,
+          effectiveSalary: prev.isPaused ? 0 : carriedSalary,
+          isPaused: prev.isPaused,
           isCarriedForward: true,
         }
       } else {
-        // ไม่มี record เลย → ใช้ค่า default
+        // ไม่มี record เลย → ใช้ค่า default (ทำงานปกติ)
         return {
           ...emp, salary: defaultSalary,
           monthlySalaryId: null, monthlySalary: null,
           effectiveSalary: defaultSalary,
+          isPaused: false,
           isCarriedForward: false,
         }
       }
@@ -138,8 +141,8 @@ export async function POST(request: NextRequest) {
     // หรือ single: { employeeId, salary, month, year }
     const isBatch = Array.isArray(body.items)
     const items = isBatch
-      ? body.items as { employeeId: number; salary: number }[]
-      : [{ employeeId: body.employeeId, salary: body.salary }]
+      ? body.items as { employeeId: number; salary: number; isPaused?: boolean }[]
+      : [{ employeeId: body.employeeId, salary: body.salary, isPaused: body.isPaused }]
     const month = parseInt(isBatch ? body.month : body.month)
     const year = parseInt(isBatch ? body.year : body.year)
 
@@ -154,6 +157,7 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       const empId = parseInt(String(item.employeeId))
       const salaryVal = parseFloat(String(item.salary))
+      const isPaused = Boolean(item.isPaused)
 
       const existing = await prisma.monthlySalary.findUnique({
         where: {
@@ -165,21 +169,21 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      if (existing) {
-        if (salaryVal < 0) {
-          // salary = -1 → ลบ record (กลับไปใช้ค่า default)
+      if (salaryVal < 0) {
+        // salary = -1 → ลบ record (กลับไปใช้ค่า default)
+        if (existing) {
           await prisma.monthlySalary.delete({ where: { id: existing.id } })
-        } else {
-          // salary >= 0 → อัปเดต (รวมถึง 0 = ปิดเงินเดือนเดือนนี้)
-          await prisma.monthlySalary.update({
-            where: { id: existing.id },
-            data: { salary: salaryVal },
-          })
         }
-      } else if (salaryVal >= 0) {
-        // สร้างใหม่ (รวมถึง 0 = ปิดเงินเดือนเดือนนี้)
+      } else if (existing) {
+        // อัปเดต — salary เก็บตัวเลขจริง (รวม 0 ได้), isPaused แยกเป็นสถานะปิด/เปิด
+        await prisma.monthlySalary.update({
+          where: { id: existing.id },
+          data: { salary: salaryVal, isPaused },
+        })
+      } else {
+        // สร้างใหม่
         await prisma.monthlySalary.create({
-          data: { employeeId: empId, salary: salaryVal, month, year },
+          data: { employeeId: empId, salary: salaryVal, isPaused, month, year },
         })
       }
     }
@@ -193,7 +197,8 @@ export async function POST(request: NextRequest) {
       where: { isActive: true },
     })
 
-    const msMap = new Map(allMonthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
+    // ปิด (isPaused) → นับเป็น 0, ไม่งั้นใช้ตัวเลขจริง; ไม่มี record → ใช้ค่า default
+    const msMap = new Map(allMonthlySalaries.map((ms) => [ms.employeeId, ms.isPaused ? 0 : Number(ms.salary)]))
     const totalSalary = employees.reduce((sum, emp) => {
       return sum + (msMap.get(emp.id) ?? Number(emp.salary))
     }, 0)

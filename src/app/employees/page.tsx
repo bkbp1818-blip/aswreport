@@ -65,6 +65,7 @@ interface MonthlySalaryEmployee {
   monthlySalaryId: number | null
   monthlySalary: number | null
   effectiveSalary: number
+  isPaused: boolean
   isCarriedForward?: boolean
 }
 
@@ -127,6 +128,8 @@ export default function EmployeesPage() {
   const [monthlySalaryData, setMonthlySalaryData] = useState<MonthlySalaryData | null>(null)
   const [loadingMonthly, setLoadingMonthly] = useState(false)
   const [editingMonthlySalary, setEditingMonthlySalary] = useState<Record<number, string>>({})
+  // สถานะปิด/เปิด (isPaused) ที่กำลังแก้ไข แยกออกจากตัวเลขเงินเดือน
+  const [editingPaused, setEditingPaused] = useState<Record<number, boolean>>({})
   const [savingAllMonthlySalary, setSavingAllMonthlySalary] = useState(false)
 
   // Social security state
@@ -166,6 +169,7 @@ export default function EmployeesPage() {
       setMonthlySalaryData(data)
       // Reset editing state
       setEditingMonthlySalary({})
+      setEditingPaused({})
     } catch (error) {
       console.error('Error loading monthly salary:', error)
     } finally {
@@ -175,26 +179,45 @@ export default function EmployeesPage() {
 
   // บันทึกเงินเดือนรายเดือนทั้งหมดที่แก้ไข (batch save)
   const handleSaveAllMonthlySalary = async () => {
-    const editedIds = Object.keys(editingMonthlySalary)
+    // รวม id ที่ถูกแก้ไข ทั้งจากการแก้ตัวเลข และการกดปิด/เปิด
+    const editedIds = Array.from(
+      new Set([
+        ...Object.keys(editingMonthlySalary).map(Number),
+        ...Object.keys(editingPaused).map(Number),
+      ])
+    )
     if (editedIds.length === 0) return
 
     setSavingAllMonthlySalary(true)
     try {
       const items = editedIds
         .map((id) => {
-          const val = editingMonthlySalary[parseInt(id)]
-          // ถ้าช่องว่าง → ส่ง -1 เพื่อลบ record (กลับไปใช้ค่า default)
-          // ถ้า 0 → ปิดเงินเดือนเดือนนี้
-          // ถ้า -1 → ลบ record (toggle เปิดกลับ)
-          const salary = val === '' || val === undefined ? -1 : parseFloat(val)
-          return { employeeId: parseInt(id), salary: isNaN(salary) ? -1 : salary }
+          const emp = monthlySalaryData?.employees.find((e) => e.id === id)
+          if (!emp) return null
+          // สถานะปิด/เปิด: ถ้ากดแก้ → ใช้ค่าที่กด, ถ้าไม่ → ใช้ค่าจาก DB
+          const isPaused = editingPaused[id] !== undefined ? editingPaused[id] : emp.isPaused
+
+          if (isPaused) {
+            // ปิด → เก็บ salary 0 + isPaused true (ไม่นับรวม)
+            return { employeeId: id, salary: 0, isPaused: true }
+          }
+
+          // เปิด (ทำงานปกติ) — ดูตัวเลขที่กรอก
+          const val = editingMonthlySalary[id]
+          if (val === undefined || val === '') {
+            // ไม่กรอก/ลบค่า → ใช้ค่า default (ส่ง -1 เพื่อลบ record)
+            return { employeeId: id, salary: -1, isPaused: false }
+          }
+          const num = parseFloat(val)
+          // ใส่ 0 ได้ (ยอด 0 บาทแต่ยังทำงานอยู่)
+          return { employeeId: id, salary: isNaN(num) ? -1 : num, isPaused: false }
         })
-        // กรองออกรายการที่ไม่มีค่าจริงๆ เปลี่ยนแปลง (ช่องว่าง + ไม่มี override อยู่แล้ว)
+        .filter((item): item is { employeeId: number; salary: number; isPaused: boolean } => item !== null)
+        // กรองออกรายการที่ไม่มีอะไรเปลี่ยนแปลงจริง: สั่งลบ record แต่ไม่มี record อยู่แล้ว และไม่ได้ปิด
         .filter((item) => {
           const emp = monthlySalaryData?.employees.find((e) => e.id === item.employeeId)
           if (!emp) return false
-          // ถ้า salary = -1 (ลบ record) แต่ไม่มี override อยู่แล้ว → ข้าม
-          if (item.salary < 0 && emp.monthlySalary === null) return false
+          if (item.salary < 0 && emp.monthlySalaryId === null && !emp.isPaused) return false
           return true
         })
 
@@ -214,6 +237,7 @@ export default function EmployeesPage() {
 
       if (items.length === 0) {
         setEditingMonthlySalary({})
+        setEditingPaused({})
         setSavingAllMonthlySalary(false)
         return
       }
@@ -789,70 +813,72 @@ export default function EmployeesPage() {
                 {/* Employee list */}
                 <div className="divide-y">
                   {[...monthlySalaryData.employees].sort((a, b) => b.effectiveSalary - a.effectiveSalary).map((emp, index) => {
-                    const isEditing = editingMonthlySalary[emp.id] !== undefined
+                    const hasValueEdit = editingMonthlySalary[emp.id] !== undefined
+                    const hasPauseEdit = editingPaused[emp.id] !== undefined
+                    const isEdited = hasValueEdit || hasPauseEdit
                     const hasMonthlyOverride = emp.monthlySalary !== null
-                    // "ปิดเงินเดือน" = มี record แต่ค่า = 0
-                    const isDisabledThisMonth = hasMonthlyOverride && emp.monthlySalary === 0
-                    // ถ้ากำลังแก้ไขเป็น "0" ก็ถือว่าปิด
-                    const isEditingToZero = isEditing && editingMonthlySalary[emp.id] === '0'
-                    // ถ้ากำลังแก้ไข → ดู editing state เป็นหลัก (ค่าใดๆ ที่ไม่ใช่ '0' = เปิด)
-                    // ถ้าไม่ได้แก้ไข → ดู isDisabledThisMonth จาก DB
-                    const showAsDisabled = isEditing ? isEditingToZero : isDisabledThisMonth
+
+                    // สถานะปิด/เปิด: ถ้ากดแก้ → ใช้ค่าที่กด, ถ้าไม่ → ใช้ค่าจาก DB
+                    const isPaused = hasPauseEdit ? editingPaused[emp.id] : emp.isPaused
+
+                    // ค่าในช่องตัวเลข (เมื่อเปิดอยู่)
+                    const inputValue = hasValueEdit
+                      ? editingMonthlySalary[emp.id]
+                      : hasMonthlyOverride
+                        ? String(emp.monthlySalary)
+                        : ''
+                    // ตัวเลขที่ใช้จริงตอนนี้ (เพื่อแสดงป้าย "ยอด 0 แต่ยังทำงาน")
+                    const currentNum = hasValueEdit
+                      ? parseFloat(editingMonthlySalary[emp.id])
+                      : hasMonthlyOverride
+                        ? Number(emp.monthlySalary)
+                        : Number(emp.salary)
+                    const isZeroActive = !isPaused && currentNum === 0
 
                     return (
-                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${showAsDisabled ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                        {/* ปุ่ม toggle ปิด/เปิด */}
+                      <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 ${isPaused ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        {/* ปุ่ม toggle ปิด/เปิด (แยกจากตัวเลขเงินเดือน) */}
                         <button
                           type="button"
                           className="flex-shrink-0"
-                          title={showAsDisabled ? 'เปิดเงินเดือนเดือนนี้' : 'ปิดเงินเดือนเดือนนี้ (ลาออก/ไม่จ่าย)'}
+                          title={isPaused ? 'เปิด (กลับมาทำงาน/จ่ายปกติ)' : 'ปิดเดือนนี้ (ลาออก/พักงาน ไม่นับรวม)'}
                           onClick={() => {
-                            if (showAsDisabled) {
-                              // เปิดกลับ → ลบ editing state (ถ้ามี) หรือตั้งเป็น -1 เพื่อลบ record
-                              if (isEditing) {
-                                setEditingMonthlySalary((prev) => {
-                                  const next = { ...prev }
-                                  delete next[emp.id]
-                                  return next
-                                })
+                            const next = !isPaused
+                            setEditingPaused((prev) => {
+                              const copy = { ...prev }
+                              if (next === emp.isPaused) {
+                                // กลับมาเท่าค่าเดิมใน DB → ไม่ถือว่าแก้ไข
+                                delete copy[emp.id]
                               } else {
-                                // มี record = 0 อยู่ → ตั้งเป็น -1 เพื่อลบ record กลับไปใช้ค่า default
-                                setEditingMonthlySalary((prev) => ({ ...prev, [emp.id]: '-1' }))
+                                copy[emp.id] = next
                               }
-                            } else {
-                              // ปิด → ตั้งเป็น 0
-                              setEditingMonthlySalary((prev) => ({ ...prev, [emp.id]: '0' }))
-                            }
+                              return copy
+                            })
                           }}
                         >
-                          {showAsDisabled ? (
+                          {isPaused ? (
                             <ToggleLeft className="h-5 w-5 text-red-400" />
                           ) : (
                             <ToggleRight className="h-5 w-5 text-green-500" />
                           )}
                         </button>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${showAsDisabled ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
+                          <p className={`text-sm font-medium truncate ${isPaused ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
                             {emp.firstName} {emp.lastName}
                           </p>
-                          {showAsDisabled && (
-                            <p className="text-[10px] text-red-400">ปิดเงินเดือนเดือนนี้</p>
+                          {isPaused && (
+                            <p className="text-[10px] text-red-400">ปิดเดือนนี้ (ไม่นับรวม)</p>
+                          )}
+                          {isZeroActive && (
+                            <p className="text-[10px] text-slate-400">ยอด 0 (ยังทำงานอยู่)</p>
                           )}
                         </div>
                         <Input
                           type="number"
-                          className={`w-[110px] h-8 text-right text-sm ${showAsDisabled ? 'opacity-40' : ''}`}
+                          className={`w-[110px] h-8 text-right text-sm ${isPaused ? 'opacity-40' : ''}`}
                           placeholder={String(emp.salary)}
-                          disabled={showAsDisabled}
-                          value={
-                            showAsDisabled
-                              ? '0'
-                              : isEditing
-                                ? (editingMonthlySalary[emp.id] === '-1' ? '' : editingMonthlySalary[emp.id])
-                                : hasMonthlyOverride
-                                  ? String(emp.monthlySalary)
-                                  : ''
-                          }
+                          disabled={isPaused}
+                          value={isPaused ? '' : inputValue}
                           onChange={(e) =>
                             setEditingMonthlySalary((prev) => ({
                               ...prev,
@@ -861,10 +887,10 @@ export default function EmployeesPage() {
                           }
                         />
                         <div className="w-5 flex-shrink-0 text-center">
-                          {showAsDisabled && !isEditing && <span className="text-[10px] text-red-400">✕</span>}
-                          {!showAsDisabled && hasMonthlyOverride && !isEditing && !emp.isCarriedForward && <Check className="h-4 w-4 text-green-500" />}
-                          {!showAsDisabled && emp.isCarriedForward && !isEditing && <span className="text-[10px] text-blue-400">auto</span>}
-                          {!showAsDisabled && isEditing && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                          {isPaused && <span className="text-[10px] text-red-400">✕</span>}
+                          {!isPaused && isEdited && <Pencil className="h-4 w-4 text-[#F6BD60]" />}
+                          {!isPaused && !isEdited && hasMonthlyOverride && !emp.isCarriedForward && <Check className="h-4 w-4 text-green-500" />}
+                          {!isPaused && !isEdited && emp.isCarriedForward && <span className="text-[10px] text-blue-400">auto</span>}
                         </div>
                       </div>
                     )
@@ -873,20 +899,28 @@ export default function EmployeesPage() {
 
                 {/* Save button */}
                 <div className="flex items-center justify-between p-3 border-t bg-slate-50">
-                  <div className="text-xs text-slate-500">
-                    {Object.keys(editingMonthlySalary).length > 0 ? (
-                      <span className="text-[#F6BD60] font-medium">
-                        แก้ไข {Object.keys(editingMonthlySalary).length} รายการ
-                      </span>
-                    ) : (
-                      <span>กรอกแล้วกดบันทึก</span>
-                    )}
-                  </div>
+                  {(() => {
+                    const editedCount = new Set([
+                      ...Object.keys(editingMonthlySalary),
+                      ...Object.keys(editingPaused),
+                    ]).size
+                    return (
+                      <div className="text-xs text-slate-500">
+                        {editedCount > 0 ? (
+                          <span className="text-[#F6BD60] font-medium">
+                            แก้ไข {editedCount} รายการ
+                          </span>
+                        ) : (
+                          <span>กรอกแล้วกดบันทึก</span>
+                        )}
+                      </div>
+                    )
+                  })()}
                   <Button
                     size="sm"
                     className="bg-[#84A59D] hover:bg-[#6b8a84]"
                     onClick={handleSaveAllMonthlySalary}
-                    disabled={savingAllMonthlySalary || Object.keys(editingMonthlySalary).length === 0}
+                    disabled={savingAllMonthlySalary || (Object.keys(editingMonthlySalary).length === 0 && Object.keys(editingPaused).length === 0)}
                   >
                     {savingAllMonthlySalary ? (
                       <Loader2 className="mr-1 h-3 w-3 animate-spin" />

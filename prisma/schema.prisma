@@ -169,6 +169,7 @@ model MonthlySalary {
   id         Int      @id @default(autoincrement())
   employeeId Int
   salary     Decimal  @default(0) @db.Decimal(15, 2)
+  isPaused   Boolean  @default(false) // true = ปิด/ลาออกเดือนนี้ (ไม่นับรวม), false = ทำงานปกติ (ยอดเป็น 0 ได้)
   month      Int
   year       Int
   createdAt  DateTime @default(now())

@@ -1,10 +1,17 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm install:*)",
-      "Bash(curl:*)"
-    ],
-    "deny": [],
-    "ask": []
+    "permissions": {
+      "allow": [
+        "Bash(npm install:*)",
+        "Bash(curl:*)",
+        "Bash(git push:*)"
+      ],
+      "deny": [],
+      "ask": []
+    },
+    "autoMode": {
+      "allow": [
+        "$defaults",
+        "Bash(git push:*)"
+      ]
+    }
   }
-}

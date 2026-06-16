@@ -281,7 +281,7 @@ async function calculateBuildingSummary(
   const monthlySalaries = await prisma.monthlySalary.findMany({
     where: { month, year },
   })
-  const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
+  const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, ms.isPaused ? 0 : Number(ms.salary)]))
   const totalSalary = employees.reduce((sum, emp) => {
     return sum + (msMap.get(emp.id) ?? Number(emp.salary))
   }, 0)
