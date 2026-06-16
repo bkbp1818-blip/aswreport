@@ -165,22 +165,16 @@ export async function POST(request: NextRequest) {
 
     let contribution
 
+    // หมายเหตุ: ต้องบันทึกค่า 0 ไว้จริงๆ (ไม่ลบ record) เพื่อระบุชัดเจนว่า
+    // "เดือนนี้ปิดประกันสังคม" — ป้องกัน carry forward ไปดึงค่าเดือนก่อนมาแสดงว่าเปิดอยู่
     if (existing) {
-      // อัปเดต
-      if (parseFloat(amount) === 0) {
-        // ถ้าจำนวนเป็น 0 ให้ลบออก
-        await prisma.socialSecurityContribution.delete({
-          where: { id: existing.id },
-        })
-        contribution = null
-      } else {
-        contribution = await prisma.socialSecurityContribution.update({
-          where: { id: existing.id },
-          data: { amount: parseFloat(amount) },
-        })
-      }
-    } else if (parseFloat(amount) > 0) {
-      // สร้างใหม่ (เฉพาะถ้าจำนวนมากกว่า 0)
+      // อัปเดต (รวมถึงกรณีปิด → amount = 0)
+      contribution = await prisma.socialSecurityContribution.update({
+        where: { id: existing.id },
+        data: { amount: parseFloat(amount) },
+      })
+    } else {
+      // สร้างใหม่ (รวมถึงกรณีปิด → amount = 0 เพื่อหยุด carry forward)
       contribution = await prisma.socialSecurityContribution.create({
         data: {
           employeeId: parseInt(employeeId),
