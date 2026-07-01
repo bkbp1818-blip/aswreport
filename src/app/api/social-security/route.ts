@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     const allEmployees = await prisma.employee.findMany({
       where: { isActive: true },
     })
-    const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
+    const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, ms.isPaused ? 0 : Number(ms.salary)]))
 
     let calculatedTotal = 0
     employeesWithContributions.forEach((emp) => {
