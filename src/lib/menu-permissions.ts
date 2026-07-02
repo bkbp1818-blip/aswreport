@@ -3,6 +3,7 @@ export const MENU_ITEMS = [
   { key: '/', label: 'Dashboard' },
   { key: '/transactions', label: 'กรอกข้อมูล' },
   { key: '/employees', label: 'เงินเดือนพนักงาน' },
+  { key: '/schedule', label: 'ตารางเวลางาน' },
   { key: '/reimbursements', label: 'ยอดค้างจ่ายคืน' },
   { key: '/holidays', label: 'วันหยุดราชการ' },
   { key: '/rooms', label: 'จัดการห้อง' },
@@ -15,9 +16,9 @@ export const PARTNER_ONLY_MENUS = ['/users', '/holidays', '/rooms']
 
 // ค่า default ของเมนูตาม role (ใช้เมื่อ allowedMenus เป็น null)
 export const DEFAULT_MENUS_BY_ROLE: Record<string, string[]> = {
-  PARTNER: ['/', '/transactions', '/employees', '/reimbursements', '/holidays', '/rooms', '/users', '/settings'],
-  STAFF: ['/transactions', '/settings'],
-  VIEWER: ['/transactions', '/settings'],
+  PARTNER: ['/', '/transactions', '/employees', '/schedule', '/reimbursements', '/holidays', '/rooms', '/users', '/settings'],
+  STAFF: ['/transactions', '/schedule', '/settings'],
+  VIEWER: ['/transactions', '/schedule', '/settings'],
 }
 
 /**

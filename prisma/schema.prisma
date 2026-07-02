@@ -57,6 +57,8 @@ model Employee {
   updatedAt                  DateTime                     @updatedAt
   socialSecurityContributions SocialSecurityContribution[]
   monthlySalaries             MonthlySalary[]
+  scheduleTemplates           ScheduleTemplate[]
+  scheduleEntries             ScheduleEntry[]
 }
 
 model ExpenseHistory {
@@ -178,6 +180,45 @@ model MonthlySalary {
 
   @@unique([employeeId, month, year])
   @@index([month, year])
+}
+
+// ── ตารางเวลางานพนักงาน (Staff Schedule) — ฟีเจอร์ display/วางแผน แยกจากระบบการเงินทั้งหมด ──
+
+// แม่แบบกะประจำต่อพนักงานต่อวันในสัปดาห์ (weekday 0=จันทร์ ... 6=อาทิตย์)
+// หนึ่งคนมีได้ 7 แถว = กะมาตรฐานที่ระบบเอาไปเติมทุกสัปดาห์
+model ScheduleTemplate {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  weekday    Int // 0=จันทร์, 1=อังคาร, ..., 6=อาทิตย์
+  startTime  String? // รูปแบบ "HH:mm" เช่น "09:00" (null ได้ถ้าเป็นวันหยุด)
+  endTime    String? // รูปแบบ "HH:mm" เช่น "18:00"
+  isDayOff   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, weekday])
+  @@index([employeeId])
+}
+
+// กะจริงรายวัน (ใช้ override แม่แบบเฉพาะวันที่ปรับ)
+// ถ้าไม่มีแถวสำหรับวันนั้น → ใช้ค่าจาก ScheduleTemplate ของ weekday นั้น
+// เก็บเฉพาะวันที่ >= 2026-07-01 (บังคับที่ server ด้วย)
+model ScheduleEntry {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  date       DateTime @db.Date
+  startTime  String? // รูปแบบ "HH:mm" (null ได้ถ้าเป็นวันหยุด)
+  endTime    String? // รูปแบบ "HH:mm"
+  isDayOff   Boolean  @default(false)
+  note       String? // เช่น PT / วันหยุดนักขัตฤกษ์
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
 }
 
 model Transaction {
