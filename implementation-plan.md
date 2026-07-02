@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.30.0 |
+| **Version** | 1.30.1 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -379,7 +379,18 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.30.0 (Current - July 2026) — ฟีเจอร์ใหม่: ตารางเวลางานพนักงาน (Staff Schedule) — display-only แยกจากการเงิน
+### v1.30.1 (Current - July 2026) — Privacy fix: หน้าตารางเวลาไม่ส่ง nickname ออกจาก API
+
+แก้ปัญหาความเป็นส่วนตัวในหน้า `/schedule` (ทุก role เห็นได้) —
+ชื่อเล่น (nickname) ของพนักงานบางคนมีข้อมูลเงินเดือนปนอยู่ (เช่น "เจมส์(กพ 21k...)")
+ทำให้พนักงานเห็นเงินเดือนกันเองผ่านตารางกะ
+
+- **ตัด `nickname` ตั้งแต่ต้นทาง API** (`/api/schedule/week`) — ลบออกจาก Prisma `select` (DB ไม่ดึงมาด้วยซ้ำ) และจาก response object → กด F12 ดู Network ก็ไม่เห็น
+- **หน้า `/schedule`** เหลือแสดงแค่ ชื่อจริง + นามสกุล (ลบ field ออกจาก type + ตัดการแสดง `(nickname)`)
+- **ขอบเขตแคบ:** แก้เฉพาะ 2 ไฟล์ฟีเจอร์ schedule — ไม่แตะตาราง Employee, หน้า `/employees` และหน้าเงินเดือนเดิมยังใช้ nickname ปกติ (13+5 จุด ไม่โดนกระทบ)
+- **Lesson:** ข้อมูลอ่อนไหวต้องตัดที่ระดับ API (server) ไม่ใช่แค่ซ่อนที่หน้าจอ — เพราะ response ยังหลุดผ่าน DevTools/Network ได้
+
+### v1.30.0 (July 2026) — ฟีเจอร์ใหม่: ตารางเวลางานพนักงาน (Staff Schedule) — display-only แยกจากการเงิน
 
 เพิ่มหน้า `/schedule` วางแผน/แสดงกะการทำงานพนักงาน สไตล์ตาราง Bitterwell —
 **ฟีเจอร์แสดงผล/วางแผนล้วน ไม่เกี่ยวและไม่แตะระบบคำนวณเงินใดๆ**
