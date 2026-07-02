@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     const employees = await prisma.employee.findMany({
       where: { isActive: true },
       orderBy: [{ position: 'asc' }, { firstName: 'asc' }],
-      select: { id: true, firstName: true, lastName: true, nickname: true, position: true },
+      // ⚠️ ไม่ดึง nickname — ชื่อเล่นบางคนมีข้อมูลเงินเดือนปน และหน้านี้ทุก role เห็นได้
+      select: { id: true, firstName: true, lastName: true, position: true },
     })
 
     // แม่แบบทั้งหมด + override เฉพาะสัปดาห์นี้ (ดึงทีเดียว ไม่ยิงต่อคน)
@@ -113,7 +114,6 @@ export async function GET(request: NextRequest) {
         id: emp.id,
         firstName: emp.firstName,
         lastName: emp.lastName,
-        nickname: emp.nickname,
         position: emp.position,
         days: dayCells,
         hoursPerWeek: Math.round(hoursPerWeek * 100) / 100,

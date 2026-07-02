@@ -52,7 +52,6 @@ interface WeekEmployee {
   id: number
   firstName: string
   lastName: string
-  nickname: string | null
   position: 'MAID' | 'MANAGER' | 'PARTNER'
   days: DayCell[]
   hoursPerWeek: number
@@ -489,7 +488,6 @@ export default function SchedulePage() {
                         <tr key={emp.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                           <td className="sticky left-0 z-10 px-3 py-2 font-medium text-[#333] whitespace-nowrap" style={{ backgroundColor: i % 2 === 0 ? '#fff' : 'rgba(248,250,252,0.5)' }}>
                             {emp.firstName} {emp.lastName}
-                            {emp.nickname && <span className="ml-1 text-xs text-slate-400">({emp.nickname})</span>}
                           </td>
                           {emp.days.map((cell) => (
                             <td key={cell.date} className="px-1 py-1 text-center align-middle">
