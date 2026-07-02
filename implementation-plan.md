@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.29.0 |
+| **Version** | 1.30.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -166,6 +166,7 @@
     - Batch save — กรอกหลายคนแล้วกดบันทึกทีเดียว (ส่งทั้งตัวเลข + สถานะปิด/เปิด)
     - Carry forward — ดึงข้อมูลเดือนก่อน (รวมสถานะ isPaused) มาแสดง auto (ป้าย "auto" สีฟ้า)
   - **ขวา: เงินสมทบประกันสังคม (นายจ้าง)** — คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท ตามกฎหมาย 2569)
+    - **หักพนักงานที่ปิด (isPaused) ออกจากยอด auto** — ให้ตรงกับ Dashboard/summary ✨ FIXED v1.29.1
     - Toggle เปิด/ปิดประกันสังคมแต่ละคน — **ปิดแล้วบันทึก amount=0 จริง** (ไม่ลบ record) เพื่อกัน carry forward ดึงค่าเดือนก่อนกลับมา ✨ FIXED v1.28.1
     - แสดงสูตร "5% × เงินเดือน" ให้เห็นที่มา
     - Carry forward — ดึง toggle จากเดือนก่อนมา auto
@@ -273,6 +274,26 @@
 - Login ด้วย username/password
 - รหัสผ่านเข้ารหัสด้วย bcrypt
 
+### 11. ตารางเวลางาน (`/schedule`) ✨ NEW v1.30.0
+- **ฟีเจอร์วางแผน/แสดงกะการทำงานพนักงาน — display-only แยกอิสระจากระบบการเงินทั้งหมด**
+  (ไม่แตะ/ไม่พึ่งพา เงินเดือน, ประกันสังคม, ค่าแรงวันหยุด, คืนยอดค้าง, summary, leave-bay)
+- **สิทธิ์:** ดูได้ทุก role ที่ login (รวม VIEWER) · แก้ได้เฉพาะ PARTNER/STAFF (VIEWER ซ่อนปุ่มแก้)
+- **เริ่มใช้ 1 ก.ค. 2026 (กค 2569):** สัปดาห์/วันก่อนหน้าแก้ไม่ได้ — กันทั้ง frontend
+  (ปุ่มสัปดาห์ก่อน disable, เซลล์อ่านอย่างเดียว) และ **บังคับซ้ำที่ server** ทุก endpoint ที่เขียน
+- **Layout สไตล์ Bitterwell:** จัดกลุ่มตาม position → แถวละคน → เซลล์ จ.–อา. (เวลา+ชม. / "หยุด" / "—")
+  → คอลัมน์ ชม./สัปดาห์ + จำนวนวันหยุด
+- **แม่แบบกะประจำ (ScheduleTemplate):** ตั้งกะมาตรฐาน จ.–อา. ต่อคน → เติมทุกสัปดาห์อัตโนมัติ
+- **กะรายวัน (ScheduleEntry):** คลิกเซลล์ override เฉพาะวัน (กรอบเหลือง) · "กลับไปใช้แม่แบบ" = ลบ entry
+- **ใส่วันหยุดอัตโนมัติ:** เลือกช่วง → preview รายการวันหยุด (ชื่อ+วันที่) ให้ยืนยันก่อน
+  → ตั้งเป็นวันหยุดให้พนักงานทุกคน · **อ่านตาราง Holiday อย่างเดียว ไม่เขียน**
+- **ปุ่มพิมพ์:** print CSS ซ่อนแถบเมนู/ปุ่ม
+- **Schema (additive, ไม่แตะตารางการเงิน):**
+  - `ScheduleTemplate` — employeeId, weekday(0=จ..6=อา), startTime/endTime("HH:mm"), isDayOff · unique(employeeId,weekday)
+  - `ScheduleEntry` — employeeId, date(@db.Date, ≥2026-07-01), startTime/endTime, isDayOff, note · unique(employeeId,date)
+  - FK → Employee(id) onDelete Cascade · relation field ฝั่ง Employee เป็น virtual (ไม่มี column/ALTER บนตาราง employees)
+- **ไฟล์:** `src/app/schedule/{page.tsx,_ui-utils.ts}` + `src/app/api/schedule/{_utils,_auth,template,entry,week,auto-holiday}`
+  · เมนู `/schedule` (default ทุก role) + Sidebar link
+
 ---
 
 ## API Endpoints
@@ -307,6 +328,10 @@
 | `/api/holiday-compensation/eligible-employees` | GET | คืน employees + salaries[1..12] (skip 0 + carry forward) ของปีที่ระบุ — ใช้ใน Dialog ✨ NEW v1.21.0 | Auth |
 | `/api/rooms` | GET, POST | จัดการห้องพัก (GET filter `?buildingId=&includeInactive=`) ✨ NEW v1.22.0 | GET=public / POST=Partner |
 | `/api/rooms/[id]` | PUT, DELETE | แก้ไข/soft delete (isActive=false) ห้อง ✨ NEW v1.22.0 | Partner |
+| `/api/schedule/template` | GET, POST, DELETE | แม่แบบกะประจำต่อคน (upsert 7 วัน) ✨ NEW v1.30.0 | GET=Auth / เขียน≠VIEWER |
+| `/api/schedule/entry` | GET, POST, DELETE | กะรายวัน override (กันวันที่ <2026-07-01 ที่ server) ✨ NEW v1.30.0 | GET=Auth / เขียน≠VIEWER |
+| `/api/schedule/week` | GET | ตารางทั้งทีมรายสัปดาห์ (รวมแม่แบบ+override + ชม./สัปดาห์ + วันหยุด) ✨ NEW v1.30.0 | Auth |
+| `/api/schedule/auto-holiday` | GET, POST | GET=preview วันหยุด (อ่าน Holiday อย่างเดียว) / POST=ใส่วันหยุดให้พนักงาน ✨ NEW v1.30.0 | GET=Auth / POST≠VIEWER |
 
 ---
 
@@ -354,7 +379,45 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.29.0 (Current - June 2026) — Salary: แยกสถานะ "ปิด" ออกจากตัวเลขเงินเดือน — ใส่ 0 บาทได้โดยไม่ปิด
+### v1.30.0 (Current - July 2026) — ฟีเจอร์ใหม่: ตารางเวลางานพนักงาน (Staff Schedule) — display-only แยกจากการเงิน
+
+เพิ่มหน้า `/schedule` วางแผน/แสดงกะการทำงานพนักงาน สไตล์ตาราง Bitterwell —
+**ฟีเจอร์แสดงผล/วางแผนล้วน ไม่เกี่ยวและไม่แตะระบบคำนวณเงินใดๆ**
+
+- **2 ตารางใหม่ (isolated):** `ScheduleTemplate` + `ScheduleEntry` — additive เท่านั้น ไม่แก้ตารางการเงิน
+- **4 route ใหม่ใต้ `/api/schedule/`** (template, entry, week, auto-holiday — auto-holiday มีทั้ง GET preview และ POST) แยกอิสระ
+- **display-only:** ชม./สัปดาห์ + วันหยุด เป็นตัวเลขแสดงผล ไม่ส่งเข้าเงินเดือน/OT/leave
+- **ด่านวันที่ 1 ก.ค. 2026:** กันทั้ง frontend + บังคับซ้ำที่ server ทุก endpoint ที่เขียน
+- **อ่าน Holiday อย่างเดียว** (ปุ่มใส่วันหยุดอัตโนมัติ ไม่เขียน/แก้ Holiday)
+- **สิทธิ์:** ดูได้ทุก role (รวม VIEWER) · แก้ได้เฉพาะ PARTNER/STAFF
+- **Regression 129/129 ผ่าน** (unit 31/31 + reconciliation 80/80 + live 18/18) — ยอดการเงินไม่เปลี่ยนแม้บาทเดียว
+- **ทดสอบบน Neon branch ก่อน → db push production** (14 ตารางการเงินแถวเท่าเดิม, 2 ตารางใหม่เกิดที่ 0 แถว)
+
+**Lessons learned:**
+- โปรเจกต์ใช้ `prisma db push` ไม่ใช่ `migrate` → ตรวจ preview ด้วย `prisma migrate diff --from-config-datasource --to-schema` ก่อนทุกครั้ง
+- Prisma 7 + driver adapter (`@prisma/adapter-pg`) · `prisma.config.ts` โหลด `.env.local` (ไม่ auto-load `.env`)
+- relation field ฝั่ง Employee เป็น virtual — ไม่ ALTER ตาราง employees (preview SQL ยืนยัน)
+- UX: อย่ากลืน error เงียบ — 401 ที่แสดงเป็น "ไม่มีข้อมูล" ทำให้เข้าใจผิด ต้องแยก auth/error/empty
+- auto-holiday: default ช่วง=ทั้งสัปดาห์ อาจครอบวันหยุดเกินคาด → เพิ่ม preview ก่อนยืนยัน
+
+### v1.29.1 (July 2026) — Fix: หน้าจัดการประกันสังคมนับยอด auto ไม่หัก isPaused (OBS-1)
+
+ต่อเนื่องจาก v1.29.0 ที่เพิ่ม `isPaused` แยกสถานะ "ปิด" ออกจากตัวเลขเงินเดือน — พบว่าหน้า
+"จัดการประกันสังคม" ยังคำนวณยอด auto จากเงินเดือนดิบ ไม่ได้หักคนที่ถูกปิด ทำให้เลข 2 หน้าไม่ตรงกัน
+
+- **อาการ:** หน้าจัดการประกันสังคมแสดงยอดรวม auto (`calculatedTotal`) เกินจริง เมื่อมีพนักงาน
+  ที่ถูกปิด (`isPaused=true`) แต่ยังมีประกันสังคมค้างเปิดอยู่ — ต่างจาก Dashboard/`summary` ที่หัก isPaused อยู่แล้ว
+- **ต้นเหตุ:** `GET /api/social-security` สร้าง `msMap` จาก `Number(ms.salary)` โดยไม่เช็ค `isPaused`
+- **วิธีแก้ (1 บรรทัด):** `msMap` ใช้ `ms.isPaused ? 0 : Number(ms.salary)` ให้ตรงกับ `summary/route.ts:285`
+- **ผลกระทบ:** แก้เฉพาะยอด auto ที่ **แสดงผล** บนหน้าจัดการประกันสังคม — **ไม่กระทบ** ยอดที่บันทึกจริง,
+  carry forward, หรือ Dashboard/กำไรขาดทุน (ที่คำนวณถูกอยู่แล้ว) — เลขเงินจริงไม่เปลี่ยน
+- **ผลทดสอบ:** เคสจริง EMP ถูกปิด+มีประกันสังคมค้าง 875 → ยอดเก่า 2,500 (นับผิด) เป็น 1,625 ✅;
+  หน้า SS ตอบสนอง isPaused เท่ากับ Dashboard แล้ว
+- **ยืนยันไม่ทำของเดิมพัง (regression):** static audit 10/10, unit 31/31, reconciliation 80/80
+  (5 อาคาร × 2 เดือน — ยอด summary/Dashboard ไม่เปลี่ยน), live integration 18/18, SS-fix 8/8
+- **ไฟล์แก้:** `src/app/api/social-security/route.ts` (1 บรรทัด)
+
+### v1.29.0 (June 2026) — Salary: แยกสถานะ "ปิด" ออกจากตัวเลขเงินเดือน — ใส่ 0 บาทได้โดยไม่ปิด
 
 แก้ปัญหาที่ใส่เงินเดือน = 0 ไม่ได้ เพราะระบบเดิมตีความ "0 = ปิด" เสมอ ทำให้พนักงานรายวัน
 ที่จ่ายสิ้นเดือน (เช่น โบตั๋น) ตั้งยอด 0 ชั่วคราวโดยที่ยังถือว่าทำงานอยู่ไม่ได้
