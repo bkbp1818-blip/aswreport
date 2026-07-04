@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.30.1 |
+| **Version** | 1.31.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -155,7 +155,7 @@
   - กราฟแท่ง (recharts) เปรียบเทียบ รายรับ/รายจ่าย/กำไร
   - Header เปลี่ยนสีตามสถานะ: สีทอง = กำไร, สีแดง = ขาดทุน
 
-### 3. เงินเดือนพนักงาน (`/employees`) ✨ UPDATED v1.29.0
+### 3. เงินเดือนพนักงาน (`/employees`) ✨ UPDATED v1.31.0
 - เพิ่ม/แก้ไข/ลบพนักงาน
 - **Summary Cards 3 ใบ:** จำนวนพนักงาน | เงินเดือนรวม+ต่ออาคาร | ประกันสังคมรวม+ต่ออาคาร
 - **ตัวเลือกเดือน/ปี** ที่ Header — ควบคุมข้อมูลทั้งหน้า
@@ -165,6 +165,7 @@
     - **Toggle ปิด/เปิด แยกจากตัวเลขเงินเดือน** ✨ UPDATED v1.29.0 — ปิด (`isPaused=true`) = ลาออก/พักงาน ไม่นับรวม (ขีดฆ่าชื่อ); เปิด = ทำงานปกติ **ใส่ยอด 0 ได้** (เช่นพนักงานรายวันจ่ายสิ้นเดือน) แสดงป้าย "ยอด 0 (ยังทำงานอยู่)"
     - Batch save — กรอกหลายคนแล้วกดบันทึกทีเดียว (ส่งทั้งตัวเลข + สถานะปิด/เปิด)
     - Carry forward — ดึงข้อมูลเดือนก่อน (รวมสถานะ isPaused) มาแสดง auto (ป้าย "auto" สีฟ้า)
+    - **Dropdown สถานะจ้างงาน (ACTIVE/RESIGNED/OUTSOURCE)** ✨ NEW v1.31.0 — เลือกใต้ชื่อพนักงาน; บันทึกทันที (POST `/api/employees/employment-status` → sync `isPaused` เดือนที่ดู one-shot ไม่ย้อนเดือนเก่า); ป้าย derive ต่อเดือนจาก `isPaused` (ลาออก=จาง, Outsource=เด่น) — ป้ายตามเดือนจริง ไม่รั่วข้ามเดือน
   - **ขวา: เงินสมทบประกันสังคม (นายจ้าง)** — คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท ตามกฎหมาย 2569)
     - **หักพนักงานที่ปิด (isPaused) ออกจากยอด auto** — ให้ตรงกับ Dashboard/summary ✨ FIXED v1.29.1
     - Toggle เปิด/ปิดประกันสังคมแต่ละคน — **ปิดแล้วบันทึก amount=0 จริง** (ไม่ลบ record) เพื่อกัน carry forward ดึงค่าเดือนก่อนกลับมา ✨ FIXED v1.28.1
@@ -173,6 +174,7 @@
     - ยอดรวมหาร 3 อาคาร → แสดงที่หน้ากรอกข้อมูล auto (read-only)
 - เรียงจากเงินเดือนสูง → น้อย (ทั้ง 2 ตาราง เรียงเหมือนกัน)
 - **MonthlySalary model** — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี + ฟิลด์ `isPaused` (ปิด/เปิด) ✨ UPDATED v1.29.0 (ถ้าไม่มี record fallback ไป Employee.salary)
+- **Employee.employmentStatus** (enum `EmploymentStatus`: ACTIVE/RESIGNED/OUTSOURCE, default ACTIVE) ✨ NEW v1.31.0 — ป้ายถาวรระดับตัวคน; RESIGNED→`isPaused=true` เดือนที่ดู, ACTIVE/OUTSOURCE→`isPaused=false`
 
 ### 4. ยอดค้างจ่ายคืน (`/reimbursements`)
 - ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
@@ -379,7 +381,33 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.30.1 (Current - July 2026) — Privacy fix: หน้าตารางเวลาไม่ส่ง nickname ออกจาก API
+### v1.31.0 (Current - July 2026) — ฟีเจอร์ใหม่: สถานะจ้างงานพนักงาน (ACTIVE/RESIGNED/OUTSOURCE)
+
+เพิ่ม dropdown เลือกสถานะจ้างงานในหน้าเงินเดือนพนักงาน — ป้ายถาวรระดับตัวคนที่คุม
+`isPaused` รายเดือนเบื้องหลัง **ไม่แตะสูตรคำนวณเงินเดิม**
+
+- **schema (additive):** enum `EmploymentStatus` + `Employee.employmentStatus` default ACTIVE —
+  db push production: Employee 12 แถวได้ ACTIVE ครบ, 6 ตารางที่ตรวจแถวเท่าเดิม (ExpenseHistory=1080)
+- **API ใหม่ `/api/employees/employment-status`** (POST): เปลี่ยนสถานะ + sync `isPaused` ลงเดือนที่ดู
+  (one-shot ไม่ย้อนเดือนเก่า) — RESIGNED→`isPaused=true`, ACTIVE/OUTSOURCE→`isPaused=false`; ไม่แตะ salary
+- **monthly-salary GET:** เพิ่ม `employmentStatus` ใน select ส่งให้ frontend
+- **หน้า `/employees`:** dropdown ใต้ชื่อในการ์ดกรอกเงินเดือนรายเดือน — บันทึกทันที + reload
+- **ป้าย derive ต่อเดือน (bug fix):** ป้ายอ่านจาก `isPaused` รายเดือน ไม่ใช่ `employmentStatus` ตรงๆ
+  (ค่าเดียวทั้งคน) → ป้ายตามเดือนจริง ไม่รั่วโชว์ผิดเดือน (ลาออก=จาง, Outsource=เด่น)
+- **Regression 129/129 ผ่าน** (unit 31/31 + reconciliation 80/80 + live 18/18) — ยอดการเงินไม่เปลี่ยน
+- **ทดสอบบน Neon branch shy-rice → db push production** (preview SQL เห็นเฉพาะ CREATE TYPE +
+  ADD COLUMN DEFAULT ACTIVE — ไม่มีของเกิน)
+
+**Lessons learned:**
+- ป้ายสถานะที่เก็บเป็นค่าเดียวทั้งคน (`employmentStatus`) จะรั่วข้ามเดือนถ้าโชว์ตรงๆ — ต้อง derive
+  จากสถานะรายเดือน (`isPaused`) ที่ต่างกันแต่ละเดือน
+- OUTSOURCE = คุณสมบัติถาวรตัวคน (`isPaused=false`) ต่างจาก RESIGNED ที่ผูกกับเดือน
+
+**Known limitation / งานถัดไป:**
+- ยังไม่มี "วันเริ่มงาน / วันลาออก" ของพนักงาน → พนักงานทุกคนแสดงในทุกเดือน (รวมเดือน**ก่อน**เข้าทำงาน
+  เช่น โบตั๋น/อรุณ) — เป็นงานแยกที่ตั้งใจเลื่อนไป ต้องออกแบบเรื่องเงินครึ่งเดือน/เข้ากลางเดือนด้วย
+
+### v1.30.1 (July 2026) — Privacy fix: หน้าตารางเวลาไม่ส่ง nickname ออกจาก API
 
 แก้ปัญหาความเป็นส่วนตัวในหน้า `/schedule` (ทุก role เห็นได้) —
 ชื่อเล่น (nickname) ของพนักงานบางคนมีข้อมูลเงินเดือนปนอยู่ (เช่น "เจมส์(กพ 21k...)")
