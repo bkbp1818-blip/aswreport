@@ -55,6 +55,9 @@ const positionIcons: Record<string, string> = {
   PARTNER: '🤝',
 }
 
+// สถานะการจ้างงานพนักงาน (ป้ายถาวรระดับตัวคน) — ตรงกับ enum EmploymentStatus ใน schema
+type EmploymentStatusType = 'ACTIVE' | 'RESIGNED' | 'OUTSOURCE'
+
 interface MonthlySalaryEmployee {
   id: number
   firstName: string
@@ -62,6 +65,7 @@ interface MonthlySalaryEmployee {
   nickname: string | null
   position: 'MAID' | 'MANAGER' | 'PARTNER'
   salary: number
+  employmentStatus?: EmploymentStatusType // ป้ายสถานะจ้างงาน (API ส่งมาผ่าน ...emp), ค่า default = ACTIVE
   monthlySalaryId: number | null
   monthlySalary: number | null
   effectiveSalary: number
@@ -131,6 +135,8 @@ export default function EmployeesPage() {
   // สถานะปิด/เปิด (isPaused) ที่กำลังแก้ไข แยกออกจากตัวเลขเงินเดือน
   const [editingPaused, setEditingPaused] = useState<Record<number, boolean>>({})
   const [savingAllMonthlySalary, setSavingAllMonthlySalary] = useState(false)
+  // id ของพนักงานที่กำลังบันทึกการเปลี่ยนสถานะจ้างงาน (กันกดซ้ำระหว่างบันทึก)
+  const [savingStatusId, setSavingStatusId] = useState<number | null>(null)
 
   // Social security state
   const [socialSecurityData, setSocialSecurityData] = useState<SocialSecurityData | null>(null)
@@ -250,6 +256,49 @@ export default function EmployeesPage() {
       alert('เกิดข้อผิดพลาดในการบันทึกเงินเดือนรายเดือน')
     } finally {
       setSavingAllMonthlySalary(false)
+    }
+  }
+
+  // เปลี่ยนสถานะจ้างงานพนักงาน (ACTIVE/RESIGNED/OUTSOURCE) — บันทึกทันทีเมื่อเลือก
+  // POST จะ sync isPaused ลงเดือนที่กำลังดู (RESIGNED→ปิด, ACTIVE/OUTSOURCE→เปิด) แบบ one-shot
+  // ต้อง reload เพื่อให้ toggle ปิด/เปิด + ตัวเลขเงินเดือน + ประกันสังคม อัพเดตตามสถานะใหม่
+  const handleChangeEmploymentStatus = async (
+    employeeId: number,
+    status: EmploymentStatusType
+  ) => {
+    setSavingStatusId(employeeId)
+    try {
+      const res = await fetch('/api/employees/employment-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          status,
+          month: parseInt(selectedMonth),
+          year: parseInt(selectedYear),
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          alert('กรุณาเข้าสู่ระบบก่อนเปลี่ยนสถานะพนักงาน')
+          return
+        }
+        if (res.status === 403) {
+          alert('คุณไม่มีสิทธิ์เปลี่ยนสถานะพนักงาน')
+          return
+        }
+        throw new Error(errorData.error || 'Failed to update status')
+      }
+
+      // โหลดข้อมูลใหม่ทั้งหมด (isPaused เปลี่ยน → กระทบเงินเดือน + ประกันสังคม)
+      await Promise.all([loadEmployees(), loadMonthlySalary(), loadSocialSecurity()])
+    } catch (error) {
+      console.error('Error changing employment status:', error)
+      alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะพนักงาน')
+    } finally {
+      setSavingStatusId(null)
     }
   }
 
@@ -821,6 +870,17 @@ export default function EmployeesPage() {
                     // สถานะปิด/เปิด: ถ้ากดแก้ → ใช้ค่าที่กด, ถ้าไม่ → ใช้ค่าจาก DB
                     const isPaused = hasPauseEdit ? editingPaused[emp.id] : emp.isPaused
 
+                    // ป้าย + dropdown สถานะ — derive "ต่อเดือน" จาก isPaused (ไม่อ่าน employmentStatus ตรง ๆ
+                    // เพราะ employmentStatus เป็นค่าเดียวทั้งคน จะทำให้ป้ายรั่วไปโชว์ผิดเดือน):
+                    //   เดือนที่ปิด (isPaused=true) → "ลาออกแล้ว"
+                    //   เปิดอยู่ + คนนี้เป็น OUTSOURCE (คุณสมบัติถาวรตัวคน) → "Outsource"
+                    //   เปิดอยู่ + ปกติ → "ทำงานอยู่"
+                    const displayStatus: EmploymentStatusType = isPaused
+                      ? 'RESIGNED'
+                      : emp.employmentStatus === 'OUTSOURCE'
+                        ? 'OUTSOURCE'
+                        : 'ACTIVE'
+
                     // ค่าในช่องตัวเลข (เมื่อเปิดอยู่)
                     const inputValue = hasValueEdit
                       ? editingMonthlySalary[emp.id]
@@ -863,9 +923,40 @@ export default function EmployeesPage() {
                           )}
                         </button>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${isPaused ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
-                            {emp.firstName} {emp.lastName}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-sm font-medium truncate ${isPaused ? 'text-slate-400 line-through' : 'text-[#333]'}`}>
+                              {emp.firstName} {emp.lastName}
+                            </p>
+                            {/* ป้ายสถานะจ้างงาน (derive ต่อเดือน): ลาออก = จาง, Outsource = เด่น */}
+                            {displayStatus === 'RESIGNED' && (
+                              <span className="flex-shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                ลาออก
+                              </span>
+                            )}
+                            {displayStatus === 'OUTSOURCE' && (
+                              <span className="flex-shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-300">
+                                Outsource
+                              </span>
+                            )}
+                          </div>
+                          {/* Dropdown เปลี่ยนสถานะจ้างงาน — บันทึกทันทีเมื่อเลือก (sync isPaused เดือนที่ดู) */}
+                          <div className="mt-1 flex items-center gap-1">
+                            <select
+                              value={displayStatus}
+                              disabled={savingStatusId === emp.id}
+                              onChange={(e) =>
+                                handleChangeEmploymentStatus(emp.id, e.target.value as EmploymentStatusType)
+                              }
+                              className="h-6 rounded border border-slate-200 bg-white px-1 py-0 text-[11px] text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#457b9d] disabled:opacity-50"
+                            >
+                              <option value="ACTIVE">✅ ทำงานอยู่</option>
+                              <option value="RESIGNED">🚪 ลาออกแล้ว</option>
+                              <option value="OUTSOURCE">🔗 Outsource</option>
+                            </select>
+                            {savingStatusId === emp.id && (
+                              <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
+                            )}
+                          </div>
                           {isPaused && (
                             <p className="text-[10px] text-red-400">ปิดเดือนนี้ (ไม่นับรวม)</p>
                           )}

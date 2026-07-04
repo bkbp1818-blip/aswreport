@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         nickname: true,
         position: true,
         salary: true,
+        employmentStatus: true, // ป้ายสถานะ (ACTIVE/RESIGNED/OUTSOURCE) — ไหลออกผ่าน ...emp ทุกแถว, ไม่แตะสูตร
       },
     })
 

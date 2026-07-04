@@ -53,6 +53,7 @@ model Employee {
   position                   Position
   salary                     Decimal                      @default(0) @db.Decimal(15, 2)
   isActive                   Boolean                      @default(true)
+  employmentStatus           EmploymentStatus             @default(ACTIVE)
   createdAt                  DateTime                     @default(now())
   updatedAt                  DateTime                     @updatedAt
   socialSecurityContributions SocialSecurityContribution[]
@@ -278,4 +279,12 @@ enum UserRole {
   PARTNER
   STAFF
   VIEWER
+}
+
+// สถานะพนักงาน (ป้ายถาวรระดับตัวคน) — คุม isPaused รายเดือนเบื้องหลัง ไม่แตะสูตรคำนวณเดิม
+// ACTIVE = ทำงานอยู่ (isPaused=false), RESIGNED = ลาออกแล้ว (isPaused=true), OUTSOURCE = จ่ายตามจริง (isPaused=false)
+enum EmploymentStatus {
+  ACTIVE
+  RESIGNED
+  OUTSOURCE
 }
