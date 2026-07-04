@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.31.0 |
+| **Version** | 1.32.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -155,7 +155,7 @@
   - กราฟแท่ง (recharts) เปรียบเทียบ รายรับ/รายจ่าย/กำไร
   - Header เปลี่ยนสีตามสถานะ: สีทอง = กำไร, สีแดง = ขาดทุน
 
-### 3. เงินเดือนพนักงาน (`/employees`) ✨ UPDATED v1.31.0
+### 3. เงินเดือนพนักงาน (`/employees`) ✨ UPDATED v1.32.0
 - เพิ่ม/แก้ไข/ลบพนักงาน
 - **Summary Cards 3 ใบ:** จำนวนพนักงาน | เงินเดือนรวม+ต่ออาคาร | ประกันสังคมรวม+ต่ออาคาร
 - **ตัวเลือกเดือน/ปี** ที่ Header — ควบคุมข้อมูลทั้งหน้า
@@ -166,6 +166,8 @@
     - Batch save — กรอกหลายคนแล้วกดบันทึกทีเดียว (ส่งทั้งตัวเลข + สถานะปิด/เปิด)
     - Carry forward — ดึงข้อมูลเดือนก่อน (รวมสถานะ isPaused) มาแสดง auto (ป้าย "auto" สีฟ้า)
     - **Dropdown สถานะจ้างงาน (ACTIVE/RESIGNED/OUTSOURCE)** ✨ NEW v1.31.0 — เลือกใต้ชื่อพนักงาน; บันทึกทันที (POST `/api/employees/employment-status` → sync `isPaused` เดือนที่ดู one-shot ไม่ย้อนเดือนเก่า); ป้าย derive ต่อเดือนจาก `isPaused` (ลาออก=จาง, Outsource=เด่น) — ป้ายตามเดือนจริง ไม่รั่วข้ามเดือน
+    - **วันเริ่มงาน / วันลาออก (work period)** ✨ NEW v1.32.0 — date picker ใน dialog เพิ่ม/แก้พนักงาน; หน้าเงินเดือน **ซ่อน row** พนักงานที่เดือน M/Y นอกช่วง [เดือน startDate → เดือน endDate] (เทียบระดับเดือน · เข้ากลางเดือน = แสดงทั้งเดือน · null = แสดงทุกเดือน) — display-filter เท่านั้น ไม่แตะยอดรวม
+    - **ปุ่มแก้ไขพนักงาน (ดินสอ) ต่อคน** ✨ NEW v1.32.0 — เปิด dialog แก้ไข (เดิม handleEdit เป็น dead code); โหมด edit ซ่อนช่องเงินเดือนฐานกันสับสนกับ MonthlySalary · โหมด add ยังตั้ง salary ฐานได้
   - **ขวา: เงินสมทบประกันสังคม (นายจ้าง)** — คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท ตามกฎหมาย 2569)
     - **หักพนักงานที่ปิด (isPaused) ออกจากยอด auto** — ให้ตรงกับ Dashboard/summary ✨ FIXED v1.29.1
     - Toggle เปิด/ปิดประกันสังคมแต่ละคน — **ปิดแล้วบันทึก amount=0 จริง** (ไม่ลบ record) เพื่อกัน carry forward ดึงค่าเดือนก่อนกลับมา ✨ FIXED v1.28.1
@@ -175,6 +177,7 @@
 - เรียงจากเงินเดือนสูง → น้อย (ทั้ง 2 ตาราง เรียงเหมือนกัน)
 - **MonthlySalary model** — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี + ฟิลด์ `isPaused` (ปิด/เปิด) ✨ UPDATED v1.29.0 (ถ้าไม่มี record fallback ไป Employee.salary)
 - **Employee.employmentStatus** (enum `EmploymentStatus`: ACTIVE/RESIGNED/OUTSOURCE, default ACTIVE) ✨ NEW v1.31.0 — ป้ายถาวรระดับตัวคน; RESIGNED→`isPaused=true` เดือนที่ดู, ACTIVE/OUTSOURCE→`isPaused=false`
+- **Employee.startDate + endDate** (DateTime? nullable) ✨ NEW v1.32.0 — วันเริ่ม/ลาออก คุมการแสดงผลต่อเดือน (display-filter frontend เท่านั้น); null → แสดงทุกเดือน; ไม่เชื่อม `isPaused`/`employmentStatus` (คนละ layer)
 
 ### 4. ยอดค้างจ่ายคืน (`/reimbursements`)
 - ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
@@ -381,7 +384,32 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.31.0 (Current - July 2026) — ฟีเจอร์ใหม่: สถานะจ้างงานพนักงาน (ACTIVE/RESIGNED/OUTSOURCE)
+### v1.32.0 (Current - July 2026) — ฟีเจอร์ใหม่: วันเริ่มงาน/วันลาออก (Work Period) — display-filter
+
+เพิ่มช่วงทำงานพนักงาน (startDate/endDate) ซ่อนพนักงานในเดือนที่ยังไม่เริ่ม/ลาออกแล้ว —
+**display-filter layer เท่านั้น ไม่แตะระบบคำนวณเงินที่ตรวจ 129 จุด**
+
+- **schema (additive):** `Employee.startDate` + `endDate` (DateTime? nullable) — db push production:
+  Employee 12 แถวได้ null ทั้งคู่, 6 ตารางที่ตรวจแถวเท่าเดิม (MonthlySalary=62, ExpenseHistory=1080)
+- **backend:** monthly-salary GET ส่ง startDate/endDate; employees PUT/POST รับบันทึก — ไม่มี logic กรอง ไม่แตะ summary
+- **frontend:** date picker ใน dialog + filter row ต่อเดือน (เทียบ YYYY-MM ไม่ใช่วัน)
+- **เปิดใช้ปุ่มแก้ไขพนักงาน** (handleEdit เดิม dead code) + ซ่อนช่องเงินเดือนฐานโหมด edit
+- **Regression 129/129 ผ่าน** (unit 31 + reconciliation 80 + live 18) — ยอดการเงินไม่เปลี่ยน
+- **ทดสอบ Neon branch green-haze → db push production** (preview SQL เห็นเฉพาะ ADD COLUMN 2 ตัว nullable)
+
+**Lessons learned:**
+- filter ที่ frontend เท่านั้น = regression ผ่านแน่ (backend/summary ไม่แตะ) — แลกกับยอดรวมอาจไม่ตรง row
+  ถ้าคนซ่อนมี fallback salary > 0 (Bank รับ trade-off)
+- เทียบระดับเดือน (slice YYYY-MM จาก ISO) กัน timezone เพี้ยน — เข้ากลางเดือนต้องแสดงทั้งเดือน
+- startDate/endDate แยก layer จาก employmentStatus/isPaused โดยสิ้นเชิง (display vs เงิน)
+- **dead code ที่เปิดใช้ (handleEdit) ต้องทดสอบพฤติกรรมจริง** — แยกโหมด add(POST)/edit(PUT) ให้ถูก +
+  พิสูจน์ว่าแก้คนเดิมไม่สร้างซ้ำ (Bank ลอง UI จับได้ ที่ automated test มองไม่เห็น)
+
+**Known limitation / งานถัดไป:**
+- ยังไม่คิดเงินครึ่งเดือนอัตโนมัติ (เข้า/ออกกลางเดือน) — Bank กรอก MonthlySalary เดือนนั้นเอง
+- ปุ่มลบพนักงาน (handleDelete) ยัง dead code — ไม่มีปุ่มลบใน UI (นอกสเปคงานนี้)
+
+### v1.31.0 (July 2026) — ฟีเจอร์ใหม่: สถานะจ้างงานพนักงาน (ACTIVE/RESIGNED/OUTSOURCE)
 
 เพิ่ม dropdown เลือกสถานะจ้างงานในหน้าเงินเดือนพนักงาน — ป้ายถาวรระดับตัวคนที่คุม
 `isPaused` รายเดือนเบื้องหลัง **ไม่แตะสูตรคำนวณเงินเดิม**
