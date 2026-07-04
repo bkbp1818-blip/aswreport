@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     await requireMenuAccess('/employees')
 
     const body = await request.json()
-    const { firstName, lastName, nickname, position, salary } = body
+    const { firstName, lastName, nickname, position, salary, startDate, endDate } = body
 
     if (!firstName || !lastName || !position) {
       return NextResponse.json(
@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
         position: position as Position,
         salary: salary || 0,
         isActive: true,
+        // วันเริ่ม/ลาออก: string → Date, ว่าง/null → null (display-filter เท่านั้น ไม่แตะการคำนวณเงิน)
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
       },
     })
 
@@ -74,7 +77,7 @@ export async function PUT(request: NextRequest) {
     await requireMenuAccess('/employees')
 
     const body = await request.json()
-    const { id, firstName, lastName, nickname, position, salary, isActive } = body
+    const { id, firstName, lastName, nickname, position, salary, isActive, startDate, endDate } = body
 
     if (!id) {
       return NextResponse.json(
@@ -92,6 +95,9 @@ export async function PUT(request: NextRequest) {
         position: position as Position,
         salary: salary || 0,
         isActive: isActive !== undefined ? isActive : true,
+        // วันเริ่ม/ลาออก: string → Date, ว่าง/null → null (display-filter เท่านั้น ไม่แตะการคำนวณเงิน)
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
       },
     })
 

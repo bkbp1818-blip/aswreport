@@ -42,6 +42,8 @@ interface Employee {
   position: 'MAID' | 'MANAGER' | 'PARTNER'
   salary: number
   isActive: boolean
+  startDate: string | null // วันเริ่มงาน (ISO) — display-filter เท่านั้น
+  endDate: string | null   // วันลาออก (ISO) — display-filter เท่านั้น
 }
 
 type PositionType = 'MAID' | 'MANAGER' | 'PARTNER'
@@ -66,6 +68,8 @@ interface MonthlySalaryEmployee {
   position: 'MAID' | 'MANAGER' | 'PARTNER'
   salary: number
   employmentStatus?: EmploymentStatusType // ป้ายสถานะจ้างงาน (API ส่งมาผ่าน ...emp), ค่า default = ACTIVE
+  startDate?: string | null // วันเริ่มงาน (ISO) — ใช้กรองการแสดงผลต่อเดือน (ไม่แตะสูตร)
+  endDate?: string | null   // วันลาออก (ISO) — ใช้กรองการแสดงผลต่อเดือน (ไม่แตะสูตร)
   monthlySalaryId: number | null
   monthlySalary: number | null
   effectiveSalary: number
@@ -151,6 +155,8 @@ export default function EmployeesPage() {
     position: 'MAID' as 'MAID' | 'MANAGER' | 'PARTNER',
     salary: 0,
     isActive: true,
+    startDate: '', // วันเริ่มงาน (YYYY-MM-DD, ว่าง = ไม่ระบุ)
+    endDate: '',   // วันลาออก (YYYY-MM-DD, ว่าง = ยังทำงาน)
   })
 
   // โหลดข้อมูลพนักงาน
@@ -373,6 +379,8 @@ export default function EmployeesPage() {
       position: 'MAID',
       salary: 0,
       isActive: true,
+      startDate: '',
+      endDate: '',
     })
     setEditingEmployee(null)
   }
@@ -387,6 +395,9 @@ export default function EmployeesPage() {
       position: employee.position,
       salary: Number(employee.salary),
       isActive: employee.isActive,
+      // ISO → YYYY-MM-DD สำหรับ date input (โชว์ค่าเดิมของคนนั้น)
+      startDate: employee.startDate ? employee.startDate.slice(0, 10) : '',
+      endDate: employee.endDate ? employee.endDate.slice(0, 10) : '',
     })
     setIsDialogOpen(true)
   }
@@ -487,6 +498,24 @@ export default function EmployeesPage() {
     }
   }
 
+  // ── ช่วงทำงาน (display-filter): แสดงพนักงานเฉพาะเดือนที่อยู่ในช่วง [เดือน startDate → เดือน endDate] ──
+  // เทียบระดับเดือน (YYYY-MM) ไม่ใช่วัน — เข้ากลางเดือน = แสดงทั้งเดือน · slice string กัน timezone เพี้ยน
+  // startDate=null → ไม่กรองต้นช่วง · endDate=null → แสดงถึงปัจจุบัน · ไม่แตะยอดเงินรวม (backend คงเดิม)
+  const ymToIdx = (iso: string) => {
+    const [y, m] = iso.slice(0, 7).split('-').map(Number)
+    return y * 12 + m
+  }
+  const isInWorkPeriod = (emp: { startDate?: string | null; endDate?: string | null }) => {
+    const viewIdx = parseInt(selectedYear) * 12 + parseInt(selectedMonth)
+    if (emp.startDate && viewIdx < ymToIdx(emp.startDate)) return false
+    if (emp.endDate && viewIdx > ymToIdx(emp.endDate)) return false
+    return true
+  }
+  // id ของคนที่แสดงเดือนนี้ — ใช้กรองการ์ดประกันสังคมให้ตรงกับรายชื่อ
+  const visibleEmpIds = new Set(
+    (monthlySalaryData?.employees || []).filter(isInWorkPeriod).map((e) => e.id)
+  )
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -533,7 +562,7 @@ export default function EmployeesPage() {
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-[#84A59D] hover:bg-[#6b8a84]">
+            <Button onClick={() => resetForm()} className="bg-[#84A59D] hover:bg-[#6b8a84]">
               <Plus className="mr-2 h-4 w-4" />
               เพิ่มพนักงาน
             </Button>
@@ -601,18 +630,47 @@ export default function EmployeesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="salary">เงินเดือน (บาท) *</Label>
-                <Input
-                  id="salary"
-                  type="number"
-                  value={formData.salary}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, salary: parseFloat(e.target.value) || 0 }))
-                  }
-                  placeholder="0"
-                />
+              {/* เงินเดือนฐาน — แสดงเฉพาะโหมดเพิ่มพนักงานใหม่ (add) เพื่อตั้งค่า default
+                  โหมดแก้ไข (edit) ซ่อนไว้กันสับสนกับ MonthlySalary รายเดือนในตาราง
+                  หมายเหตุ: ตอน edit formData.salary ยังคงค่าเดิมจาก handleEdit → PUT ส่ง salary เดิมกลับ ไม่เปลี่ยน */}
+              {!editingEmployee && (
+                <div className="space-y-2">
+                  <Label htmlFor="salary">เงินเดือน (บาท) *</Label>
+                  <Input
+                    id="salary"
+                    type="number"
+                    value={formData.salary}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, salary: parseFloat(e.target.value) || 0 }))
+                    }
+                    placeholder="0"
+                  />
+                </div>
+              )}
+              {/* วันเริ่มงาน / วันลาออก — คุมการแสดงผลต่อเดือน (display-filter เท่านั้น ไม่แตะการคำนวณเงิน) */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">วันเริ่มงาน</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">วันลาออก</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
+                  />
+                </div>
               </div>
+              <p className="text-xs text-slate-400">
+                เว้นว่าง = แสดงทุกเดือน · คุมแค่การแสดงในหน้านี้ ไม่กระทบยอดเงินรวม
+              </p>
             </div>
             <DialogFooter>
               <Button
@@ -745,7 +803,7 @@ export default function EmployeesPage() {
           {positionOrder.map((position) => {
             // กรองจาก monthlySalaryData ตามตำแหน่ง และเรียงจากเงินเดือนสูงสุดไปน้อยสุด
             const positionEmployees = monthlySalaryData.employees
-              .filter((e) => e.position === position)
+              .filter((e) => e.position === position && isInWorkPeriod(e))
               .sort((a, b) => b.effectiveSalary - a.effectiveSalary)
             if (positionEmployees.length === 0) return null
 
@@ -861,7 +919,7 @@ export default function EmployeesPage() {
 
                 {/* Employee list */}
                 <div className="divide-y">
-                  {[...monthlySalaryData.employees].sort((a, b) => b.effectiveSalary - a.effectiveSalary).map((emp, index) => {
+                  {[...monthlySalaryData.employees].filter(isInWorkPeriod).sort((a, b) => b.effectiveSalary - a.effectiveSalary).map((emp, index) => {
                     const hasValueEdit = editingMonthlySalary[emp.id] !== undefined
                     const hasPauseEdit = editingPaused[emp.id] !== undefined
                     const isEdited = hasValueEdit || hasPauseEdit
@@ -983,6 +1041,18 @@ export default function EmployeesPage() {
                           {!isPaused && !isEdited && hasMonthlyOverride && !emp.isCarriedForward && <Check className="h-4 w-4 text-green-500" />}
                           {!isPaused && !isEdited && emp.isCarriedForward && <span className="text-[10px] text-blue-400">auto</span>}
                         </div>
+                        {/* ปุ่มแก้ไขข้อมูลพนักงาน (ชื่อ, ตำแหน่ง, วันเริ่ม/ลาออก) — เปิด dialog โหมดแก้ไข */}
+                        <button
+                          type="button"
+                          className="flex-shrink-0 text-slate-300 hover:text-[#457b9d]"
+                          title="แก้ไขข้อมูลพนักงาน (ชื่อ, วันเริ่มงาน/ลาออก)"
+                          onClick={() => {
+                            const full = employees.find((e) => e.id === emp.id)
+                            if (full) handleEdit(full)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                       </div>
                     )
                   })}
@@ -1069,7 +1139,7 @@ export default function EmployeesPage() {
 
                 {/* Employee list */}
                 <div className="divide-y">
-                  {[...socialSecurityData.employees].sort((a, b) => {
+                  {[...socialSecurityData.employees].filter((e) => visibleEmpIds.has(e.id)).sort((a, b) => {
                     const salA = monthlySalaryData.employees.find((e) => e.id === a.id)?.effectiveSalary || 0
                     const salB = monthlySalaryData.employees.find((e) => e.id === b.id)?.effectiveSalary || 0
                     return salB - salA

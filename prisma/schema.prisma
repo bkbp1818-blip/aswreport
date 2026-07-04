@@ -54,6 +54,8 @@ model Employee {
   salary                     Decimal                      @default(0) @db.Decimal(15, 2)
   isActive                   Boolean                      @default(true)
   employmentStatus           EmploymentStatus             @default(ACTIVE)
+  startDate                  DateTime?                    // วันเริ่มงาน (null = ไม่ระบุ → แสดงทุกเดือนเหมือนเดิม) — display-filter เท่านั้น ไม่แตะการคำนวณเงิน
+  endDate                    DateTime?                    // วันลาออก (null = ยังทำงาน → แสดงถึงปัจจุบัน) — display-filter เท่านั้น
   createdAt                  DateTime                     @default(now())
   updatedAt                  DateTime                     @updatedAt
   socialSecurityContributions SocialSecurityContribution[]

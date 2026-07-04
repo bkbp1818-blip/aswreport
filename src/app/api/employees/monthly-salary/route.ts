@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         position: true,
         salary: true,
         employmentStatus: true, // ป้ายสถานะ (ACTIVE/RESIGNED/OUTSOURCE) — ไหลออกผ่าน ...emp ทุกแถว, ไม่แตะสูตร
+        startDate: true, // วันเริ่มงาน — ไหลออกให้ frontend กรองการแสดงผล (display-filter เท่านั้น ไม่แตะสูตร)
+        endDate: true,   // วันลาออก — ไหลออกให้ frontend กรองการแสดงผล (display-filter เท่านั้น ไม่แตะสูตร)
       },
     })
 
