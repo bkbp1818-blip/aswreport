@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// gate ช่วงทำงานระดับเดือน (YYYY-MM) — logic เดียวกับ isInWorkPeriod ที่ frontend (page.tsx)
+//   startDate: เดือนที่เริ่มงาน = นับ · เดือนก่อนหน้า = ไม่นับ
+//   endDate:   เดือนทำงานวันสุดท้าย = ยังนับ · เดือนถัดไป = ไม่นับ
+//   null = ไม่จำกัดฝั่งนั้น
+// ใช้ UTC ให้ตรงกับ frontend ที่เทียบจาก ISO string (slice 0-7) — กัน timezone เพี้ยนข้ามเดือน
+// viewIdx / *Idx = ปี*12 + เดือน(1-12) → เทียบเป็นตัวเลขเดือนต่อเนื่องได้ตรง ๆ
+function isInWorkPeriod(
+  emp: { startDate: Date | null; endDate: Date | null },
+  viewIdx: number
+): boolean {
+  if (emp.startDate) {
+    const startIdx = emp.startDate.getUTCFullYear() * 12 + (emp.startDate.getUTCMonth() + 1)
+    if (viewIdx < startIdx) return false
+  }
+  if (emp.endDate) {
+    const endIdx = emp.endDate.getUTCFullYear() * 12 + (emp.endDate.getUTCMonth() + 1)
+    if (viewIdx > endIdx) return false
+  }
+  return true
+}
+
 // GET - ดึงข้อมูลเงินเดือนรายเดือนตามเดือน/ปี พร้อมรายชื่อพนักงาน
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ดึงพนักงานทั้งหมดที่ยังทำงานอยู่
-    const employees = await prisma.employee.findMany({
+    const allEmployees = await prisma.employee.findMany({
       where: { isActive: true },
       orderBy: [
         { position: 'asc' },
@@ -31,12 +52,18 @@ export async function GET(request: NextRequest) {
         salary: true,
         employmentStatus: true, // ป้ายสถานะ (ACTIVE/RESIGNED/OUTSOURCE) — ไหลออกผ่าน ...emp ทุกแถว, ไม่แตะสูตร
         startDate: true, // วันเริ่มงาน — ไหลออกให้ frontend กรองการแสดงผล (display-filter เท่านั้น ไม่แตะสูตร)
-        endDate: true,   // วันลาออก — ไหลออกให้ frontend กรองการแสดงผล (display-filter เท่านั้น ไม่แตะสูตร)
+        endDate: true,   // ทำงานวันสุดท้าย — ไหลออกให้ frontend กรองการแสดงผล (display-filter เท่านั้น ไม่แตะสูตร)
       },
     })
 
     const m = parseInt(month)
     const y = parseInt(year)
+    const viewIdx = y * 12 + m // ดัชนีเดือนที่กำลังดู (YYYY-MM) สำหรับ gate ช่วงทำงาน
+
+    // gate ช่วงทำงานที่ backend (วิธี ข): กรองคนนอกช่วง [เดือน startDate → เดือน endDate] ทิ้ง
+    // ทำ "ก่อน" carry-forward + ก่อนคิดยอดรวม → totalSalary / จำนวนคน / ประกันสังคม (คำนวณจาก
+    // effectiveSalary ที่ frontend) ถูกอัตโนมัติ ไม่ต้องแก้จุดคำนวณอื่น
+    const employees = allEmployees.filter((e) => isInWorkPeriod(e, viewIdx))
 
     // ดึงข้อมูลเงินเดือนรายเดือนของเดือน/ปีที่เลือก
     const monthlySalaries = await prisma.monthlySalary.findMany({
