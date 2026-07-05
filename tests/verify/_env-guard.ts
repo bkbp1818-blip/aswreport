@@ -6,10 +6,9 @@ loadEnvConfig(process.cwd())
 
 const host = (process.env.DATABASE_URL || '').replace(/.*@([^/?]+).*/, '$1')
 // allowlist ของ Neon branch ที่อนุญาตให้ทดสอบ (กัน production ep-square-bush เสมอ)
-//  - gentle-forest  = branch test-verify (เดิม)
-//  - young-hall     = branch feat-schedule (ทดสอบฟีเจอร์ตารางเวลา)
-//  - billowing-dawn = branch fix-salary-summary-v2 (แก้บั๊กเงินเดือนรวม salary-summary, ถ่ายจาก prod ล่าสุด)
-const ALLOWED_BRANCHES = ['gentle-forest', 'young-hall', 'billowing-dawn']
+//  - gentle-forest = branch test-verify (เดิม)
+//  - young-hall    = branch feat-schedule (ทดสอบฟีเจอร์ตารางเวลา)
+const ALLOWED_BRANCHES = ['gentle-forest', 'young-hall']
 const PRODUCTION_MARKER = 'square-bush' // ห้ามต่อ production เด็ดขาด
 
 if (host.includes(PRODUCTION_MARKER) || !ALLOWED_BRANCHES.some((b) => host.includes(b))) {
