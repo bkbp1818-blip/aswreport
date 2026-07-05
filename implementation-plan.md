@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.33.0 |
+| **Version** | 1.34.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -166,7 +166,7 @@
     - Batch save — กรอกหลายคนแล้วกดบันทึกทีเดียว (ส่งทั้งตัวเลข + สถานะปิด/เปิด)
     - Carry forward — ดึงข้อมูลเดือนก่อน (รวมสถานะ isPaused) มาแสดง auto (ป้าย "auto" สีฟ้า)
     - **Dropdown สถานะจ้างงาน (ACTIVE/RESIGNED/OUTSOURCE)** ✨ NEW v1.31.0 — เลือกใต้ชื่อพนักงาน; บันทึกทันที (POST `/api/employees/employment-status` → sync `isPaused` เดือนที่ดู one-shot ไม่ย้อนเดือนเก่า); ป้าย derive ต่อเดือนจาก `isPaused` (ลาออก=จาง, Outsource=เด่น) — ป้ายตามเดือนจริง ไม่รั่วข้ามเดือน
-    - **วันเริ่มงาน / วันลาออก (work period)** ✨ NEW v1.32.0 — date picker ใน dialog เพิ่ม/แก้พนักงาน; หน้าเงินเดือน **ซ่อน row** พนักงานที่เดือน M/Y นอกช่วง [เดือน startDate → เดือน endDate] (เทียบระดับเดือน · เข้ากลางเดือน = แสดงทั้งเดือน · null = แสดงทุกเดือน) — display-filter เท่านั้น ไม่แตะยอดรวม
+    - **วันเริ่มงาน / วันลาออก (work period)** ✨ NEW v1.32.0 · ✨ UPDATED v1.34.0 — date picker ใน dialog เพิ่ม/แก้พนักงาน; หน้าเงินเดือน **ซ่อน row** พนักงานที่เดือน M/Y นอกช่วง [เดือน startDate → เดือน endDate] (เทียบระดับเดือน · เข้ากลางเดือน = แสดงทั้งเดือน · null = แสดงทุกเดือน) — v1.32.0 เป็น display-filter frontend เท่านั้น; **v1.34.0 ย้าย gate ลง backend ครบ 3 endpoint** (monthly-salary/salary-summary/summary) → คนนอกช่วงหลุดจากยอดรวม + จำนวนคน + ประกันสังคมด้วย (ไม่ใช่แค่ซ่อน row)
     - **ปุ่มแก้ไขพนักงาน (ดินสอ) ต่อคน** ✨ NEW v1.32.0 — เปิด dialog แก้ไข (เดิม handleEdit เป็น dead code); โหมด edit ซ่อนช่องเงินเดือนฐานกันสับสนกับ MonthlySalary · โหมด add ยังตั้ง salary ฐานได้
   - **ขวา: เงินสมทบประกันสังคม (นายจ้าง)** — คำนวณ auto 5% ของเงินเดือน (สูงสุด 875 บาท ตามกฎหมาย 2569)
     - **หักพนักงานที่ปิด (isPaused) ออกจากยอด auto** — ให้ตรงกับ Dashboard/summary ✨ FIXED v1.29.1
@@ -177,7 +177,7 @@
 - เรียงจากเงินเดือนสูง → น้อย (ทั้ง 2 ตาราง เรียงเหมือนกัน)
 - **MonthlySalary model** — เก็บเงินเดือนแยกตามพนักงาน+เดือน+ปี + ฟิลด์ `isPaused` (ปิด/เปิด) ✨ UPDATED v1.29.0 (ถ้าไม่มี record fallback ไป Employee.salary)
 - **Employee.employmentStatus** (enum `EmploymentStatus`: ACTIVE/RESIGNED/OUTSOURCE, default ACTIVE) ✨ NEW v1.31.0 — ป้ายถาวรระดับตัวคน; RESIGNED→`isPaused=true` เดือนที่ดู, ACTIVE/OUTSOURCE→`isPaused=false`
-- **Employee.startDate + endDate** (DateTime? nullable) ✨ NEW v1.32.0 — วันเริ่ม/ลาออก คุมการแสดงผลต่อเดือน (display-filter frontend เท่านั้น); null → แสดงทุกเดือน; ไม่เชื่อม `isPaused`/`employmentStatus` (คนละ layer)
+- **Employee.startDate + endDate** (DateTime? nullable) ✨ NEW v1.32.0 · ✨ UPDATED v1.34.0 — วันเริ่ม/ลาออก คุมการแสดงผลต่อเดือน (v1.32.0 display-filter frontend; **v1.34.0 gate ที่ backend ครบ 3 endpoint คำนวณเงินด้วย** ผ่าน helper `isInWorkPeriod`); null → แสดง/นับทุกเดือน; ไม่เชื่อม `isPaused`/`employmentStatus` (คนละ layer)
 
 ### 4. ยอดค้างจ่ายคืน (`/reimbursements`)
 - ติดตามยอดเงินที่ต้องคืนให้เจ้าหนี้ (ป๊า, แบงค์, พลอย, ASW)
@@ -384,7 +384,48 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.33.0 (Current - July 2026) — Bug fix: salary-summary คำนวณเงินเดือนรวมให้ตรง monthly-salary
+### v1.34.0 (Current - July 2026) — Backend gate startDate/endDate ครบ 3 endpoint (เงินเดือน/คน/ประกันสังคม ตรงกันทุกเดือน) ✅ DEPLOYED
+
+ต่อยอดจาก work-period (v1.32.0) ที่เป็น **frontend display-filter** → ย้าย gate ช่วงทำงานลง
+**backend ครบทั้ง 3 endpoint** ที่คำนวณเงินเดือน คนนอกช่วง [เดือน startDate → เดือน endDate]
+ถูกกรองทิ้งที่ server → totalSalary / จำนวนคน / ประกันสังคม **ตรงกันเป๊ะทุก endpoint ทุกเดือน**
+(ปิด Known limitation ของ v1.32.0 + v1.33.0)
+
+- **กติกา gate** (ระดับเดือน UTC, `viewIdx = ปี*12 + เดือน`): startDate เดือนเริ่มงาน = นับ ·
+  endDate เดือนทำงานวันสุดท้าย = ยังนับ (`>`) · null = ไม่จำกัดฝั่งนั้น — helper `isInWorkPeriod`
+  เหมือนกันเป๊ะทั้ง 3 endpoint
+- **สเต็ป 1 — monthly-salary** (commit `43b6565`): gate ที่ backend + relabel วันลาออก→ทำงานวันสุดท้าย + frontend `page.tsx`
+- **สเต็ป 2 — salary-summary** (commit `88d3cb9`): helper `isInWorkPeriod` + filter ก่อน carry-forward/reduce
+  · invariant `salary-summary === monthly-salary` **12/12 ผ่าน**
+- **สเต็ป 3 — summary** (commit `31052bb`): gate + carry-forward + `effectiveSalaryMap`
+  (ใช้ทั้งการคิดเงินเดือนรวม**และประกันสังคม**) แทน `msMap` เดิมที่ไม่มี carry-forward →
+  summary ตรง monthly-salary ทุกเดือน (แก้เคส YW มิ.ย. เดิม 50,133/อาคาร → 36,800)
+- **test infra** (commit `413240b`): `_reconcile.ts` recompute mirror gate+carry-forward +
+  ขยาย periods ทดสอบเป็น ก.พ.–ก.ค. · `_env-guard.ts` เพิ่ม allowlist branch `broad-sea`
+- **Verify:** snapshot ตรงทุกเดือน ก.พ.–ก.ค. (**พ.ค. 98,800 · มิ.ย. 110,400 · ก.ค. 85,500**;
+  carry-forward มี.ค. 113,600 · เม.ย. 112,800) · invariant 12/12 · **reconcile API===recompute 240/0**
+  (`EXTRA_WORK_SOURCE=legacy`) · **UI ผ่าน production ทุกเดือน**
+- **ทดสอบบน Neon branch `broad-sea`** (ถ่ายจาก prod ล่าสุด) — **ไม่มี schema change ไม่ db push**
+- **Deploy:** merge PR #6 → commit `b7c682c` บน master → **production** ✅
+- ไฟล์: `salary-summary/route.ts`, `summary/route.ts` (แก้), `_reconcile.ts`, `_env-guard.ts` (test)
+  — **ไม่แตะ** monthly-salary (เสร็จสเต็ป 1), summary/history, social-security
+
+**Lessons learned:**
+- gate ครั้งเดียว "ก่อน" carry-forward/reduce → เงินเดือน + จำนวนคน + ประกันสังคม ถูกอัตโนมัติ
+  (คนนอกช่วงหลุดจาก list ที่ทุกสูตรใช้ร่วมกัน ไม่ต้องแก้จุดคิดยอดทีละจุด)
+- SS ต้อง mirror ให้ครบ — ใช้ `effectiveSalaryMap` (carry-forward) ไม่ใช่ `msMap` เดิม
+  ไม่งั้นคน carry-forward จะได้ประกันสังคมผิด (msMap.get เป็น undefined ตกไป default)
+- reconcile ต้องรันแหล่ง fdExtra เดียวกับ dev server (`EXTRA_WORK_SOURCE=legacy`) — ไม่งั้น
+  income/expense ต่างด้วยยอด "งานเสริม FD" (ไม่เกี่ยวเงินเดือน) หลอกว่า fail
+- แยก commit ต่อสเต็ปที่ verify ผ่าน + push **feature branch preview** ก่อน merge
+  (ไม่ push master ตรง = กัน production deploy พลาด — guard เช็ค branch ก่อน push)
+
+**Known limitation / งานถัดไป:**
+1. **invariant test 3-way — ยังไม่ทำ** — ตอนนี้ `_salary-invariant.ts` เทียบ 2 endpoint
+   (salary-summary === monthly-salary); ควรขยายครอบ summary ให้เป็น 3-way กันเพี้ยนอนาคต
+2. ยังไม่คิดเงินครึ่งเดือนอัตโนมัติ (เข้า/ออกกลางเดือน) — Bank กรอก MonthlySalary เดือนนั้นเอง (ยกมาจาก v1.32.0)
+
+### v1.33.0 (July 2026) — Bug fix: salary-summary คำนวณเงินเดือนรวมให้ตรง monthly-salary
 
 แก้บั๊ก `/api/employees/salary-summary` (ตารางรายจ่าย) คำนวณเงินเดือนรวม **ไม่ตรง** กับ
 `/api/employees/monthly-salary` (หน้า /employees) — เจอ 3 สูตรที่ให้ผลต่างกัน
