@@ -10,7 +10,7 @@
 |------------|-----|
 | **Tech Stack** | Next.js 16, Tailwind CSS, shadcn/ui, Prisma 7 |
 | **Database** | Neon PostgreSQL (ap-southeast-1) |
-| **Version** | 1.32.0 |
+| **Version** | 1.33.0 |
 | **Production URL** | https://aswreport.vercel.app |
 
 ---
@@ -384,7 +384,44 @@ npx vercel --prod        # Deploy
 
 ## Changelog
 
-### v1.32.0 (Current - July 2026) — ฟีเจอร์ใหม่: วันเริ่มงาน/วันลาออก (Work Period) — display-filter
+### v1.33.0 (Current - July 2026) — Bug fix: salary-summary คำนวณเงินเดือนรวมให้ตรง monthly-salary
+
+แก้บั๊ก `/api/employees/salary-summary` (ตารางรายจ่าย) คำนวณเงินเดือนรวม **ไม่ตรง** กับ
+`/api/employees/monthly-salary` (หน้า /employees) — เจอ 3 สูตรที่ให้ผลต่างกัน
+
+- **ปัญหา 3 สูตรไม่ตรงกัน:**
+  - `salary-summary` (ตารางรายจ่าย) — ไม่ carry-forward + ไม่เช็ค isPaused → พอไม่มี record เดือนนั้น
+    ตกไปใช้ `Employee.salary` (default เก่า) → ผิดทั้ง**เกิน** (คนลาออก/paused ยังนับ) และ**ขาด** (คนขึ้นเงินเดือนได้ค่าเก่า)
+  - `summary` (Dashboard) — เช็ค isPaused แต่ไม่ carry-forward → ยังเพี้ยน (**ยังไม่แก้ = งานถัดไป**)
+  - `monthly-salary` (หน้า /employees) — carry-forward + isPaused ครบ = ถูกต้อง (Bank ยืนยัน)
+- **แก้:** ลอก carry-forward + isPaused จาก monthly-salary มาใส่ salary-summary (branch `if month&&year`)
+  → 2 endpoint ตรงกันทุกเดือน · ไม่แตะ monthly-salary/summary
+- **ผลกระทบบัญชีย้อนหลัง** (salary-summary เคยเกินจริงเทียบ monthly-salary ที่ถูก — snapshot ตอน query 6 เดือน):
+  ก.พ. ตรงพอดี · **มี.ค. +8,000** · **เม.ย. +8,000** · พ.ค. ตรงพอดี · **มิ.ย. +40,000** · **ก.ค. +41,000**
+  ต้นเหตุ = คนลาออก/paused ที่ salary-summary ยังนับ default (อรุณ/โบตั๋น มี.ค.–เม.ย.; ป้าสิน/พี่ต้น/เติ้ล มิ.ย.–ก.ค.)
+  — เผื่อย้อนดูตัวเลขเก่า (ตัวเลขปัจจุบันเปลี่ยนตามข้อมูลล่าสุด เช่น ก.ค. = 85,500 หลังรวมพนักงานใหม่ id24)
+- **test ใหม่:** `_salary-invariant.ts` — invariant `salary-summary === monthly-salary` ทุกเดือน
+  (coverage ที่ไม่เคยมี = เหตุที่บั๊กรอดมานาน) · **Regression 141/141 ผ่าน** (unit 31 + reconciliation 80 + live 18 + invariant 12)
+- **ทดสอบบน Neon branch billowing-dawn** (ถ่ายจาก prod ล่าสุด) — **ไม่มี schema change ไม่ db push**
+- ไฟล์: `salary-summary/route.ts` (แก้), `_salary-invariant.ts` (ใหม่)
+
+**Lessons learned:**
+- **regression ที่ผ่านไม่ได้แปลว่าถูกทุกสูตร** — salary-summary ไม่เคยมี test coverage เลย บั๊กเลยรอดมานานแม้ 129/129 ผ่านตลอด
+- **invariant test (2 endpoint เท่ากัน) > hardcode expected** — expected values (77,000) ล้าสมัยทันทีที่ข้อมูลเปลี่ยน
+  (Bank เพิ่มพนักงานใหม่ id24 กลางงาน) แต่ invariant "salary-summary === monthly-salary" จริงเสมอไม่ว่าข้อมูลเปลี่ยนยังไง
+- **อย่าเชื่อ re-implementation ในสคริปต์ — ยิง endpoint จริง** (สคริปต์คำนวณเองได้ 77,000 แต่ endpoint จริง 85,500
+  เพราะสคริปต์ไม่รู้จักพนักงานใหม่ที่เพิ่งเพิ่ม)
+- **branch snapshot อาจ stale** — ต้องสร้าง branch สดจาก production ล่าสุดถ้าเพิ่งแก้ข้อมูล
+  (เจอตอน branch billowing-dawn รุ่นแรกไม่มี record ที่ Bank เพิ่งกรอก มิ.ย.=1,800)
+
+**Known limitation / งานถัดไป:**
+1. **summary (Dashboard) ยังเพี้ยน** — เช็ค isPaused แต่ไม่ carry-forward → เงินเดือนรวมหน้า Dashboard ยังไม่ตรง
+   monthly-salary บางเดือน (เช่น YW มิ.ย. 50,133/อาคาร แทน 36,800) = งานถัดไป (แก้แบบเดียวกับ salary-summary)
+2. **carry-forward ไม่เช็ควันเริ่มงาน** — พนักงานที่มี startDate (คุณ K เริ่ม 24 มิ.ย.) ถูกนับเงิน (Employee.salary
+   fallback/carry) ในเดือน**ก่อน**เริ่มงาน (มี.ค.–พ.ค.) ทั้งใน monthly-salary และ salary-summary — เพราะ
+   work-period (v1.32.0) เป็น frontend-filter ไม่กัน backend = งานถัดไป
+
+### v1.32.0 (July 2026) — ฟีเจอร์ใหม่: วันเริ่มงาน/วันลาออก (Work Period) — display-filter
 
 เพิ่มช่วงทำงานพนักงาน (startDate/endDate) ซ่อนพนักงานในเดือนที่ยังไม่เริ่ม/ลาออกแล้ว —
 **display-filter layer เท่านั้น ไม่แตะระบบคำนวณเงินที่ตรวจ 129 จุด**
