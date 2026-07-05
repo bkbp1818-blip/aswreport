@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// gate ช่วงทำงานระดับเดือน (YYYY-MM) — ลอกมาจาก monthly-salary/route.ts ให้เหมือนเป๊ะ
+//   startDate: เดือนที่เริ่มงาน = นับ · เดือนก่อนหน้า = ไม่นับ
+//   endDate:   เดือนทำงานวันสุดท้าย = ยังนับ · เดือนถัดไป = ไม่นับ
+//   null = ไม่จำกัดฝั่งนั้น
+// ใช้ UTC + viewIdx (ปี*12 + เดือน 1-12) เทียบระดับเดือน — ตรงกับ monthly-salary
+function isInWorkPeriod(
+  emp: { startDate: Date | null; endDate: Date | null },
+  viewIdx: number
+): boolean {
+  if (emp.startDate) {
+    const startIdx = emp.startDate.getUTCFullYear() * 12 + (emp.startDate.getUTCMonth() + 1)
+    if (viewIdx < startIdx) return false
+  }
+  if (emp.endDate) {
+    const endIdx = emp.endDate.getUTCFullYear() * 12 + (emp.endDate.getUTCMonth() + 1)
+    if (viewIdx > endIdx) return false
+  }
+  return true
+}
+
 // GET - ดึงข้อมูลเงินเดือนรวมและหาร 3 อาคาร (CT, YW, NANA)
 // รองรับ optional month/year params เพื่อดึงเงินเดือนรายเดือน
 export async function GET(request: NextRequest) {
@@ -25,6 +45,11 @@ export async function GET(request: NextRequest) {
       // (logic เดียวกับ /api/employees/monthly-salary เพื่อให้เงินเดือนรวมตรงกันทุกเดือน)
       const m = parseInt(month)
       const y = parseInt(year)
+      const viewIdx = y * 12 + m // ดัชนีเดือนที่กำลังดู สำหรับ gate ช่วงทำงาน
+
+      // gate ช่วงทำงานที่ backend เหมือน monthly-salary: กรองคนนอกช่วงทิ้ง "ก่อน" carry-forward + reduce
+      // → totalSalary / salaryPerBuilding ถูกอัตโนมัติ ตรงกับ monthly-salary ทุกเดือน
+      const employees = activeEmployees.filter((e) => isInWorkPeriod(e, viewIdx))
 
       const monthlySalaries = await prisma.monthlySalary.findMany({
         where: { month: m, year: y },
@@ -32,7 +57,7 @@ export async function GET(request: NextRequest) {
 
       // พนักงานที่ไม่มี record เดือนนี้ → หา record ล่าสุด "ก่อน" เดือนนี้ (carry-forward ข้ามหลายเดือนได้)
       const employeeIdsWithRecord = new Set(monthlySalaries.map((ms) => ms.employeeId))
-      const employeeIdsWithoutRecord = activeEmployees
+      const employeeIdsWithoutRecord = employees
         .filter((e) => !employeeIdsWithRecord.has(e.id))
         .map((e) => e.id)
 
@@ -59,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
 
       // รวมยอด: มี record เดือนนี้ (isPaused→0) → carry-forward (isPaused→0) → default (Employee.salary)
-      totalSalary = activeEmployees.reduce((sum, emp) => {
+      totalSalary = employees.reduce((sum, emp) => {
         const ms = monthlySalaries.find((ms) => ms.employeeId === emp.id)
         const prev = !ms ? previousRecords.find((p) => p.employeeId === emp.id) : null
         let effectiveSalary: number
