@@ -21,18 +21,57 @@ export async function GET(request: NextRequest) {
     let totalSalary: number
 
     if (month && year) {
-      // ถ้ามี month/year → ดึง MonthlySalary แล้ว fallback ไป Employee.salary
+      // ถ้ามี month/year → ดึง MonthlySalary เดือนนี้ แล้ว carry-forward + เช็ค isPaused
+      // (logic เดียวกับ /api/employees/monthly-salary เพื่อให้เงินเดือนรวมตรงกันทุกเดือน)
+      const m = parseInt(month)
+      const y = parseInt(year)
+
       const monthlySalaries = await prisma.monthlySalary.findMany({
-        where: {
-          month: parseInt(month),
-          year: parseInt(year),
-        },
+        where: { month: m, year: y },
       })
-      const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, Number(ms.salary)]))
-      totalSalary = activeEmployees.reduce(
-        (sum, emp) => sum + (msMap.get(emp.id) ?? Number(emp.salary)),
-        0
-      )
+
+      // พนักงานที่ไม่มี record เดือนนี้ → หา record ล่าสุด "ก่อน" เดือนนี้ (carry-forward ข้ามหลายเดือนได้)
+      const employeeIdsWithRecord = new Set(monthlySalaries.map((ms) => ms.employeeId))
+      const employeeIdsWithoutRecord = activeEmployees
+        .filter((e) => !employeeIdsWithRecord.has(e.id))
+        .map((e) => e.id)
+
+      let previousRecords: typeof monthlySalaries = []
+      if (employeeIdsWithoutRecord.length > 0) {
+        const allPrevious = await prisma.monthlySalary.findMany({
+          where: {
+            employeeId: { in: employeeIdsWithoutRecord },
+            OR: [
+              { year: { lt: y } },
+              { year: y, month: { lt: m } },
+            ],
+          },
+          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        })
+        // เอาเฉพาะ record ล่าสุดต่อคน
+        const seen = new Set<number>()
+        for (const rec of allPrevious) {
+          if (!seen.has(rec.employeeId)) {
+            seen.add(rec.employeeId)
+            previousRecords.push(rec)
+          }
+        }
+      }
+
+      // รวมยอด: มี record เดือนนี้ (isPaused→0) → carry-forward (isPaused→0) → default (Employee.salary)
+      totalSalary = activeEmployees.reduce((sum, emp) => {
+        const ms = monthlySalaries.find((ms) => ms.employeeId === emp.id)
+        const prev = !ms ? previousRecords.find((p) => p.employeeId === emp.id) : null
+        let effectiveSalary: number
+        if (ms) {
+          effectiveSalary = ms.isPaused ? 0 : Number(ms.salary)
+        } else if (prev) {
+          effectiveSalary = prev.isPaused ? 0 : Number(prev.salary)
+        } else {
+          effectiveSalary = Number(emp.salary)
+        }
+        return sum + effectiveSalary
+      }, 0)
     } else {
       // ถ้าไม่มี month/year → ใช้ Employee.salary ตรงๆ (backward compatible)
       totalSalary = activeEmployees.reduce(
