@@ -6,9 +6,9 @@ loadEnvConfig(process.cwd())
 
 const host = (process.env.DATABASE_URL || '').replace(/.*@([^/?]+).*/, '$1')
 // allowlist ของ Neon branch ที่อนุญาตให้ทดสอบ (กัน production ep-square-bush เสมอ)
-//  - gentle-forest = branch test-verify (เดิม)
-//  - young-hall    = branch feat-schedule (ทดสอบฟีเจอร์ตารางเวลา)
-const ALLOWED_BRANCHES = ['gentle-forest', 'young-hall']
+//  - wandering-poetry = branch fix-workperiod-gate-v2 (gate startDate/endDate ที่ backend, data endDate ใหม่ครบ)
+//  - broad-sea = branch fix-gate-step23 (สเต็ป 2-3: gate salary-summary + summary, ถ่ายจาก production ล่าสุด)
+const ALLOWED_BRANCHES = ['wandering-poetry', 'broad-sea']
 const PRODUCTION_MARKER = 'square-bush' // ห้ามต่อ production เด็ดขาด
 
 if (host.includes(PRODUCTION_MARKER) || !ALLOWED_BRANCHES.some((b) => host.includes(b))) {

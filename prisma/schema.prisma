@@ -55,7 +55,7 @@ model Employee {
   isActive                   Boolean                      @default(true)
   employmentStatus           EmploymentStatus             @default(ACTIVE)
   startDate                  DateTime?                    // วันเริ่มงาน (null = ไม่ระบุ → แสดงทุกเดือนเหมือนเดิม) — display-filter เท่านั้น ไม่แตะการคำนวณเงิน
-  endDate                    DateTime?                    // วันลาออก (null = ยังทำงาน → แสดงถึงปัจจุบัน) — display-filter เท่านั้น
+  endDate                    DateTime?                    // ทำงานวันสุดท้าย (null = ยังทำงาน → แสดงถึงปัจจุบัน) · เดือนนี้ยังนับ (inclusive) — display-filter เท่านั้น
   createdAt                  DateTime                     @default(now())
   updatedAt                  DateTime                     @updatedAt
   socialSecurityContributions SocialSecurityContribution[]

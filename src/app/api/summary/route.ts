@@ -10,6 +10,26 @@ import {
   FLOOR1_RENT_FIELD_NAME,
 } from '@/lib/income-defaults'
 
+// gate ช่วงทำงานระดับเดือน (YYYY-MM) — ลอกมาจาก monthly-salary/route.ts ให้เหมือนเป๊ะ
+//   startDate: เดือนที่เริ่มงาน = นับ · เดือนก่อนหน้า = ไม่นับ
+//   endDate:   เดือนทำงานวันสุดท้าย = ยังนับ · เดือนถัดไป = ไม่นับ
+//   null = ไม่จำกัดฝั่งนั้น
+// ใช้ UTC + viewIdx (ปี*12 + เดือน 1-12) เทียบระดับเดือน — ตรงกับ monthly-salary/salary-summary
+function isInWorkPeriod(
+  emp: { startDate: Date | null; endDate: Date | null },
+  viewIdx: number
+): boolean {
+  if (emp.startDate) {
+    const startIdx = emp.startDate.getUTCFullYear() * 12 + (emp.startDate.getUTCMonth() + 1)
+    if (viewIdx < startIdx) return false
+  }
+  if (emp.endDate) {
+    const endIdx = emp.endDate.getUTCFullYear() * 12 + (emp.endDate.getUTCMonth() + 1)
+    if (viewIdx > endIdx) return false
+  }
+  return true
+}
+
 // GET - ดึงข้อมูลสรุป (ต้อง login)
 export async function GET(request: NextRequest) {
   try {
@@ -274,18 +294,59 @@ async function calculateBuildingSummary(
   }
 
   // ดึงข้อมูลเงินเดือนพนักงาน (หาร 3 อาคาร: CT, YW, NANA)
-  // ใช้เงินเดือนรายเดือน (MonthlySalary) ถ้ามี ไม่มีก็ fallback ไป Employee.salary
+  // ตรรกะเดียวกับ /api/employees/monthly-salary เป๊ะ: gate ช่วงทำงาน + carry-forward + เช็ค isPaused
+  // → เงินเดือนรวม/อาคาร + ประกันสังคม ตรงกับ monthly-salary/salary-summary ทุกเดือน
   const buildings = await prisma.building.findMany()
-  const employees = await prisma.employee.findMany({
+  const allEmployees = await prisma.employee.findMany({
     where: { isActive: true },
   })
+  // gate: กรองคนนอกช่วงทำงาน (ก่อน startDate / หลัง endDate) ทิ้ง "ก่อน" carry-forward + คิดยอด
+  const viewIdx = year * 12 + month
+  const employees = allEmployees.filter((e) => isInWorkPeriod(e, viewIdx))
+
   const monthlySalaries = await prisma.monthlySalary.findMany({
     where: { month, year },
   })
-  const msMap = new Map(monthlySalaries.map((ms) => [ms.employeeId, ms.isPaused ? 0 : Number(ms.salary)]))
-  const totalSalary = employees.reduce((sum, emp) => {
-    return sum + (msMap.get(emp.id) ?? Number(emp.salary))
-  }, 0)
+
+  // carry-forward: คนที่ไม่มี record เดือนนี้ → ดึง record ล่าสุด "ก่อน" เดือนนี้ (ข้ามหลายเดือนได้)
+  const employeeIdsWithRecord = new Set(monthlySalaries.map((ms) => ms.employeeId))
+  const employeeIdsWithoutRecord = employees
+    .filter((e) => !employeeIdsWithRecord.has(e.id))
+    .map((e) => e.id)
+  const previousSalaryRecords: typeof monthlySalaries = []
+  if (employeeIdsWithoutRecord.length > 0) {
+    const allPrevious = await prisma.monthlySalary.findMany({
+      where: {
+        employeeId: { in: employeeIdsWithoutRecord },
+        OR: [
+          { year: { lt: year } },
+          { year, month: { lt: month } },
+        ],
+      },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+    })
+    const seen = new Set<number>()
+    for (const rec of allPrevious) {
+      if (!seen.has(rec.employeeId)) {
+        seen.add(rec.employeeId)
+        previousSalaryRecords.push(rec)
+      }
+    }
+  }
+
+  // effective salary ต่อคน: มี record เดือนนี้ (isPaused→0) → carry-forward (isPaused→0) → default
+  // ใช้ทั้งการคิดเงินเดือนรวม และการคิดประกันสังคม (mirror monthly-salary ให้ครบทั้งสอง)
+  const effectiveSalaryMap = new Map<number, number>()
+  for (const emp of employees) {
+    const ms = monthlySalaries.find((x) => x.employeeId === emp.id)
+    const prev = !ms ? previousSalaryRecords.find((p) => p.employeeId === emp.id) : null
+    let eff: number
+    if (ms) eff = ms.isPaused ? 0 : Number(ms.salary)
+    else if (prev) eff = prev.isPaused ? 0 : Number(prev.salary)
+    else eff = Number(emp.salary)
+    effectiveSalaryMap.set(emp.id, eff)
+  }
+  const totalSalary = employees.reduce((sum, emp) => sum + (effectiveSalaryMap.get(emp.id) ?? 0), 0)
   const salaryDivisor = 3 // หาร 3 อาคาร (CT, YW, NANA)
   const eligibleBuildingsForSalary = ['CT', 'YW', 'NANA']
   const isEligibleForSalary = eligibleBuildingsForSalary.includes(building.code)
@@ -324,7 +385,7 @@ async function calculateBuildingSummary(
   for (const emp of employees) {
     const ssAmount = ssContribMap.get(emp.id) || 0
     if (ssAmount > 0) {
-      const effectiveSalary = msMap.get(emp.id) ?? Number(emp.salary)
+      const effectiveSalary = effectiveSalaryMap.get(emp.id) ?? 0
       calculatedSocialSecurityTotal += calculateSocialSecurity(effectiveSalary)
     }
   }

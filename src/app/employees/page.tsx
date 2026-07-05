@@ -43,7 +43,7 @@ interface Employee {
   salary: number
   isActive: boolean
   startDate: string | null // วันเริ่มงาน (ISO) — display-filter เท่านั้น
-  endDate: string | null   // วันลาออก (ISO) — display-filter เท่านั้น
+  endDate: string | null   // ทำงานวันสุดท้าย (ISO) — display-filter เท่านั้น
 }
 
 type PositionType = 'MAID' | 'MANAGER' | 'PARTNER'
@@ -69,7 +69,7 @@ interface MonthlySalaryEmployee {
   salary: number
   employmentStatus?: EmploymentStatusType // ป้ายสถานะจ้างงาน (API ส่งมาผ่าน ...emp), ค่า default = ACTIVE
   startDate?: string | null // วันเริ่มงาน (ISO) — ใช้กรองการแสดงผลต่อเดือน (ไม่แตะสูตร)
-  endDate?: string | null   // วันลาออก (ISO) — ใช้กรองการแสดงผลต่อเดือน (ไม่แตะสูตร)
+  endDate?: string | null   // ทำงานวันสุดท้าย (ISO) — ใช้กรองการแสดงผลต่อเดือน (ไม่แตะสูตร)
   monthlySalaryId: number | null
   monthlySalary: number | null
   effectiveSalary: number
@@ -156,7 +156,7 @@ export default function EmployeesPage() {
     salary: 0,
     isActive: true,
     startDate: '', // วันเริ่มงาน (YYYY-MM-DD, ว่าง = ไม่ระบุ)
-    endDate: '',   // วันลาออก (YYYY-MM-DD, ว่าง = ยังทำงาน)
+    endDate: '',   // ทำงานวันสุดท้าย (YYYY-MM-DD, ว่าง = ยังทำงาน)
   })
 
   // โหลดข้อมูลพนักงาน
@@ -647,7 +647,7 @@ export default function EmployeesPage() {
                   />
                 </div>
               )}
-              {/* วันเริ่มงาน / วันลาออก — คุมการแสดงผลต่อเดือน (display-filter เท่านั้น ไม่แตะการคำนวณเงิน) */}
+              {/* วันเริ่มงาน / ทำงานวันสุดท้าย — คุมการแสดงผลต่อเดือน (display-filter เท่านั้น ไม่แตะการคำนวณเงิน) */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startDate">วันเริ่มงาน</Label>
@@ -659,7 +659,7 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">วันลาออก</Label>
+                  <Label htmlFor="endDate">ทำงานวันสุดท้าย</Label>
                   <Input
                     id="endDate"
                     type="date"
