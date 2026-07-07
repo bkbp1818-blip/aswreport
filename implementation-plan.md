@@ -421,8 +421,11 @@ npx vercel --prod        # Deploy
   (ไม่ push master ตรง = กัน production deploy พลาด — guard เช็ค branch ก่อน push)
 
 **Known limitation / งานถัดไป:**
-1. **invariant test 3-way — ยังไม่ทำ** — ตอนนี้ `_salary-invariant.ts` เทียบ 2 endpoint
-   (salary-summary === monthly-salary); ควรขยายครอบ summary ให้เป็น 3-way กันเพี้ยนอนาคต
+1. **invariant test 3-way — ✅ เสร็จแล้ว** (commit `1f07cab`) — `_salary-invariant.ts` ขยายจาก 2 เป็น
+   **3 แหล่ง** (ss=ms=summary) เทียบที่ระดับ `salaryPerBuilding` (อาคาร CT: `expenseByCategory['เงินเดือนพนักงาน']`)
+   ครบ 3 คู่ (ss=ms · ms=summary · ss=summary) + `totalSalary` ss=ms double-check → **24/24 ผ่าน**
+   (6 เดือน ก.พ.–ก.ค. × 4 เช็ค) · pattern "2 fail 1 pass" (ตัวร่วมของคู่ที่ fail คือตัวที่พัง) ชี้ตัวการได้ ·
+   ไม่ต้องตั้ง `EXTRA_WORK_SOURCE` (salaryPerBuilding คิดจาก MonthlySalary ล้วน ไม่ผูก extra-work)
 2. ยังไม่คิดเงินครึ่งเดือนอัตโนมัติ (เข้า/ออกกลางเดือน) — Bank กรอก MonthlySalary เดือนนั้นเอง (ยกมาจาก v1.32.0)
 
 ### v1.33.0 (July 2026) — Bug fix: salary-summary คำนวณเงินเดือนรวมให้ตรง monthly-salary
